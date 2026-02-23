@@ -1,6 +1,7 @@
 {
-  "name": "Run Tests on Handler Change",
   "version": "1.0.0",
+  "enabled": true,
+  "name": "Run Tests on Handler Change",
   "description": "パイプラインハンドラー変更時に関連テストを実行",
   "when": {
     "type": "fileEdited",

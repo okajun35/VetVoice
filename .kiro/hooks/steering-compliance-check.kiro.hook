@@ -1,6 +1,7 @@
 {
-  "name": "Steering Compliance Check",
   "version": "1.0.0",
+  "enabled": true,
+  "name": "Steering Compliance Check",
   "description": "コード書き込み時にステアリングルールへの準拠を確認",
   "when": {
     "type": "preToolUse",
