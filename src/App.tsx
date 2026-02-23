@@ -1,42 +1,115 @@
-import { useEffect, useState } from 'react';
-import { Amplify } from 'aws-amplify';
+import { useState } from 'react';
 import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
-import outputs from '../amplify_outputs.json';
-
-// Amplify設定を初期化
-Amplify.configure(outputs);
+import { QRScanner } from './components/QRScanner';
+import { CowRegistrationForm } from './components/CowRegistrationForm';
+import { VisitManager } from './components/VisitManager';
+import DevEntryPoints from './components/DevEntryPoints';
 
 /**
- * VetVoice メインアプリケーション
- * 
- * Task 1: 基本構造とAmplify認証統合
- * Task 30: 全コンポーネントの統合とルーティング
+ * VetVoice main application
+ * Task 30: Full component integration
  */
+
+type AppView = 'qr' | 'register' | 'visit_manager';
+
 function App() {
-  const [isConfigured, setIsConfigured] = useState(false);
+  const [view, setView] = useState<AppView>('qr');
+  const [currentCowId, setCurrentCowId] = useState<string | null>(null);
+  const [pendingCowId, setPendingCowId] = useState<string | null>(null);
+  const [devMode, setDevMode] = useState(false);
 
-  useEffect(() => {
-    // Amplify設定の確認
-    setIsConfigured(true);
-  }, []);
+  const handleCowFound = (cowId: string) => {
+    setCurrentCowId(cowId);
+    setView('visit_manager');
+  };
 
-  if (!isConfigured) {
-    return <div>Loading...</div>;
-  }
+  const handleNewCow = (cowId: string) => {
+    setPendingCowId(cowId);
+    setView('register');
+  };
+
+  const handleRegistered = (cowId: string) => {
+    setCurrentCowId(cowId);
+    setPendingCowId(null);
+    setView('visit_manager');
+  };
+
+  const handleCancelRegistration = () => {
+    setPendingCowId(null);
+    setView('qr');
+  };
+
+  const handleBackToQr = () => {
+    setCurrentCowId(null);
+    setView('qr');
+  };
 
   return (
     <Authenticator>
       {({ signOut, user }) => (
-        <main>
-          <h1>VetVoice - 獣医音声診療記録システム</h1>
-          <p>ユーザー: {user?.signInDetails?.loginId}</p>
-          <button onClick={signOut}>サインアウト</button>
-          
-          <div style={{ marginTop: '2rem' }}>
-            <p>プロジェクト初期化完了</p>
-            <p>Task 2以降でコンポーネントを実装します</p>
+        <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1rem',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+            }}
+          >
+            <h1 style={{ margin: 0, fontSize: '1.2rem' }}>VetVoice</h1>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setDevMode((v) => !v)}
+                style={{
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.8rem',
+                  background: devMode ? '#e8f0fe' : '#fff',
+                  border: '1px solid #0066cc',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  color: '#0066cc',
+                }}
+              >
+                {devMode ? '開発モード ON' : '開発モード'}
+              </button>
+              <span style={{ fontSize: '0.85rem', color: '#555' }}>
+                {user?.signInDetails?.loginId}
+              </span>
+              <button
+                type="button"
+                onClick={signOut}
+                style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                サインアウト
+              </button>
+            </div>
           </div>
+
+          {devMode ? (
+            <DevEntryPoints />
+          ) : (
+            <>
+              {view === 'qr' && (
+                <QRScanner onCowFound={handleCowFound} onNewCow={handleNewCow} />
+              )}
+
+              {view === 'register' && (
+                <CowRegistrationForm
+                  initialCowId={pendingCowId ?? ''}
+                  onRegistered={handleRegistered}
+                  onCancel={handleCancelRegistration}
+                />
+              )}
+
+              {view === 'visit_manager' && currentCowId && (
+                <VisitManager cowId={currentCowId} onBack={handleBackToQr} />
+              )}
+            </>
+          )}
         </main>
       )}
     </Authenticator>

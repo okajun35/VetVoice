@@ -1,76 +1,132 @@
 import { defineBackend } from "@aws-amplify/backend";
+import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { auth } from "./auth/resource";
-import { data } from "./data/resource";
+import { data, runPipelineFunction, generateHistorySummaryFunction } from "./data/resource";
 import { storage } from "./storage/resource";
 
 /**
  * Amplify Gen 2 backend integration
  * Region: us-east-1 (N. Virginia)
  *
- * Task 1:  Basic structure
- * Task 6:  CSV asset bundling documentation
- * Task 17: IAM policies (Bedrock, Transcribe, S3) -- to be added here
+ * Task 17: IAM policies (Bedrock, Transcribe, S3, DynamoDB)
  *
- * -------------------------------------------------------------------------
- * CSV Asset Bundling Strategy (Task 6)
- * -------------------------------------------------------------------------
- * Amplify Gen 2 uses esbuild to bundle Lambda TypeScript. esbuild does NOT
- * automatically include non-JS files such as CSV master data.
- *
- * Required CSV files:
- *   - assets/dictionary.csv                (Dictionary_Expander)
- *   - assets/byoumei.csv                   (Master_Matcher -- disease master)
- *   - assets/shinryo_tensu_master_flat.csv (Master_Matcher -- procedure master)
- *
- * Solution: amplify.yml copies assets/ into the Lambda zip before deploy.
- * See the backend.phases.build.commands section in amplify.yml.
- *
- * At Lambda runtime __dirname points to the function root directory.
- * The handlers use multi-path resolution via amplify/data/asset-paths.ts:
- *   1. path.join(__dirname, "assets", filename)             -- co-located copy
- *   2. path.join(__dirname, "..", "assets", filename)       -- one level up
- *   3. path.join(__dirname, "../..", "assets", filename)    -- two levels up
- *   4. path.join(__dirname, "../../..", "assets", filename) -- three levels up
- *   5. path.join(process.cwd(), "assets", filename)         -- local dev / test
- *
- * For local development (npx ampx sandbox), assets/ is already present at
- * the project root, so candidate #5 resolves correctly without any copy.
- * -------------------------------------------------------------------------
+ * Note: runPipelineFunction and generateHistorySummaryFunction use
+ * resourceGroupName: "data" to avoid circular dependency between
+ * data and function stacks.
  */
 export const backend = defineBackend({
   auth,
   data,
   storage,
+  runPipelineFunction,
+  generateHistorySummaryFunction,
 });
 
-// References to Lambda functions for IAM policy additions (Task 17).
-// Kept here so Task 17 can attach policies without modifying resource.ts.
-export const runPipelineFn =
-  backend.data.resources.functions["runPipeline"];
-export const generateHistorySummaryFn =
-  backend.data.resources.functions["generateHistorySummary"];
+// runPipeline Lambda: Bedrock permissions
+backend.runPipelineFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["bedrock:InvokeModel"],
+    resources: [
+      "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-*",
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
+    ],
+  })
+);
 
-// Task 17: IAM policies will be added here:
-//
-// import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
-//
-// runPipelineFn.addToRolePolicy(new PolicyStatement({
-//   effect: Effect.ALLOW,
-//   actions: ["bedrock:InvokeModel"],
-//   resources: [
-//     "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-*",
-//     "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
-//   ],
-// }));
-//
-// runPipelineFn.addToRolePolicy(new PolicyStatement({
-//   effect: Effect.ALLOW,
-//   actions: ["transcribe:StartTranscriptionJob", "transcribe:GetTranscriptionJob"],
-//   resources: ["*"],
-// }));
-//
-// runPipelineFn.addToRolePolicy(new PolicyStatement({
-//   effect: Effect.ALLOW,
-//   actions: ["s3:GetObject"],
-//   resources: [backend.storage.resources.bucket.bucketArn + "/audio/*"],
-// }));
+// runPipeline Lambda: Transcribe permissions
+backend.runPipelineFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: [
+      "transcribe:StartTranscriptionJob",
+      "transcribe:GetTranscriptionJob",
+    ],
+    resources: ["*"],
+  })
+);
+
+// runPipeline Lambda: S3 read permissions for audio files
+backend.runPipelineFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["s3:GetObject"],
+    resources: [
+      backend.storage.resources.bucket.bucketArn + "/audio/*",
+    ],
+  })
+);
+
+// runPipeline Lambda: S3 read/write permissions for transcripts
+backend.runPipelineFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["s3:PutObject", "s3:GetObject"],
+    resources: [
+      backend.storage.resources.bucket.bucketArn + "/transcripts/*",
+    ],
+  })
+);
+
+// runPipeline Lambda: DynamoDB permissions
+backend.runPipelineFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem"],
+    resources: [
+      backend.data.resources.tables["Visit"].tableArn,
+    ],
+  })
+);
+
+// generateHistorySummary Lambda: Bedrock permissions
+backend.generateHistorySummaryFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["bedrock:InvokeModel"],
+    resources: [
+      "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-*",
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
+    ],
+  })
+);
+
+// generateHistorySummary Lambda: DynamoDB permissions
+backend.generateHistorySummaryFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["dynamodb:Query"],
+    resources: [
+      backend.data.resources.tables["Visit"].tableArn,
+      backend.data.resources.tables["Visit"].tableArn + "/index/*",
+    ],
+  })
+);
+
+// ---------------------------------------------------------------------------
+// Dynamic environment variables — resolved at deploy time from CDK references
+// Avoids hardcoding table names / bucket names that change across sandboxes
+// ---------------------------------------------------------------------------
+const visitTable = backend.data.resources.tables["Visit"];
+const cowTable = backend.data.resources.tables["Cow"];
+const bucket = backend.storage.resources.bucket;
+
+// runPipeline Lambda
+backend.runPipelineFunction.resources.lambda.addEnvironment(
+  "VISIT_TABLE_NAME",
+  visitTable.tableName
+);
+backend.runPipelineFunction.resources.lambda.addEnvironment(
+  "COW_TABLE_NAME",
+  cowTable.tableName
+);
+backend.runPipelineFunction.resources.lambda.addEnvironment(
+  "STORAGE_BUCKET_NAME",
+  bucket.bucketName
+);
+
+// generateHistorySummary Lambda
+backend.generateHistorySummaryFunction.resources.lambda.addEnvironment(
+  "VISIT_TABLE_NAME",
+  visitTable.tableName
+);

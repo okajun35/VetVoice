@@ -6,18 +6,20 @@ import { type ClientSchema, a, defineData, defineFunction } from "@aws-amplify/b
  */
 
 // Lambda関数定義（Task 15, 16で実装）
-const runPipelineFunction = defineFunction({
+export const runPipelineFunction = defineFunction({
   name: "runPipeline",
   entry: "./run-pipeline.ts",
-  timeoutSeconds: 120,  // パイプライン全体の処理時間を考慮
+  timeoutSeconds: 120,  // allow time for full pipeline processing
   memoryMB: 512,
+  resourceGroupName: "data",
 });
 
-const generateHistorySummaryFunction = defineFunction({
+export const generateHistorySummaryFunction = defineFunction({
   name: "generateHistorySummary",
   entry: "./generate-history-summary.ts",
   timeoutSeconds: 30,
   memoryMB: 256,
+  resourceGroupName: "data",
 });
 
 const schema = a.schema({

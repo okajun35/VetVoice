@@ -444,3 +444,35 @@ function getModelConfig(
 | SOAP_Generator | Nova Lite | 低コスト、テキスト生成で十分 |
 | Kyosai_Generator | Nova Lite | 低コスト、テキスト生成で十分 |
 | HistorySummary | Nova Micro | 最低コスト、簡潔なサマリー |
+
+## フロントエンドの型安全パターン
+
+### AmplifyクライアントからSchemaの型を引き出す
+
+Amplify Gen 2のSchemaから生成される型は複雑な内部型（`Nullable<Json>`等）を含む。
+フロントエンドコンポーネントで手書きの型定義を作ると、Schemaと乖離するリスクがある。
+
+**方針: Schemaから型を引き出す**
+
+```typescript
+import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../amplify/data/resource';
+
+const client = generateClient<Schema>();
+
+// クエリの引数型
+type RunPipelineArgs = Parameters<typeof client.queries.runPipeline>[0];
+
+// クエリの戻り値型（data フィールド）
+type PipelineResult = NonNullable<
+  Awaited<ReturnType<typeof client.queries.runPipeline>>['data']
+>;
+
+// a.json() フィールドへの型アサーション
+const parsed = JSON.parse(jsonText) as RunPipelineArgs['extractedJson'];
+```
+
+**適用ルール:**
+- `a.json()` フィールドに値を渡す場合: `as Parameters<typeof client.queries.xxx>[0]['fieldName']` でキャスト
+- クエリ結果を格納するstateの型: `NonNullable<Awaited<ReturnType<...>>['data']>` で引き出す
+- 手書きの型定義はUI固有の概念（タブモード等）のみに限定する

@@ -188,9 +188,14 @@ describe("Feature: vet-voice-medical-record, Property 3: Dictionary entry CRUD r
   });
 
   const KNOWN_ABBREVIATIONS = [
-    "静注", "IV", "筋注", "IM", "皮下注", "SC", "経口", "PO",
+    // 投与経路
+    "静注", "IV", "静脈内注射", "筋注", "IM", "皮下注", "SC", "経口", "PO", "腹腔内", "IP",
+    // 抗生物質
     "アンピ", "ABPC", "ペニ", "PC", "セファ", "CEZ", "OTC", "エンロ",
-    "BT", "HR", "RR", "直検", "妊鑑", "AI", "帝切"
+    // 診療行為
+    "直検", "妊鑑", "AI", "人授", "帝切", "さくてい",
+    // バイタル・症状
+    "BT", "HR", "RR", "食不", "ルーメン",
   ];
 
   function containsAbbreviation(s: string): boolean {
