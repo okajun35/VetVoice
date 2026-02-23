@@ -55,31 +55,31 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
     - **Property 1: Extracted_JSON ラウンドトリップ**
     - **検証: 要件 6.1, 6.3, 6.4**
 
-- [ ] 4. 辞書展開コンポーネント (Dictionary_Expander) の実装
+- [x] 4. 辞書展開コンポーネント (Dictionary_Expander) の実装
   - [x] 4.1 初期辞書CSVファイルを作成
     - `assets/dictionary.csv`を作成（ヘッダー行 + 基本的な獣医学略語エントリ）
     - 初期エントリ例: 静脈注射/静注/IV、アンピシリン/アンピ/ABPC、筋肉注射/筋注/IM 等
     - _要件: 4.5_
 
-  - [~] 4.2 Dictionary_Expanderコンポーネントを実装
+  - [x] 4.2 Dictionary_Expanderコンポーネントを実装
     - `amplify/data/handlers/dictionary-expander.ts`を作成
     - CSV辞書ファイル (`assets/dictionary.csv`) の読み込み機能
     - ルールベースの略語→正式名称展開ロジック
     - 1対多マッピング対応（1正式名称→複数略語）
     - _要件: 4.1, 4.2, 4.4, 4.5, 15.4_
 
-  - [~] 4.3 Dictionary_Expanderのユニットテストを作成
+  - [x] 4.3 Dictionary_Expanderのユニットテストを作成
     - 具体的な略語展開例（「静注」→「静脈注射」、「アンピ」→「アンピシリン」）
     - 辞書に存在しない単語の保持確認
     - _要件: 4.2, 4.4_
 
-  - [~] 4.4 Dictionary_Expanderのプロパティテストを作成
+  - [x] 4.4 Dictionary_Expanderのプロパティテストを作成
     - **Property 2: 辞書展開の正確性**
     - **Property 3: 辞書エントリのCRUDラウンドトリップ**
     - **検証: 要件 4.1, 4.3, 4.4, 4.5, 15.4**
 
-- [ ] 5. マスタデータ照合コンポーネント (Master_Matcher) の実装
-  - [~] 5.1 Master_Matcherコンポーネントを実装
+- [x] 5. マスタデータ照合コンポーネント (Master_Matcher) の実装
+  - [x] 5.1 Master_Matcherコンポーネントを実装
     - `amplify/data/handlers/master-matcher.ts`を作成
     - `byoumei.csv`と`shinryo_tensu_master_flat.csv`の読み込み
     - ファジー文字列マッチングアルゴリズムの実装
@@ -87,29 +87,29 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
     - Confidence閾値によるunconfirmedマーク機能
     - _要件: 7.1, 7.2, 7.3, 7.4, 15.5_
 
-  - [~] 5.2 Master_Matcherのユニットテストを作成
+  - [x] 5.2 Master_Matcherのユニットテストを作成
     - 既知の病名照合例（「心のう炎」→byoumeiマスタの01-01）
     - 既知の処置照合例
     - _要件: 7.1, 7.2_
 
-  - [~] 5.3 Master_Matcherのプロパティテストを作成
+  - [x] 5.3 Master_Matcherのプロパティテストを作成
     - **Property 4: マスタ照合の候補提示**
     - **Property 5: Confidence閾値によるUnconfirmedマーク**
     - **検証: 要件 7.1, 7.2, 7.3, 7.4, 15.5**
 
-- [~] 6. マスタデータCSVのLambdaバンドル設定
+- [x] 6. マスタデータCSVのLambdaバンドル設定
   - Dictionary_Expander、Master_MatcherがCSVを読み込む前提のため、CSVファイルをLambdaデプロイパッケージにバンドルする設定を行う
   - `amplify/data/run-pipeline.ts`のdefineFunction設定で`assets/`ディレクトリをバンドル対象に追加
   - `assets/byoumei.csv`、`assets/shinryo_tensu_master_flat.csv`、`assets/dictionary.csv`がLambda実行環境から読み込み可能であることを確認
   - 各ハンドラーのCSV読み込みパスがLambdaバンドル後のディレクトリ構造と一致することを確認
   - _要件: 7.1, 7.2, 4.5, 15.4, 15.5_
 
-- [~] 7. チェックポイント - コアコンポーネントの動作確認
+- [x] 7. チェックポイント - コアコンポーネントの動作確認
   - すべてのテストが成功することを確認
   - 質問があればユーザーに確認
 
-- [ ] 8. モデル設定レイヤーの実装
-  - [~] 8.1 コンポーネント別モデル設定を実装
+- [-] 8. モデル設定レイヤーの実装
+  - [-] 8.1 コンポーネント別モデル設定を実装
     - `amplify/data/handlers/model-config.ts`を作成
     - デフォルトモデル設定（Amazon Nova）を定義
     - フォールバックモデル設定（Claude）を定義

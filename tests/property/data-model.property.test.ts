@@ -301,12 +301,12 @@ describe("Feature: vet-voice-medical-record, Property 12: Cow-Visit関連の整�
   it("異なるcow_idのVisitは互いに独立している", () => {
     fc.assert(
       fc.asyncProperty(
-        fc.array(
+        fc.uniqueArray(
           fc.record({
             cowId: cowIdArb,
             visitCount: fc.integer({ min: 1, max: 5 }),
           }),
-          { minLength: 2, maxLength: 5 }
+          { minLength: 2, maxLength: 5, selector: (g) => g.cowId }
         ),
         async (cowGroups) => {
           // 各イテレーションで新しいdataStoreを作成
