@@ -1,0 +1,13 @@
+{
+  "name": "Run Tests on Handler Change",
+  "version": "1.0.0",
+  "description": "パイプラインハンドラー変更時に関連テストを実行",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["amplify/data/handlers/*.ts"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npx vitest --run --reporter=verbose"
+  }
+}

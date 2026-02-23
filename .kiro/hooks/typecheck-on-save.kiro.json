@@ -1,0 +1,13 @@
+{
+  "name": "TypeCheck on Save",
+  "version": "1.0.0",
+  "description": "TypeScriptファイル保存時に型チェックを実行",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["*.ts", "*.tsx"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npx tsc --noEmit"
+  }
+}

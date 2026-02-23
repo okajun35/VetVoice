@@ -1,0 +1,13 @@
+{
+  "name": "Steering Compliance Check",
+  "version": "1.0.0",
+  "description": "コード書き込み時にステアリングルールへの準拠を確認",
+  "when": {
+    "type": "preToolUse",
+    "toolTypes": ["write"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "書き込むコードが以下のルールに準拠しているか確認してください: 1) 変数名・関数名・コメントは英語 2) PascalCase/camelCase/kebab-caseの命名規則 3) handlers/*.ts は純粋関数でAWS SDK直接依存なし（引数注入） 4) テストファイルは tests/ 配下の適切なディレクトリに配置"
+  }
+}
