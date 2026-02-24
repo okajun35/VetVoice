@@ -3,6 +3,14 @@
  * テスト実行前の共通設定
  */
 
+// Import design system CSS for tests
+import '../src/styles/reset.css';
+import '../src/styles/global.css';
+import '../src/styles/design-system.css';
+
+// Import React Testing Library matchers
+import '@testing-library/jest-dom';
+
 // Mock Amplify outputs for testing
 vi.mock('../amplify_outputs.json', () => ({
   default: {

@@ -132,6 +132,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
       }
 
       // Step 2b: Structured extraction via Bedrock
+      console.log("Extractor input text length:", (transcriptExpanded ?? workingText).length);
       try {
         extractedJson = await extract(
           {

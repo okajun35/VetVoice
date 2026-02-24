@@ -4,6 +4,7 @@ import '@aws-amplify/ui-react/styles.css';
 import { QRScanner } from './components/QRScanner';
 import { CowRegistrationForm } from './components/CowRegistrationForm';
 import { VisitManager } from './components/VisitManager';
+import { CowListScreen } from './components/CowListScreen';
 import DevEntryPoints from './components/DevEntryPoints';
 
 /**
@@ -11,7 +12,7 @@ import DevEntryPoints from './components/DevEntryPoints';
  * Task 30: Full component integration
  */
 
-type AppView = 'qr' | 'register' | 'visit_manager';
+type AppView = 'qr' | 'register' | 'visit_manager' | 'cow_list';
 
 function App() {
   const [view, setView] = useState<AppView>('qr');
@@ -61,6 +62,23 @@ function App() {
           >
             <h1 style={{ margin: 0, fontSize: '1.2rem' }}>VetVoice</h1>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              {!devMode && view === 'qr' && (
+                <button
+                  type="button"
+                  onClick={() => setView('cow_list')}
+                  style={{
+                    padding: '0.3rem 0.75rem',
+                    fontSize: '0.85rem',
+                    background: '#fff',
+                    border: '1px solid #0066cc',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    color: '#0066cc',
+                  }}
+                >
+                  牛一覧
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setDevMode((v) => !v)}
@@ -107,6 +125,16 @@ function App() {
 
               {view === 'visit_manager' && currentCowId && (
                 <VisitManager cowId={currentCowId} onBack={handleBackToQr} />
+              )}
+
+              {view === 'cow_list' && (
+                <CowListScreen
+                  onNavigateToVisit={(cowId) => {
+                    setCurrentCowId(cowId);
+                    setView('visit_manager');
+                  }}
+                  onBack={() => setView('qr')}
+                />
               )}
             </>
           )}

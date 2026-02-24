@@ -1,7 +1,8 @@
 /**
  * CowRegistrationForm component
  * Task 18b.1: Register a new cow with individual identification number
- * Requirements: 19.1, 19.2, 19.3, 19.4, 19.6
+ * Task 5.1: Add mode and initialData props for edit mode support
+ * Requirements: 19.1, 19.2, 19.3, 19.4, 19.6, 4.2, 4.3, 4.4, 4.5, 4.6
  */
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
@@ -9,13 +10,7 @@ import type { Schema } from '../../amplify/data/resource';
 
 const client = generateClient<Schema>();
 
-interface CowRegistrationFormProps {
-  initialCowId?: string;
-  onRegistered: (cowId: string) => void;
-  onCancel?: () => void;
-}
-
-interface FormState {
+export interface FormState {
   cowId: string;
   earTagNo: string;
   sex: 'FEMALE' | 'MALE' | 'CASTRATED' | '';
@@ -25,6 +20,14 @@ interface FormState {
   lastCalvingDate: string;
   name: string;
   farm: string;
+}
+
+interface CowRegistrationFormProps {
+  mode?: 'create' | 'edit';
+  initialCowId?: string;
+  initialData?: Partial<FormState>;
+  onRegistered: (cowId: string) => void;
+  onCancel?: () => void;
 }
 
 const fieldStyle: React.CSSProperties = {
@@ -53,18 +56,46 @@ const inputErrorStyle: React.CSSProperties = {
   border: '1px solid #cc0000',
 };
 
-export function CowRegistrationForm({ initialCowId = '', onRegistered, onCancel }: CowRegistrationFormProps) {
-  const [form, setForm] = useState<FormState>({
-    cowId: initialCowId,
-    earTagNo: '',
-    sex: '',
-    breed: '',
-    birthDate: '',
-    parity: '',
-    lastCalvingDate: '',
-    name: '',
-    farm: '',
-  });
+const readOnlyInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  background: '#f5f5f5',
+  color: '#666',
+  cursor: 'not-allowed',
+};
+
+/** Pure helper: compute initial FormState from props. Exported for testing. */
+export function buildInitialFormState(
+  initialCowId: string,
+  initialData?: Partial<FormState>,
+): FormState {
+  return {
+    cowId: initialData?.cowId ?? initialCowId,
+    earTagNo: initialData?.earTagNo ?? '',
+    sex: initialData?.sex ?? '',
+    breed: initialData?.breed ?? '',
+    birthDate: initialData?.birthDate ?? '',
+    parity:
+      initialData?.parity !== undefined && initialData.parity !== null
+        ? String(initialData.parity)
+        : '',
+    lastCalvingDate: initialData?.lastCalvingDate ?? '',
+    name: initialData?.name ?? '',
+    farm: initialData?.farm ?? '',
+  };
+}
+
+export function CowRegistrationForm({
+  mode = 'create',
+  initialCowId = '',
+  initialData,
+  onRegistered,
+  onCancel,
+}: CowRegistrationFormProps) {
+  const isEditMode = mode === 'edit';
+
+  const [form, setForm] = useState<FormState>(
+    buildInitialFormState(initialCowId, initialData),
+  );
   const [cowIdError, setCowIdError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,26 +124,45 @@ export function CowRegistrationForm({ initialCowId = '', onRegistered, onCancel 
 
     setLoading(true);
     try {
-      const { errors } = await client.models.Cow.create({
-        cowId: form.cowId,
-        earTagNo: form.earTagNo || undefined,
-        sex: form.sex as 'FEMALE' | 'MALE' | 'CASTRATED',
-        breed: form.breed,
-        birthDate: form.birthDate,
-        parity: form.parity ? parseInt(form.parity, 10) : undefined,
-        lastCalvingDate: form.lastCalvingDate || undefined,
-        name: form.name || undefined,
-        farm: form.farm || undefined,
-      });
+      if (isEditMode) {
+        const { errors } = await client.models.Cow.update({
+          cowId: form.cowId,
+          earTagNo: form.earTagNo || undefined,
+          sex: form.sex as 'FEMALE' | 'MALE' | 'CASTRATED',
+          breed: form.breed,
+          birthDate: form.birthDate,
+          parity: form.parity ? parseInt(form.parity, 10) : undefined,
+          lastCalvingDate: form.lastCalvingDate || undefined,
+          name: form.name || undefined,
+          farm: form.farm || undefined,
+        });
 
-      if (errors && errors.length > 0) {
-        setError(errors.map((e) => e.message).join('\n'));
-        return;
+        if (errors && errors.length > 0) {
+          setError(errors.map((e) => e.message).join('\n'));
+          return;
+        }
+      } else {
+        const { errors } = await client.models.Cow.create({
+          cowId: form.cowId,
+          earTagNo: form.earTagNo || undefined,
+          sex: form.sex as 'FEMALE' | 'MALE' | 'CASTRATED',
+          breed: form.breed,
+          birthDate: form.birthDate,
+          parity: form.parity ? parseInt(form.parity, 10) : undefined,
+          lastCalvingDate: form.lastCalvingDate || undefined,
+          name: form.name || undefined,
+          farm: form.farm || undefined,
+        });
+
+        if (errors && errors.length > 0) {
+          setError(errors.map((e) => e.message).join('\n'));
+          return;
+        }
       }
 
       onRegistered(form.cowId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '登録中にエラーが発生しました');
+      setError(err instanceof Error ? err.message : isEditMode ? '更新中にエラーが発生しました' : '登録中にエラーが発生しました');
     } finally {
       setLoading(false);
     }
@@ -120,7 +170,7 @@ export function CowRegistrationForm({ initialCowId = '', onRegistered, onCancel 
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '1rem' }}>
-      <h2 style={{ marginTop: 0 }}>牛の新規登録</h2>
+      <h2 style={{ marginTop: 0 }}>{isEditMode ? '牛の情報編集' : '牛の新規登録'}</h2>
       <form onSubmit={handleSubmit} noValidate>
         <div style={fieldStyle}>
           <label style={labelStyle} htmlFor="cowId">
@@ -133,8 +183,9 @@ export function CowRegistrationForm({ initialCowId = '', onRegistered, onCancel 
             onChange={(e) => handleChange('cowId', e.target.value)}
             placeholder="0000000000（10桁）"
             maxLength={10}
-            style={cowIdError ? inputErrorStyle : inputStyle}
+            style={isEditMode ? readOnlyInputStyle : (cowIdError ? inputErrorStyle : inputStyle)}
             disabled={loading}
+            readOnly={isEditMode}
           />
           {cowIdError && (
             <span style={{ color: '#cc0000', fontSize: '0.85rem', marginTop: '0.25rem' }}>
@@ -287,7 +338,9 @@ export function CowRegistrationForm({ initialCowId = '', onRegistered, onCancel 
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
           >
-            {loading ? '登録中...' : '牛を登録する'}
+            {isEditMode
+              ? (loading ? '更新中...' : '更新する')
+              : (loading ? '登録中...' : '牛を登録する')}
           </button>
           {onCancel && (
             <button

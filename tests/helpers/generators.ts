@@ -1,12 +1,12 @@
 /**
- * fast-check カスタムジェネレータ
- * Feature: vet-voice-medical-record
+ * fast-check custom arbitraries
+ * Feature: vet-voice-medical-record, cow-management-qr
  */
 
 import * as fc from "fast-check";
 
 /**
- * CowSex enum ジェネレータ
+ * CowSex enum arbitrary
  */
 export const cowSexArb = fc.oneof(
   fc.constant("FEMALE" as const),
@@ -15,7 +15,7 @@ export const cowSexArb = fc.oneof(
 );
 
 /**
- * Visit status ジェネレータ
+ * Visit status arbitrary
  */
 export const visitStatusArb = fc.oneof(
   fc.constant("IN_PROGRESS" as const),
@@ -23,7 +23,12 @@ export const visitStatusArb = fc.oneof(
 );
 
 /**
- * ExtractedJSON ジェネレータ
+ * ISO datetime arbitrary
+ */
+export const isoDatetimeArb = fc.date().map((d) => d.toISOString());
+
+/**
+ * ExtractedJSON arbitrary
  */
 export const extractedJsonArb = fc.record({
   vital: fc.record({
@@ -70,26 +75,48 @@ export const extractedJsonArb = fc.record({
 });
 
 /**
- * Cow ID ジェネレータ（10桁の個体識別番号）
+ * Cow ID arbitrary (10-digit numeric string, may start with 0)
  */
 export const cowIdArb = fc
   .integer({ min: 0, max: 9999999999 })
   .map((n) => n.toString().padStart(10, "0"));
 
 /**
- * Visit ID ジェネレータ（ULID形式）
+ * CowData arbitrary for property tests
+ * Feature: cow-management-qr
+ */
+export const cowDataArb = fc.record({
+  cowId: cowIdArb,
+  name: fc.option(fc.string({ minLength: 1, maxLength: 20 }), { nil: undefined }),
+  breed: fc.option(fc.string({ minLength: 1, maxLength: 20 }), { nil: undefined }),
+  farm: fc.option(fc.string({ minLength: 1, maxLength: 20 }), { nil: undefined }),
+  earTagNo: fc.option(fc.string({ minLength: 1, maxLength: 10 }), { nil: undefined }),
+  sex: fc.option(
+    fc.constantFrom("FEMALE" as const, "MALE" as const, "CASTRATED" as const),
+    { nil: undefined }
+  ),
+  birthDate: fc.option(
+    fc.date().map((d) => d.toISOString().split("T")[0]),
+    { nil: undefined }
+  ),
+  parity: fc.option(fc.nat({ max: 20 }), { nil: undefined }),
+  lastCalvingDate: fc.option(
+    fc.date().map((d) => d.toISOString().split("T")[0]),
+    { nil: undefined }
+  ),
+  createdAt: fc.option(isoDatetimeArb, { nil: undefined }),
+  updatedAt: fc.option(isoDatetimeArb, { nil: undefined }),
+});
+
+/**
+ * Visit ID arbitrary (ULID-like format)
  */
 export const visitIdArb = fc
   .tuple(fc.hexaString({ minLength: 26, maxLength: 26 }))
   .map(([hex]) => hex.toUpperCase());
 
 /**
- * ISO datetime ジェネレータ
- */
-export const isoDatetimeArb = fc.date().map((d) => d.toISOString());
-
-/**
- * Cow モデルジェネレータ
+ * Cow model arbitrary
  */
 export const cowArb = fc.record({
   cowId: cowIdArb,
@@ -105,7 +132,7 @@ export const cowArb = fc.record({
 });
 
 /**
- * Visit モデルジェネレータ
+ * Visit model arbitrary
  */
 export const visitArb = fc.record({
   visitId: visitIdArb,
@@ -122,8 +149,8 @@ export const visitArb = fc.record({
 });
 
 /**
- * 必須フィールドを持つ完全なVisitジェネレータ
- * (Property 11用: transcript_raw と extracted_json が必須)
+ * Complete Visit arbitrary with required fields
+ * (for Property 11: transcript_raw and extracted_json are required)
  */
 export const completeVisitArb = fc.record({
   visitId: visitIdArb,
@@ -137,4 +164,23 @@ export const completeVisitArb = fc.record({
   kyosaiText: fc.option(fc.string(), { nil: undefined }),
   templateType: fc.option(fc.string(), { nil: undefined }),
   updatedAt: fc.option(isoDatetimeArb, { nil: undefined }),
+});
+
+/**
+ * PipelineResult arbitrary
+ * Feature: pipeline-entry-form
+ */
+export const pipelineResultArb = fc.record({
+  visitId: fc.string({ minLength: 1 }),
+  cowId: fc.string({ minLength: 1 }),
+  transcriptRaw: fc.option(fc.string(), { nil: null }),
+  transcriptExpanded: fc.option(fc.string(), { nil: null }),
+  extractedJson: fc.option(fc.jsonValue(), { nil: null }),
+  soapText: fc.option(fc.string(), { nil: null }),
+  kyosaiText: fc.option(fc.string(), { nil: null }),
+  templateType: fc.option(fc.string(), { nil: null }),
+  warnings: fc.option(
+    fc.array(fc.option(fc.string(), { nil: null })),
+    { nil: null }
+  ),
 });

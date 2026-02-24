@@ -170,7 +170,7 @@ export function parse(jsonString: string): ParseResult {
         errors.push(`Field 'p[${i}].type' must be 'procedure' or 'drug'`);
       }
 
-      if ("dosage" in item && item.dosage !== undefined && typeof item.dosage !== "string") {
+      if ("dosage" in item && item.dosage !== undefined && item.dosage !== null && typeof item.dosage !== "string") {
         errors.push(`Field 'p[${i}].dosage' must be a string`);
       }
 

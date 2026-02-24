@@ -1,0 +1,207 @@
+/* Global Base Styles */
+/* Applied to HTML elements for consistent baseline styling */
+
+html {
+  /* Use system font stack for optimal performance and native feel */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  
+  /* Base font size for rem calculations (1rem = 16px) */
+  font-size: 16px;
+  
+  /* Prevent text size adjustment on orientation change (iOS) */
+  -webkit-text-size-adjust: 100%;
+  
+  /* Enable smooth scrolling for anchor links */
+  scroll-behavior: smooth;
+}
+
+body {
+  /* Use design system colors (will be defined in design-system.css) */
+  color: var(--color-text-primary, #0F172A);
+  background-color: var(--color-background, #F7F9FC);
+  
+  /* Base typography */
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  
+  /* Prevent horizontal overflow on mobile */
+  overflow-x: hidden;
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text-primary, #0F172A);
+}
+
+h1 {
+  font-size: 1.875rem; /* 30px */
+}
+
+h2 {
+  font-size: 1.5rem; /* 24px */
+}
+
+h3 {
+  font-size: 1.25rem; /* 20px */
+}
+
+h4 {
+  font-size: 1.125rem; /* 18px */
+}
+
+h5 {
+  font-size: 1rem; /* 16px */
+}
+
+h6 {
+  font-size: 0.875rem; /* 14px */
+}
+
+/* Paragraphs */
+p {
+  margin-bottom: 1rem;
+}
+
+/* Links */
+a {
+  color: var(--color-primary, #1E6BFF);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+a:hover {
+  color: var(--color-primary-hover, #3B82FF);
+}
+
+a:focus-visible {
+  outline: 3px solid var(--color-focus-ring, #93C5FD);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Code */
+code,
+pre {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 0.875rem;
+}
+
+code {
+  padding: 0.125rem 0.25rem;
+  background-color: var(--color-border-subtle, #E5E7EB);
+  border-radius: 0.25rem;
+}
+
+pre {
+  padding: 1rem;
+  background-color: var(--color-border-subtle, #E5E7EB);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+}
+
+/* Strong and emphasis */
+strong,
+b {
+  font-weight: 700;
+}
+
+em,
+i {
+  font-style: italic;
+}
+
+/* Lists */
+ul,
+ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+/* Horizontal rule */
+hr {
+  border: none;
+  border-top: 1px solid var(--color-border-subtle, #E5E7EB);
+  margin: 1.5rem 0;
+}
+
+/* Focus visible styles for keyboard navigation */
+*:focus-visible {
+  outline: 3px solid var(--color-focus-ring, #93C5FD);
+  outline-offset: 2px;
+}
+
+/* Disable focus outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Selection styles */
+::selection {
+  background-color: var(--color-primary, #1E6BFF);
+  color: var(--color-on-primary, #FFFFFF);
+}
+
+/* Scrollbar styles (webkit browsers) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--color-background, #F7F9FC);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong, #D0D7E2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-tertiary, #94A3B8);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  body {
+    background-color: white;
+    color: black;
+  }
+  
+  a {
+    text-decoration: underline;
+  }
+  
+  /* Hide non-essential elements when printing */
+  nav,
+  aside,
+  footer {
+    display: none;
+  }
+}

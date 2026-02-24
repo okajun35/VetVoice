@@ -1,0 +1,95 @@
+/* Toast Component Styles */
+
+.toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  
+  padding: var(--spacing-4);
+  
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  
+  border-radius: var(--radius-lg);
+  border: 2px solid transparent;
+  
+  box-shadow: var(--shadow-lg);
+  
+  /* Use proper z-index token for layering */
+  z-index: var(--z-toast);
+  
+  /* Slide-in animation */
+  animation: slideIn var(--transition-base);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Success variant */
+.toast--success {
+  background-color: var(--color-success);
+  color: var(--color-on-success);
+  border-color: var(--color-success-outline);
+}
+
+/* Error variant */
+.toast--error {
+  background-color: var(--color-danger);
+  color: var(--color-on-danger);
+  border-color: var(--color-danger-outline);
+}
+
+/* Info variant */
+.toast--info {
+  background-color: var(--color-info);
+  color: var(--color-on-info);
+  border-color: var(--color-info-outline);
+}
+
+/* Warning variant */
+.toast--warning {
+  background-color: var(--color-warning);
+  color: var(--color-on-warning);
+  border-color: var(--color-warning-outline);
+}
+
+/* Close button */
+.close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: var(--font-size-2xl);
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  
+  /* Touch target - minimum 44x44px */
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  transition: opacity var(--transition-fast);
+}
+
+.close:hover {
+  opacity: 0.8;
+}
+
+.close:focus-visible {
+  outline: var(--focus-ring-width) solid currentColor;
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-sm);
+}

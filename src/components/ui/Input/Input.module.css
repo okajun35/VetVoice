@@ -1,0 +1,110 @@
+/* ========================================
+   Input Component Styles
+   ======================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--spacing-2);
+  
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+.input {
+  /* Base styles */
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+  
+  border: 2px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+  
+  transition: all var(--transition-fast);
+  
+  /* Touch target - minimum 44px height */
+  min-height: var(--touch-target-min);
+  
+  /* Remove default input styles */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+/* ========================================
+   States
+   ======================================== */
+
+/* Hover state */
+.input:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+/* Focus state */
+.input:focus {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-color: var(--color-primary);
+}
+
+/* Error state */
+.input--error {
+  border-color: var(--color-danger-outline);
+}
+
+.input--error:focus {
+  outline-color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+/* Disabled state */
+.input:disabled {
+  background-color: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+  border-color: var(--color-disabled-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========================================
+   Helper Text & Error Message
+   ======================================== */
+
+.helper {
+  display: block;
+  margin-top: var(--spacing-2);
+  
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.error {
+  display: block;
+  margin-top: var(--spacing-2);
+  
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-danger);
+  font-weight: var(--font-weight-medium);
+}

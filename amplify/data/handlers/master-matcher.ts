@@ -10,8 +10,8 @@
  * Requirements: 7.1, 7.2, 7.3, 7.4, 15.5
  */
 
-import * as fs from "fs";
-import * as path from "path";
+import { BYOUMEI_CSV } from "./generated/byoumei-data";
+import { SHINRYO_TENSU_CSV } from "./generated/shinryo-tensu-data";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,36 +78,10 @@ let procedureCache: ProcedureEntry[] | null = null;
 // CSV loading helpers
 // ---------------------------------------------------------------------------
 
-function resolveCsvPath(filename: string): string | null {
-  const possiblePaths = [
-    path.join(__dirname, "../../../assets", filename),
-    path.join(process.cwd(), "assets", filename),
-    path.join(__dirname, "../../assets", filename),
-  ];
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
-}
-
-/**
- * Parse byoumei.csv into DiseaseEntry[].
- * CSV format: large_category,middle_category,small_category,note
- *   large_category: "01\u3000循環器病"  (full-width space \u3000)
- *   middle_category: "01 心のう炎"      (half-width space)
- *   small_category: "01 肥大型"         (optional)
- */
 function loadDiseases(): DiseaseEntry[] {
   if (diseaseCache) return diseaseCache;
 
-  const csvPath = resolveCsvPath("byoumei.csv");
-  if (!csvPath) {
-    console.warn("byoumei.csv not found");
-    diseaseCache = [];
-    return diseaseCache;
-  }
-
-  const lines = fs.readFileSync(csvPath, "utf-8").split("\n").slice(1); // skip header
+  const lines = BYOUMEI_CSV.split("\n").slice(1); // skip header
   const entries: DiseaseEntry[] = [];
 
   for (const line of lines) {
@@ -173,14 +147,7 @@ function loadDiseases(): DiseaseEntry[] {
 function loadProcedures(): ProcedureEntry[] {
   if (procedureCache) return procedureCache;
 
-  const csvPath = resolveCsvPath("shinryo_tensu_master_flat.csv");
-  if (!csvPath) {
-    console.warn("shinryo_tensu_master_flat.csv not found");
-    procedureCache = [];
-    return procedureCache;
-  }
-
-  const lines = fs.readFileSync(csvPath, "utf-8").split("\n").slice(1); // skip header
+  const lines = SHINRYO_TENSU_CSV.split("\n").slice(1); // skip header
   const seen = new Set<string>();
   const entries: ProcedureEntry[] = [];
 

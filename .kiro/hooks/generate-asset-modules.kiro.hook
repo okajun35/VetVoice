@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Auto-generate asset modules",
+  "description": "When CSV or TXT files in assets/ are edited, automatically regenerate the TypeScript modules in amplify/data/handlers/generated/ so Lambda bundles always include the latest data.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "assets/**/*.csv",
+      "assets/**/*.txt"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm run generate-assets"
+  }
+}

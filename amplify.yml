@@ -4,19 +4,8 @@ backend:
     build:
       commands:
         - npm ci
+        - npm run generate-assets
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
-        # Task 6: Copy CSV master data into Lambda deployment packages.
-        # Amplify Gen 2 uses esbuild which does not bundle non-JS files.
-        # After CDK synthesis the Lambda zips are staged under cdk.out/.
-        # We copy assets/ next to each bundled handler so __dirname-relative
-        # path resolution in asset-paths.ts finds the files at runtime.
-        - |
-          if [ -d ".amplify/artifacts/cdk.out" ]; then
-            find .amplify/artifacts/cdk.out -type d -name "asset.*" | while read dir; do
-              cp -r assets "$dir/assets" 2>/dev/null || true
-            done
-            echo "Assets copied to Lambda bundles"
-          fi
 frontend:
   phases:
     preBuild:

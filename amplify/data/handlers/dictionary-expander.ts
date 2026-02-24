@@ -10,9 +10,7 @@
  * Requirements: 4.1, 4.2, 4.4, 4.5, 15.4
  */
 
-import * as fs from "fs";
-import * as path from "path";
-
+import { DICTIONARY_CSV } from "./generated/dictionary-data";
 /**
  * Dictionary entry structure
  */
@@ -56,40 +54,20 @@ function loadDictionary(): DictionaryEntry[] {
     return dictionaryCache;
   }
 
-  // Try multiple path resolutions for different environments
-  const possiblePaths = [
-    path.join(__dirname, "../../../assets/dictionary.csv"), // Lambda bundle
-    path.join(process.cwd(), "assets/dictionary.csv"),      // Test environment
-    path.join(__dirname, "../../assets/dictionary.csv"),    // Alternative
-  ];
+  const lines = DICTIONARY_CSV.split("\n").slice(1); // Skip header row
 
-  for (const csvPath of possiblePaths) {
-    try {
-      const csvContent = fs.readFileSync(csvPath, "utf-8");
-      const lines = csvContent.split("\n").slice(1); // Skip header row
+  dictionaryCache = lines
+    .filter((line) => line.trim()) // Skip empty lines
+    .map((line) => {
+      const parts = line.split(",").map((s) => s.trim());
+      const [canonical, ...abbreviations] = parts;
+      
+      return {
+        canonical,
+        abbreviations: abbreviations.filter((a) => a), // Remove empty strings
+      };
+    });
 
-      dictionaryCache = lines
-        .filter((line) => line.trim()) // Skip empty lines
-        .map((line) => {
-          const parts = line.split(",").map((s) => s.trim());
-          const [canonical, ...abbreviations] = parts;
-          
-          return {
-            canonical,
-            abbreviations: abbreviations.filter((a) => a), // Remove empty strings
-          };
-        });
-
-      return dictionaryCache;
-    } catch (error) {
-      // Try next path
-      continue;
-    }
-  }
-
-  // If dictionary file is not found in any location
-  console.warn("Dictionary file not found in any expected location");
-  dictionaryCache = [];
   return dictionaryCache;
 }
 

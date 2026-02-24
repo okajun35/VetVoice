@@ -200,7 +200,7 @@ describe("Extractor: happy path", () => {
     const callArg = client.send.mock.calls[0][0];
     expect(callArg.input.modelId).toBe("amazon.nova-pro-v1:0");
     expect(callArg.input.messages[0].role).toBe("user");
-    expect(callArg.input.messages[0].content[0].text).toContain("獣医診療テキスト");
+    expect(callArg.input.messages[0].content[0].text).toContain("診療テキストから構造化JSONを抽出");
   });
 });
 

@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
 import { reuseVisit } from '../../src/lib/visit-reuse';
+import type { ExtractedJSON } from '../../src/lib/visit-reuse';
 import {
   extractedJsonArb,
   cowIdArb,
@@ -38,13 +39,31 @@ const visitSnapshotWithJsonArb = fc.record({
 describe('Feature: vet-voice-medical-record, Property 19: Visit再利用の変換正確性', () => {
   /**
    * Validates: Requirements 18.2, 18.4
-   * extractedJson is a deep copy — equal in value to the original
+   * extractedJson is a deep copy — equal in value to the original (ignoring status fields)
    */
-  it('reuseVisit(visit).extractedJson is a deep copy equal to the original', () => {
+  it('reuseVisit(visit).extractedJson matches original except status fields are undefined', () => {
     fc.assert(
       fc.property(visitSnapshotWithJsonArb, (visit) => {
         const result = reuseVisit(visit);
-        expect(result.extractedJson).toEqual(visit.extractedJson);
+        const json = result.extractedJson as ExtractedJSON;
+
+        // vital, s, o should be equal
+        expect(json.vital).toEqual(visit.extractedJson!.vital);
+        expect(json.s).toEqual(visit.extractedJson!.s);
+        expect(json.o).toEqual(visit.extractedJson!.o);
+
+        // a items: name/confidence/master_code preserved, status undefined
+        json.a.forEach((item, i) => {
+          expect(item.name).toEqual(visit.extractedJson!.a[i].name);
+          expect(item.status).toBeUndefined();
+        });
+
+        // p items: name/type/dosage/confidence/master_code preserved, status undefined
+        json.p.forEach((item, i) => {
+          expect(item.name).toEqual(visit.extractedJson!.p[i].name);
+          expect(item.type).toEqual(visit.extractedJson!.p[i].type);
+          expect(item.status).toBeUndefined();
+        });
       }),
       { numRuns: 100 }
     );

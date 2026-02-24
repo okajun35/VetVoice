@@ -1,0 +1,248 @@
+/* ========================================
+   VetVoice Design System
+   Design tokens for mobile-first veterinary medical record system
+   ======================================== */
+
+/* ========================================
+   Light Theme (Default)
+   ======================================== */
+:root {
+  /* ========================================
+     Color Palette
+     ======================================== */
+  
+  /* Primary Colors */
+  --color-primary: #1E6BFF;
+  --color-primary-hover: #3B82FF;
+  --color-primary-active: #1557D8;
+  --color-on-primary: #FFFFFF;
+
+  /* Semantic Colors - Success */
+  --color-success: #16A34A;
+  --color-success-hover: #15803D;
+  --color-success-active: #166534;
+  --color-success-subtle: #DCFCE7;
+  --color-on-success: #FFFFFF;
+  --color-success-outline: #16A34A;
+
+  /* Semantic Colors - Warning */
+  --color-warning: #F59E0B;
+  --color-warning-hover: #D97706;
+  --color-warning-active: #B45309;
+  --color-warning-subtle: #FEF3C7;
+  --color-on-warning: #FFFFFF;
+  --color-warning-outline: #F59E0B;
+
+  /* Semantic Colors - Danger/Error */
+  --color-danger: #DC2626;
+  --color-danger-hover: #B91C1C;
+  --color-danger-active: #991B1B;
+  --color-danger-subtle: #FEE2E2;
+  --color-on-danger: #FFFFFF;
+  --color-danger-outline: #DC2626;
+
+  /* Semantic Colors - Info */
+  --color-info: #2563EB;
+  --color-info-hover: #1D4ED8;
+  --color-info-active: #1E40AF;
+  --color-info-subtle: #DBEAFE;
+  --color-on-info: #FFFFFF;
+  --color-info-outline: #2563EB;
+
+  /* State Colors - Disabled */
+  --color-disabled-bg: #F3F4F6;
+  --color-disabled-text: #9CA3AF;
+  --color-disabled-border: #D1D5DB;
+
+  /* State Colors - Focus */
+  --color-focus-ring: #93C5FD;
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 2px;
+
+  /* Border Colors */
+  --color-border-subtle: #E5E7EB;
+  --color-border-strong: #D0D7E2;
+  --color-border-input: #D1D5DB;
+
+  /* Background & Surface */
+  --color-background: #F7F9FC;
+  --color-surface: #FFFFFF;
+
+  /* Text Colors */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-text-tertiary: #94A3B8;
+
+  /* ========================================
+     Typography
+     ======================================== */
+  
+  /* Font Families */
+  --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-mono: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+
+  /* Font Sizes */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Line Heights */
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* ========================================
+     Spacing (4px base unit)
+     ======================================== */
+  
+  --spacing-1: 0.25rem;   /* 4px */
+  --spacing-2: 0.5rem;    /* 8px */
+  --spacing-3: 0.75rem;   /* 12px */
+  --spacing-4: 1rem;      /* 16px */
+  --spacing-5: 1.25rem;   /* 20px */
+  --spacing-6: 1.5rem;    /* 24px */
+  --spacing-8: 2rem;      /* 32px */
+  --spacing-10: 2.5rem;   /* 40px */
+  --spacing-12: 3rem;     /* 48px */
+
+  /* ========================================
+     Border Radius
+     ======================================== */
+  
+  --radius-sm: 0.25rem;   /* 4px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* 16px */
+  --radius-full: 9999px;
+
+  /* ========================================
+     Shadows
+     ======================================== */
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* ========================================
+     Transitions
+     ======================================== */
+  
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ========================================
+     Z-index
+     ======================================== */
+  
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+
+  /* ========================================
+     Touch Targets
+     ======================================== */
+  
+  --touch-target-min: 44px;
+}
+
+/* ========================================
+   Dark Theme
+   ======================================== */
+[data-theme="dark"] {
+  /* Primary Colors (slightly lighter for better contrast) */
+  --color-primary: #4DA3FF;
+  --color-primary-hover: #66B3FF;
+  --color-primary-active: #3B82FF;
+  --color-on-primary: #0F172A;
+
+  /* Semantic Colors - Success */
+  --color-success: #047857;
+  --color-success-hover: #065F46;
+  --color-success-active: #064E3B;
+  --color-success-subtle: #14532D;
+  --color-on-success: #FFFFFF;
+  --color-success-outline: #047857;
+
+  /* Semantic Colors - Warning */
+  --color-warning: #FBB040;
+  --color-warning-hover: #F59E0B;
+  --color-warning-active: #D97706;
+  --color-warning-subtle: #78350F;
+  --color-on-warning: #0F172A;
+  --color-warning-outline: #FBB040;
+
+  /* Semantic Colors - Danger/Error */
+  --color-danger: #F87171;
+  --color-danger-hover: #EF4444;
+  --color-danger-active: #DC2626;
+  --color-danger-subtle: #7F1D1D;
+  --color-on-danger: #0F172A;
+  --color-danger-outline: #F87171;
+
+  /* Semantic Colors - Info */
+  --color-info: #60A5FA;
+  --color-info-hover: #3B82F6;
+  --color-info-active: #2563EB;
+  --color-info-subtle: #1E3A8A;
+  --color-on-info: #0F172A;
+  --color-info-outline: #60A5FA;
+
+  /* State Colors - Disabled */
+  --color-disabled-bg: #374151;
+  --color-disabled-text: #6B7280;
+  --color-disabled-border: #4B5563;
+
+  /* State Colors - Focus */
+  --color-focus-ring: #60A5FA;
+
+  /* Border Colors */
+  --color-border-subtle: #475569;
+  --color-border-strong: #64748B;
+  --color-border-input: #64748B;
+
+  /* Background & Surface */
+  --color-background: #0F172A;
+  --color-surface: #1E293B;
+
+  /* Text Colors */
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #CBD5E1;
+  --color-text-tertiary: #94A3B8;
+
+  /* Shadows (darker for dark theme) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { VisitEditor } from './VisitEditor';
+import { PipelineEntryForm } from './PipelineEntryForm';
 
 const client = generateClient<Schema>();
 
@@ -275,32 +276,31 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
 
       {view === 'new_visit' && (
         <div style={cardStyle}>
-          <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem' }}>新規診療</h2>
-          <div
-            style={{
-              padding: '1rem',
-              background: '#f0f8ff',
-              border: '1px dashed #0066cc',
-              borderRadius: '4px',
-              color: '#555',
-              marginBottom: '1rem',
-            }}
-          >
-            新規診療フォーム（実装予定）
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <button
+              type="button"
+              onClick={() => setView('list')}
+              style={{
+                padding: '0.4rem 1rem',
+                background: '#fff',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              ← 戻る
+            </button>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>新規診療</h2>
           </div>
-          <button
-            type="button"
-            onClick={() => setView('list')}
-            style={{
-              padding: '0.5rem 1rem',
-              background: '#fff',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
-              cursor: 'pointer',
+          <PipelineEntryForm
+            cowId={cowId}
+            mode="production"
+            onPipelineComplete={(result) => {
+              setSelectedVisitId(result.visitId);
+              setView('visit_detail');
             }}
-          >
-            戻る
-          </button>
+            onError={(msg) => setError(msg)}
+          />
         </div>
       )}
     </div>
