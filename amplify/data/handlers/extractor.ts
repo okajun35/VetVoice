@@ -27,6 +27,7 @@ import { EXTRACTOR_PROMPT } from "./generated/extractor-prompt-data";
 export interface ExtractorInput {
   expanded_text: string;    // Output from Dictionary_Expander
   template_type?: string;   // Optional template hint
+  model_id_override?: string; // Optional runtime model override (dev/testing)
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +92,7 @@ export async function extract(
   input: ExtractorInput,
   bedrockClient: BedrockRuntimeClient,
 ): Promise<ExtractedJSON> {
-  const config = getModelConfig("extractor");
+  const config = getModelConfig("extractor", false, input.model_id_override);
   const prompt = buildPrompt(input.expanded_text, input.template_type);
 
   let rawText: string;

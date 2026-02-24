@@ -89,11 +89,17 @@ const ENV_VAR_NAMES: Record<ComponentName, string> = {
  */
 export function getModelConfig(
   component: ComponentName,
-  useFallback = false
+  useFallback = false,
+  overrideModelId?: string
 ): ModelConfig {
   const base = useFallback
     ? FALLBACK_CONFIGS[component]
     : DEFAULT_CONFIGS[component];
+
+  const directOverride = overrideModelId?.trim();
+  if (directOverride) {
+    return { ...base, modelId: directOverride };
+  }
 
   const envModelId = process.env[ENV_VAR_NAMES[component]];
   if (envModelId) {

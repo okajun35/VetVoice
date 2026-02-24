@@ -56,6 +56,18 @@ export const TAB_LABELS: Record<TabMode, string> = {
   PRODUCTION: '本番（録音）',
 };
 
+const MODEL_OPTIONS = [
+  { value: '', label: '(default)' },
+  { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
+  { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
+  { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
+  { value: 'anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (20250514)' },
+  { value: 'anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+  { value: 'anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5' },
+  { value: 'anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet' },
+  { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
+];
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -78,6 +90,9 @@ export function PipelineEntryForm({
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [jsonText, setJsonText] = useState('');
+  const [extractorModelId, setExtractorModelId] = useState('');
+  const [soapModelId, setSoapModelId] = useState('');
+  const [kyosaiModelId, setKyosaiModelId] = useState('');
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -107,6 +122,15 @@ export function PipelineEntryForm({
     }
   };
 
+  const buildDevModelOverrides = (): Partial<Parameters<typeof client.queries.runPipeline>[0]> => {
+    if (mode !== 'dev') return {};
+    const overrides: Partial<Parameters<typeof client.queries.runPipeline>[0]> = {};
+    if (extractorModelId.trim()) overrides.extractorModelId = extractorModelId.trim();
+    if (soapModelId.trim()) overrides.soapModelId = soapModelId.trim();
+    if (kyosaiModelId.trim()) overrides.kyosaiModelId = kyosaiModelId.trim();
+    return overrides;
+  };
+
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
@@ -123,6 +147,7 @@ export function PipelineEntryForm({
         entryPoint: 'TEXT_INPUT',
         cowId: effectiveCowId,
         transcriptText,
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -154,6 +179,7 @@ export function PipelineEntryForm({
         entryPoint: 'AUDIO_FILE',
         cowId: effectiveCowId,
         audioKey: key,
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -185,6 +211,7 @@ export function PipelineEntryForm({
         entryPoint: 'JSON_INPUT',
         cowId: effectiveCowId,
         extractedJson: parsed as Parameters<typeof client.queries.runPipeline>[0]['extractedJson'],
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -204,6 +231,7 @@ export function PipelineEntryForm({
         entryPoint: 'PRODUCTION',
         cowId: effectiveCowId,
         audioKey,
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -233,6 +261,61 @@ export function PipelineEntryForm({
             placeholder="test-cow-001"
             style={{ marginLeft: '0.5rem', width: '200px' }}
           />
+        </div>
+      )}
+
+      {mode === 'dev' && (
+        <div
+          className="pipeline-entry-form__model-overrides"
+          style={{
+            marginTop: '0.75rem',
+            display: 'grid',
+            gap: '0.5rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          }}
+        >
+          <label>
+            Extractor Model:
+            <select
+              value={extractorModelId}
+              onChange={(e) => setExtractorModelId(e.target.value)}
+              style={{ marginLeft: '0.5rem', width: '100%' }}
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value || 'default-extractor'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            SOAP Model:
+            <select
+              value={soapModelId}
+              onChange={(e) => setSoapModelId(e.target.value)}
+              style={{ marginLeft: '0.5rem', width: '100%' }}
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value || 'default-soap'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Kyosai Model:
+            <select
+              value={kyosaiModelId}
+              onChange={(e) => setKyosaiModelId(e.target.value)}
+              style={{ marginLeft: '0.5rem', width: '100%' }}
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value || 'default-kyosai'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
 

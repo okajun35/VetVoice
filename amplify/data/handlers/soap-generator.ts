@@ -29,6 +29,7 @@ export interface SOAPInput {
   template_type: TemplateType;
   cow_id?: string;
   visit_datetime?: string;
+  model_id_override?: string; // Optional runtime model override (dev/testing)
 }
 
 export interface SOAPOutput {
@@ -121,7 +122,7 @@ export async function generateSOAP(
     input.visit_datetime,
   );
 
-  const config = getModelConfig("soapGenerator");
+  const config = getModelConfig("soapGenerator", false, input.model_id_override);
 
   const response = await bedrockClient.send(
     new ConverseCommand({

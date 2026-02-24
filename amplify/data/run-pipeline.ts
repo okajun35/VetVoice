@@ -110,6 +110,9 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     transcriptText,
     extractedJson: extractedJsonInput,
     templateType,
+    extractorModelId,
+    soapModelId,
+    kyosaiModelId,
   } = event.arguments;
 
   const visitId = crypto.randomUUID();
@@ -209,6 +212,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           {
             expanded_text: transcriptExpanded ?? workingText,
             template_type: templateType ?? undefined,
+            model_id_override: extractorModelId ?? undefined,
           },
           bedrockClient
         );
@@ -270,6 +274,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           template_type: resolvedTemplateType,
           cow_id: cowId,
           visit_datetime: datetime,
+          model_id_override: soapModelId ?? undefined,
         },
         bedrockClient
       );
@@ -290,6 +295,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           template_type: resolvedTemplateType,
           cow_id: cowId,
           visit_datetime: datetime,
+          model_id_override: kyosaiModelId ?? undefined,
         },
         bedrockClient
       );
