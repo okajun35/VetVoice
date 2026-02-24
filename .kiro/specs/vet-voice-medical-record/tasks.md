@@ -22,7 +22,7 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
   - 基本的なCI/CD設定を構成
   - _要件: 全体_
 
-- [ ] 2. データモデルとスキーマ定義
+- [x] 2. データモデルとスキーマ定義
   - [x] 2.1 Amplify Dataスキーマとカスタムクエリを定義
     - `amplify/data/resource.ts`にCowSex enumを定義（FEMALE, MALE, CASTRATED）
     - `amplify/data/resource.ts`にCowモデルを定義（cowId, earTagNo, sex, breed, birthDate, parity, lastCalvingDate, name, farm, createdAt）
@@ -38,7 +38,7 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
     - **Property 12: Cow-Visit関連の整合性**
     - **検証: 要件 2.4, 10.5, 12.3, 12.4, 13.2, 13.4**
 
-- [ ] 3. JSON解析・検証コンポーネント (Parser) の実装
+- [x] 3. JSON解析・検証コンポーネント (Parser) の実装
   - [x] 3.1 Parserコンポーネントを実装
     - `amplify/data/handlers/parser.ts`を作成
     - `parse()`関数: JSON文字列をExtracted_JSONオブジェクトに変換
@@ -285,7 +285,7 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
     - エラーハンドリング（読み取り失敗）
     - _要件: 1.1, 1.2, 1.3, 19.1_
 
-- [-] 18b. フロントエンド: 牛の登録フォームコンポーネントの実装
+- [x] 18b. フロントエンド: 牛の登録フォームコンポーネントの実装
   - [x] 18b.1 CowRegistrationFormコンポーネントを実装
     - `src/components/CowRegistrationForm.tsx`を作成
     - cow_id（個体識別番号）の10桁バリデーション（先頭0を許容、正規表現: `/^\d{10}$/`）
@@ -296,13 +296,14 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
     - 登録完了後に牛の基本情報画面へ遷移
     - _要件: 19.1, 19.2, 19.3, 19.4, 19.6_
 
-  - [ ] 18b.2 牛の個体情報編集機能を実装
-    - 牛の詳細画面にCowモデルの全フィールドを表示（拡張フィールド含む）
-    - 個体情報の編集フォームを提供
+  - [x] 18b.2 牛の個体情報編集機能を実装
+    - CowRegistrationFormに`mode="edit"`プロップを追加し編集モードを実装
+    - CowDetailViewに全フィールド表示と「編集」ボタンを実装
+    - CowListScreenから`view='edit'`でCowRegistrationForm(mode=edit)に遷移
     - Amplify Data `updateCow()`を使用した更新処理
     - _要件: 19.5_
 
-- [ ] 19. フロントエンド: 音声入力UIコンポーネントの実装
+- [x] 19. フロントエンド: 音声入力UIコンポーネントの実装
   - [x] 19.1 VoiceRecorderコンポーネントを実装
     - `src/components/VoiceRecorder.tsx`を作成
     - ブラウザのMediaRecorder APIを使用
@@ -386,11 +387,11 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
     - **Property 19: Visit再利用の変換正確性**
     - **検証: 要件 18.2, 18.4**
 
-- [-] 27. フロントエンド: 開発用エントリポイントUIの実装
+- [x] 27. フロントエンド: 開発用エントリポイントUIの実装
   - [x] 27.1 DevEntryPointsコンポーネントを実装
     - `src/components/DevEntryPoints.tsx`を作成
-    - 本番フロー、テキスト入力、音声ファイルアップロード、JSON入力の4モード
-    - 各モードに応じたUI表示
+    - PipelineEntryFormのmode="dev"ラッパーとして実装
+    - 本番フロー、テキスト入力、音声ファイルアップロード、JSON入力の4モード（PipelineEntryForm内）
     - runPipelineクエリの呼び出し
     - _要件: 14.1, 14.2, 14.3, 14.4_
 
@@ -407,23 +408,23 @@ LLM: Amazon Nova (デフォルト)、Claude (フォールバック)
     - エンキュー、デキュー、リトライ上限のテスト
     - _要件: 3.6_
 
-- [ ] 29. チェックポイント - フロントエンド統合の動作確認
+- [x] 29. チェックポイント - フロントエンド統合の動作確認
   - すべてのテストが成功することを確認
   - 質問があればユーザーに確認
 
-- [ ] 30. エンドツーエンド統合とワイヤリング
-  - [ ] 30.1 フロントエンドとバックエンドの統合
-    - Amplify SDKの設定
-    - GraphQLクエリの呼び出し確認
-    - 認証フローの統合
+- [x] 30. エンドツーエンド統合とワイヤリング
+  - [x] 30.1 フロントエンドとバックエンドの統合
+    - Amplify SDKの設定（amplify_outputs.json）
+    - GraphQLクエリの呼び出し確認（VisitManager, PipelineEntryForm等）
+    - 認証フローの統合（Authenticatorコンポーネント）
     - エラーハンドリングの統合
     - _要件: 全体_
 
-  - [ ] 30.2 メインアプリケーションの実装
+  - [x] 30.2 メインアプリケーションの実装
     - `src/App.tsx`を作成
-    - ルーティング設定
-    - 認証状態管理
-    - 全コンポーネントの統合
+    - ルーティング設定（qr / register / visit_manager / cow_list）
+    - 認証状態管理（Authenticatorラッパー）
+    - 全コンポーネントの統合（QRScanner, CowRegistrationForm, VisitManager, CowListScreen, DevEntryPoints）
     - _要件: 全体_
 
 - [ ] 31. パフォーマンス最適化

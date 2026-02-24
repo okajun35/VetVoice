@@ -29,6 +29,7 @@ export interface KyosaiInput {
   template_type: TemplateType;
   cow_id: string;
   visit_datetime: string;
+  model_id_override?: string; // Optional runtime model override (dev/testing)
 }
 
 export interface KyosaiOutput {
@@ -140,7 +141,7 @@ export async function generateKyosai(
     input.visit_datetime,
   );
 
-  const config = getModelConfig("kyosaiGenerator");
+  const config = getModelConfig("kyosaiGenerator", false, input.model_id_override);
 
   const response = await bedrockClient.send(
     new ConverseCommand({

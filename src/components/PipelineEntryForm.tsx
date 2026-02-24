@@ -56,6 +56,49 @@ export const TAB_LABELS: Record<TabMode, string> = {
   PRODUCTION: '本番（録音）',
 };
 
+const MODEL_OPTIONS = [
+  { value: '', label: '(default)' },
+  { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
+  { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
+  { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
+  { value: 'anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (20250514)' },
+  { value: 'anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+  { value: 'anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5' },
+  { value: 'anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet' },
+  { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
+];
+
+const FIELD_STYLE = {
+  width: '100%',
+  minHeight: '2.25rem',
+  padding: '0.45rem 0.6rem',
+  border: '1px solid #c9d3e0',
+  borderRadius: '6px',
+  background: '#ffffff',
+  color: '#1f2937',
+} as const;
+
+const SELECT_STYLE = {
+  ...FIELD_STYLE,
+  appearance: 'auto',
+} as const;
+
+const PRIMARY_BUTTON_BASE_STYLE = {
+  minHeight: '2.25rem',
+  padding: '0.5rem 1.5rem',
+  border: '1px solid #1e6bff',
+  borderRadius: '6px',
+  background: '#1e6bff',
+  color: '#ffffff',
+  fontWeight: 600,
+} as const;
+
+const getPrimaryButtonStyle = (disabled: boolean) => ({
+  ...PRIMARY_BUTTON_BASE_STYLE,
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.55 : 1,
+});
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -78,6 +121,9 @@ export function PipelineEntryForm({
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [jsonText, setJsonText] = useState('');
+  const [extractorModelId, setExtractorModelId] = useState('');
+  const [soapModelId, setSoapModelId] = useState('');
+  const [kyosaiModelId, setKyosaiModelId] = useState('');
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -107,6 +153,15 @@ export function PipelineEntryForm({
     }
   };
 
+  const buildDevModelOverrides = (): Partial<Parameters<typeof client.queries.runPipeline>[0]> => {
+    if (mode !== 'dev') return {};
+    const overrides: Partial<Parameters<typeof client.queries.runPipeline>[0]> = {};
+    if (extractorModelId.trim()) overrides.extractorModelId = extractorModelId.trim();
+    if (soapModelId.trim()) overrides.soapModelId = soapModelId.trim();
+    if (kyosaiModelId.trim()) overrides.kyosaiModelId = kyosaiModelId.trim();
+    return overrides;
+  };
+
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
@@ -123,6 +178,7 @@ export function PipelineEntryForm({
         entryPoint: 'TEXT_INPUT',
         cowId: effectiveCowId,
         transcriptText,
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -154,6 +210,7 @@ export function PipelineEntryForm({
         entryPoint: 'AUDIO_FILE',
         cowId: effectiveCowId,
         audioKey: key,
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -185,6 +242,7 @@ export function PipelineEntryForm({
         entryPoint: 'JSON_INPUT',
         cowId: effectiveCowId,
         extractedJson: parsed as Parameters<typeof client.queries.runPipeline>[0]['extractedJson'],
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -204,6 +262,7 @@ export function PipelineEntryForm({
         entryPoint: 'PRODUCTION',
         cowId: effectiveCowId,
         audioKey,
+        ...buildDevModelOverrides(),
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
@@ -231,8 +290,63 @@ export function PipelineEntryForm({
             value={effectiveCowId}
             onChange={(e) => setEffectiveCowId(e.target.value)}
             placeholder="test-cow-001"
-            style={{ marginLeft: '0.5rem', width: '200px' }}
+            style={{ ...FIELD_STYLE, marginLeft: '0.5rem', width: '200px' }}
           />
+        </div>
+      )}
+
+      {mode === 'dev' && (
+        <div
+          className="pipeline-entry-form__model-overrides"
+          style={{
+            marginTop: '0.75rem',
+            display: 'grid',
+            gap: '0.5rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          }}
+        >
+          <label>
+            Extractor Model:
+            <select
+              value={extractorModelId}
+              onChange={(e) => setExtractorModelId(e.target.value)}
+              style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value || 'default-extractor'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            SOAP Model:
+            <select
+              value={soapModelId}
+              onChange={(e) => setSoapModelId(e.target.value)}
+              style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value || 'default-soap'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Kyosai Model:
+            <select
+              value={kyosaiModelId}
+              onChange={(e) => setKyosaiModelId(e.target.value)}
+              style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value || 'default-kyosai'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
       )}
 
@@ -252,7 +366,7 @@ export function PipelineEntryForm({
             style={{
               padding: '0.5rem 1rem',
               fontWeight: activeTab === tab ? 'bold' : 'normal',
-              background: activeTab === tab ? '#e8f0fe' : 'none',
+              background: activeTab === tab ? '#e8f0fe' : '#ffffff',
               border: activeTab === tab ? '1px solid #0066cc' : '1px solid #ccc',
               cursor: 'pointer',
               borderRadius: '4px 4px 0 0',
@@ -277,14 +391,14 @@ export function PipelineEntryForm({
               onChange={(e) => setTranscriptText(e.target.value)}
               placeholder="例: 体温39.5度、食欲不振、第四胃変位疑い。ブドウ糖500ml静注。"
               rows={6}
-              style={{ width: '100%', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              style={{ ...FIELD_STYLE, fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
             <div style={{ marginTop: '0.5rem' }}>
               <button
                 type="button"
                 onClick={handleTextInputRun}
                 disabled={loading}
-                style={{ padding: '0.5rem 1.5rem' }}
+                style={getPrimaryButtonStyle(loading)}
               >
                 {loading ? '処理中...' : 'パイプライン実行'}
               </button>
@@ -300,6 +414,7 @@ export function PipelineEntryForm({
               type="file"
               accept="audio/*"
               onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+              style={{ ...FIELD_STYLE, appearance: 'auto' }}
             />
             {audioFile && (
               <p style={{ fontSize: '0.9rem', color: '#555' }}>
@@ -312,7 +427,7 @@ export function PipelineEntryForm({
                 type="button"
                 onClick={handleAudioFileRun}
                 disabled={loading || !audioFile}
-                style={{ padding: '0.5rem 1.5rem' }}
+                style={getPrimaryButtonStyle(loading || !audioFile)}
               >
                 {loading ? '処理中...' : 'アップロード＆実行'}
               </button>
@@ -329,14 +444,14 @@ export function PipelineEntryForm({
               onChange={(e) => setJsonText(e.target.value)}
               placeholder='{ "vital": { "temp_c": 39.5 }, "s": "食欲不振", "o": "体温39.5℃", "a": [{ "name": "第四胃変位" }], "p": [{ "name": "ブドウ糖静注", "type": "drug" }] }'
               rows={10}
-              style={{ width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
+              style={{ ...FIELD_STYLE, fontFamily: 'monospace', boxSizing: 'border-box' }}
             />
             <div style={{ marginTop: '0.5rem' }}>
               <button
                 type="button"
                 onClick={handleJsonInputRun}
                 disabled={loading}
-                style={{ padding: '0.5rem 1.5rem' }}
+                style={getPrimaryButtonStyle(loading)}
               >
                 {loading ? '処理中...' : 'パイプライン実行'}
               </button>

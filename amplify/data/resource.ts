@@ -83,6 +83,9 @@ const schema = a.schema({
       transcriptText: a.string(),     // テキスト直接入力
       extractedJson: a.json(),        // JSON直接入力
       templateType: a.string(),       // 手動テンプレート指定（任意）
+      extractorModelId: a.string(),   // 開発用: Extractorモデル上書き
+      soapModelId: a.string(),        // 開発用: SOAPモデル上書き
+      kyosaiModelId: a.string(),      // 開発用: 共済モデル上書き
     })
     .returns(a.ref("PipelineOutput"))
     .handler(a.handler.function(runPipelineFunction))
