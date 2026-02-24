@@ -68,6 +68,37 @@ const MODEL_OPTIONS = [
   { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
 ];
 
+const FIELD_STYLE = {
+  width: '100%',
+  minHeight: '2.25rem',
+  padding: '0.45rem 0.6rem',
+  border: '1px solid #c9d3e0',
+  borderRadius: '6px',
+  background: '#ffffff',
+  color: '#1f2937',
+} as const;
+
+const SELECT_STYLE = {
+  ...FIELD_STYLE,
+  appearance: 'auto',
+} as const;
+
+const PRIMARY_BUTTON_BASE_STYLE = {
+  minHeight: '2.25rem',
+  padding: '0.5rem 1.5rem',
+  border: '1px solid #1e6bff',
+  borderRadius: '6px',
+  background: '#1e6bff',
+  color: '#ffffff',
+  fontWeight: 600,
+} as const;
+
+const getPrimaryButtonStyle = (disabled: boolean) => ({
+  ...PRIMARY_BUTTON_BASE_STYLE,
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.55 : 1,
+});
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -259,7 +290,7 @@ export function PipelineEntryForm({
             value={effectiveCowId}
             onChange={(e) => setEffectiveCowId(e.target.value)}
             placeholder="test-cow-001"
-            style={{ marginLeft: '0.5rem', width: '200px' }}
+            style={{ ...FIELD_STYLE, marginLeft: '0.5rem', width: '200px' }}
           />
         </div>
       )}
@@ -279,7 +310,7 @@ export function PipelineEntryForm({
             <select
               value={extractorModelId}
               onChange={(e) => setExtractorModelId(e.target.value)}
-              style={{ marginLeft: '0.5rem', width: '100%' }}
+              style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
             >
               {MODEL_OPTIONS.map((opt) => (
                 <option key={opt.value || 'default-extractor'} value={opt.value}>
@@ -293,7 +324,7 @@ export function PipelineEntryForm({
             <select
               value={soapModelId}
               onChange={(e) => setSoapModelId(e.target.value)}
-              style={{ marginLeft: '0.5rem', width: '100%' }}
+              style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
             >
               {MODEL_OPTIONS.map((opt) => (
                 <option key={opt.value || 'default-soap'} value={opt.value}>
@@ -307,7 +338,7 @@ export function PipelineEntryForm({
             <select
               value={kyosaiModelId}
               onChange={(e) => setKyosaiModelId(e.target.value)}
-              style={{ marginLeft: '0.5rem', width: '100%' }}
+              style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
             >
               {MODEL_OPTIONS.map((opt) => (
                 <option key={opt.value || 'default-kyosai'} value={opt.value}>
@@ -335,7 +366,7 @@ export function PipelineEntryForm({
             style={{
               padding: '0.5rem 1rem',
               fontWeight: activeTab === tab ? 'bold' : 'normal',
-              background: activeTab === tab ? '#e8f0fe' : 'none',
+              background: activeTab === tab ? '#e8f0fe' : '#ffffff',
               border: activeTab === tab ? '1px solid #0066cc' : '1px solid #ccc',
               cursor: 'pointer',
               borderRadius: '4px 4px 0 0',
@@ -360,14 +391,14 @@ export function PipelineEntryForm({
               onChange={(e) => setTranscriptText(e.target.value)}
               placeholder="例: 体温39.5度、食欲不振、第四胃変位疑い。ブドウ糖500ml静注。"
               rows={6}
-              style={{ width: '100%', fontFamily: 'inherit', boxSizing: 'border-box' }}
+              style={{ ...FIELD_STYLE, fontFamily: 'inherit', boxSizing: 'border-box' }}
             />
             <div style={{ marginTop: '0.5rem' }}>
               <button
                 type="button"
                 onClick={handleTextInputRun}
                 disabled={loading}
-                style={{ padding: '0.5rem 1.5rem' }}
+                style={getPrimaryButtonStyle(loading)}
               >
                 {loading ? '処理中...' : 'パイプライン実行'}
               </button>
@@ -383,6 +414,7 @@ export function PipelineEntryForm({
               type="file"
               accept="audio/*"
               onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+              style={{ ...FIELD_STYLE, appearance: 'auto' }}
             />
             {audioFile && (
               <p style={{ fontSize: '0.9rem', color: '#555' }}>
@@ -395,7 +427,7 @@ export function PipelineEntryForm({
                 type="button"
                 onClick={handleAudioFileRun}
                 disabled={loading || !audioFile}
-                style={{ padding: '0.5rem 1.5rem' }}
+                style={getPrimaryButtonStyle(loading || !audioFile)}
               >
                 {loading ? '処理中...' : 'アップロード＆実行'}
               </button>
@@ -412,14 +444,14 @@ export function PipelineEntryForm({
               onChange={(e) => setJsonText(e.target.value)}
               placeholder='{ "vital": { "temp_c": 39.5 }, "s": "食欲不振", "o": "体温39.5℃", "a": [{ "name": "第四胃変位" }], "p": [{ "name": "ブドウ糖静注", "type": "drug" }] }'
               rows={10}
-              style={{ width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
+              style={{ ...FIELD_STYLE, fontFamily: 'monospace', boxSizing: 'border-box' }}
             />
             <div style={{ marginTop: '0.5rem' }}>
               <button
                 type="button"
                 onClick={handleJsonInputRun}
                 disabled={loading}
-                style={{ padding: '0.5rem 1.5rem' }}
+                style={getPrimaryButtonStyle(loading)}
               >
                 {loading ? '処理中...' : 'パイプライン実行'}
               </button>
