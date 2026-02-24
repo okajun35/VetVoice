@@ -119,6 +119,15 @@ describe("Master_Matcher: matchDisease()", () => {
     const topCode = result.candidates[0].code;
     expect(topCode.startsWith("04")).toBe(true);
   });
+
+  it("normalizes suspicion suffix and matches '肺炎疑い' to '肺炎'", () => {
+    const result = matchDisease("肺炎疑い");
+
+    expect(result.candidates.length).toBeGreaterThan(0);
+    expect(result.candidates[0].name).toBe("肺炎");
+    expect(result.candidates[0].code).toBe("03-14");
+    expect(result.top_confirmed).toBe(true);
+  });
 });
 
 describe("Master_Matcher: matchProcedure()", () => {

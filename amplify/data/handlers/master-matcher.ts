@@ -83,6 +83,7 @@ function loadDiseases(): DiseaseEntry[] {
 
   const lines = BYOUMEI_CSV.split("\n").slice(1); // skip header
   const entries: DiseaseEntry[] = [];
+  const seenMiddleCodes = new Set<string>();
 
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -115,16 +116,29 @@ function loadDiseases(): DiseaseEntry[] {
       }
     }
 
-    // Build master code: "01-01" or "01-04-01"
-    let code = `${majorCode}-${middleCode}`;
-    if (minorCode) code += `-${minorCode}`;
+    const middleMasterCode = `${majorCode}-${middleCode}`;
 
-    // Searchable name is the most specific available
-    const name = minorName ?? middleName;
+    // Always include middle-level disease entry once so broad queries like "肺炎"
+    // can match deterministically even when many minor rows exist.
+    if (!seenMiddleCodes.has(middleMasterCode)) {
+      entries.push({
+        name: middleName,
+        code: middleMasterCode,
+        majorCode,
+        majorName,
+        middleCode,
+        middleName,
+        note: noteRaw?.trim() || undefined,
+      });
+      seenMiddleCodes.add(middleMasterCode);
+    }
+
+    // Include minor-level entries when available.
+    if (!minorCode || !minorName) continue;
 
     entries.push({
-      name,
-      code,
+      name: `${middleName}${minorName}`,
+      code: `${middleMasterCode}-${minorCode}`,
       majorCode,
       majorName,
       middleCode,
@@ -218,6 +232,24 @@ function splitCsvLine(line: string): string[] {
 // Fuzzy matching algorithm
 // ---------------------------------------------------------------------------
 
+function normalizeMatchText(text: string): string {
+  return text
+    .normalize("NFKC")
+    .trim()
+    .replace(/[　\s]+/g, "")
+    .replace(/[()（）\[\]［］「」『』、。・,:;'"`]/g, "")
+    .replace(/[?？]+$/g, "");
+}
+
+function normalizeDiseaseQuery(text: string): string {
+  const normalized = normalizeMatchText(text);
+  return normalized
+    .replace(/(?:の)?疑いあり$/u, "")
+    .replace(/(?:の)?疑い$/u, "")
+    .replace(/疑$/u, "")
+    .replace(/未確認$/u, "");
+}
+
 /**
  * Compute Levenshtein edit distance between two strings.
  */
@@ -251,11 +283,23 @@ function normalizedEditScore(a: string, b: string): number {
 }
 
 /**
- * Token overlap (Jaccard) score: |intersection| / |union|
+ * Character bi-gram overlap (Jaccard) score: |intersection| / |union|
+ * Works better than whitespace tokenization for Japanese.
  */
 function tokenOverlapScore(a: string, b: string): number {
-  const tokensA = new Set(a.split(/\s+/).filter(Boolean));
-  const tokensB = new Set(b.split(/\s+/).filter(Boolean));
+  const toBigrams = (s: string): Set<string> => {
+    if (!s) return new Set<string>();
+    const chars = [...s];
+    if (chars.length === 1) return new Set(chars);
+    const grams: string[] = [];
+    for (let i = 0; i < chars.length - 1; i++) {
+      grams.push(chars[i] + chars[i + 1]);
+    }
+    return new Set(grams);
+  };
+
+  const tokensA = toBigrams(a);
+  const tokensB = toBigrams(b);
   if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
 
   let common = 0;
@@ -270,9 +314,20 @@ function tokenOverlapScore(a: string, b: string): number {
  * Combined fuzzy score: 0.6 * editScore + 0.4 * tokenScore
  */
 function computeFuzzyScore(query: string, candidate: string): number {
-  const q = query.trim();
-  const c = candidate.trim();
-  return 0.6 * normalizedEditScore(q, c) + 0.4 * tokenOverlapScore(q, c);
+  const q = normalizeMatchText(query);
+  const c = normalizeMatchText(candidate);
+
+  if (!q || !c) return 0;
+  if (q === c) return 1.0;
+
+  const base = 0.6 * normalizedEditScore(q, c) + 0.4 * tokenOverlapScore(q, c);
+
+  // Substring inclusion is common in medical terms (e.g. "肺炎" vs "肺炎細菌性")
+  if (c.includes(q) || q.includes(c)) {
+    return Math.max(base, 0.8);
+  }
+
+  return base;
 }
 
 // ---------------------------------------------------------------------------
@@ -287,14 +342,15 @@ function computeFuzzyScore(query: string, candidate: string): number {
  */
 export function matchDisease(name: string): MatchResult {
   const diseases = loadDiseases();
+  const queryForMatch = normalizeDiseaseQuery(name);
 
-  if (!name || !name.trim()) {
+  if (!queryForMatch) {
     return { query: name, candidates: [], top_confirmed: false };
   }
 
   const scored = diseases.map((entry) => ({
     entry,
-    score: computeFuzzyScore(name, entry.name),
+    score: computeFuzzyScore(queryForMatch, entry.name),
   }));
 
   scored.sort((a, b) => b.score - a.score);
@@ -331,14 +387,15 @@ export function matchDisease(name: string): MatchResult {
  */
 export function matchProcedure(name: string): MatchResult {
   const procedures = loadProcedures();
+  const queryForMatch = normalizeMatchText(name);
 
-  if (!name || !name.trim()) {
+  if (!queryForMatch) {
     return { query: name, candidates: [], top_confirmed: false };
   }
 
   const scored = procedures.map((entry) => ({
     entry,
-    score: computeFuzzyScore(name, entry.name),
+    score: computeFuzzyScore(queryForMatch, entry.name),
   }));
 
   scored.sort((a, b) => b.score - a.score);

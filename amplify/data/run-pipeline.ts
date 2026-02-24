@@ -20,6 +20,7 @@ import { transcribe } from "./handlers/transcriber";
 import { expand } from "./handlers/dictionary-expander";
 import { extract } from "./handlers/extractor";
 import { parse, stringify, type ExtractedJSON } from "./handlers/parser";
+import { matchDisease, matchProcedure } from "./handlers/master-matcher";
 import { selectTemplate } from "./handlers/template-selector";
 import { generateSOAP } from "./handlers/soap-generator";
 import { generateKyosai } from "./handlers/kyosai-generator";
@@ -35,6 +36,67 @@ const s3Client = new S3Client({ region: "us-east-1" });
 const dynamoClient = DynamoDBDocumentClient.from(
   new DynamoDBClient({ region: "us-east-1" })
 );
+
+/**
+ * Always-on custom vocabulary for veterinary domain terms.
+ * Can still be overridden via environment variable when needed.
+ */
+const DEFAULT_TRANSCRIBE_VOCABULARY_NAME = "vetvoice-ja-vocab-v1";
+
+function applyMasterMatching(extractedJson: ExtractedJSON): {
+  enriched: ExtractedJSON;
+  unconfirmedCount: number;
+} {
+  const enrichedA = extractedJson.a.map((item) => {
+    const result = matchDisease(item.name);
+    const top = result.candidates[0];
+
+    if (!top || top.confidence <= 0) {
+      return item;
+    }
+
+    return {
+      ...item,
+      confidence: top.confidence,
+      master_code: top.code,
+      status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),
+    };
+  });
+
+  const enrichedP = extractedJson.p.map((item) => {
+    // Current procedure master is for treatment codes; skip drug terms.
+    if (item.type !== "procedure") {
+      return item;
+    }
+
+    const result = matchProcedure(item.name);
+    const top = result.candidates[0];
+
+    if (!top || top.confidence <= 0) {
+      return item;
+    }
+
+    return {
+      ...item,
+      confidence: top.confidence,
+      master_code: top.code,
+      status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),
+    };
+  });
+
+  const unconfirmedCount =
+    enrichedA.filter((item) => item.status === "unconfirmed").length +
+    enrichedP.filter((item) => item.status === "unconfirmed").length;
+
+  return {
+    enriched: {
+      ...extractedJson,
+      a: enrichedA,
+      p: enrichedP,
+    },
+    unconfirmedCount,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -71,8 +133,17 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     } else {
       try {
         const bucketName = process.env.STORAGE_BUCKET_NAME ?? "";
+        const vocabularyName = (
+          process.env.TRANSCRIBE_VOCABULARY_NAME ??
+          DEFAULT_TRANSCRIBE_VOCABULARY_NAME
+        ).trim();
         const transcribeOutput = await transcribe(
-          { audioKey, language: "ja-JP", bucketName },
+          {
+            audioKey,
+            language: "ja-JP",
+            bucketName,
+            vocabularyName: vocabularyName ? vocabularyName : undefined,
+          },
           transcribeClient,
           s3Client
         );
@@ -156,6 +227,19 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           // Keep best-effort extractedJson
         }
       }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Step 2.2: Master matching (disease / procedure)
+  // -------------------------------------------------------------------------
+  if (extractedJson) {
+    const { enriched, unconfirmedCount } = applyMasterMatching(extractedJson);
+    extractedJson = enriched;
+    if (unconfirmedCount > 0) {
+      warnings.push(
+        `Master matching has ${unconfirmedCount} unconfirmed candidate(s); manual review recommended`
+      );
     }
   }
 

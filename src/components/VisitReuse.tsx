@@ -21,7 +21,7 @@ interface VisitItem {
   visitId: string;
   cowId: string;
   datetime: string;
-  extractedJson?: unknown;
+  extractedJson?: Parameters<typeof reuseVisit>[0]['extractedJson'];
   templateType?: string | null;
 }
 
@@ -107,7 +107,7 @@ export function VisitReuse({ cowId, onReuse, onCancel }: VisitReuseProps) {
             visitId: v.visitId,
             cowId: v.cowId,
             datetime: v.datetime,
-            extractedJson: v.extractedJson ?? undefined,
+            extractedJson: (v.extractedJson as Parameters<typeof reuseVisit>[0]['extractedJson']) ?? undefined,
             templateType: v.templateType ?? null,
           }))
         );

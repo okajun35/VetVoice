@@ -401,6 +401,8 @@ export function PipelineEntryForm({
                   padding: '0.75rem',
                   borderRadius: '4px',
                   overflowX: 'auto',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
                   fontSize: '0.85rem',
                   marginTop: '0.25rem',
                 }}
@@ -418,6 +420,8 @@ export function PipelineEntryForm({
                   padding: '0.75rem',
                   borderRadius: '4px',
                   whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
                   fontSize: '0.9rem',
                   marginTop: '0.25rem',
                 }}
@@ -435,6 +439,8 @@ export function PipelineEntryForm({
                   padding: '0.75rem',
                   borderRadius: '4px',
                   whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
                   fontSize: '0.9rem',
                   marginTop: '0.25rem',
                 }}

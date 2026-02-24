@@ -40,6 +40,17 @@ describe("Dictionary_Expander: expand() function", () => {
     expect(result.expansions[0].expanded).toBe("アンピシリン");
   });
 
+  it("corrects ASR misrecognition '安否' to 'アンピシリン'", () => {
+    const text = "安否を500ミリ投与";
+
+    const result = expand(text);
+
+    expect(result.expanded_text).toBe("アンピシリンを500ミリ投与");
+    expect(result.expansions).toHaveLength(1);
+    expect(result.expansions[0].original).toBe("安否");
+    expect(result.expansions[0].expanded).toBe("アンピシリン");
+  });
+
   it("expands '筋注' to '筋肉注射'", () => {
     const text = "筋注で投与しました";
 
@@ -164,4 +175,3 @@ describe("Dictionary_Expander: expand() function", () => {
     expect(result.expansions[0].expanded).toBe("人工授精");
   });
 });
-

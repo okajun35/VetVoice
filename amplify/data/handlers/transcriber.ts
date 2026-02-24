@@ -13,6 +13,7 @@
 import {
   TranscribeClient,
   StartTranscriptionJobCommand,
+  type StartTranscriptionJobCommandInput,
   GetTranscriptionJobCommand,
   TranscriptionJobStatus,
   MediaFormat,
@@ -179,7 +180,7 @@ export async function transcribe(
 ): Promise<TranscribeOutput> {
   const jobName = `vetvoice-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  const startParams: Parameters<typeof StartTranscriptionJobCommand>[0] = {
+  const startParams: StartTranscriptionJobCommandInput = {
     TranscriptionJobName: jobName,
     LanguageCode: input.language,
     MediaFormat: getMediaFormat(input.audioKey),

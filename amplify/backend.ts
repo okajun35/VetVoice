@@ -110,23 +110,36 @@ backend.generateHistorySummaryFunction.resources.lambda.addToRolePolicy(
 const visitTable = backend.data.resources.tables["Visit"];
 const cowTable = backend.data.resources.tables["Cow"];
 const bucket = backend.storage.resources.bucket;
+const DEFAULT_TRANSCRIBE_VOCABULARY_NAME = "vetvoice-ja-vocab-v1";
+type LambdaWithEnvironment = {
+  addEnvironment: (name: string, value: string) => void;
+};
+const runPipelineLambda =
+  backend.runPipelineFunction.resources.lambda as unknown as LambdaWithEnvironment;
+const historySummaryLambda =
+  backend.generateHistorySummaryFunction.resources.lambda as unknown as LambdaWithEnvironment;
 
 // runPipeline Lambda
-backend.runPipelineFunction.resources.lambda.addEnvironment(
+runPipelineLambda.addEnvironment(
   "VISIT_TABLE_NAME",
   visitTable.tableName
 );
-backend.runPipelineFunction.resources.lambda.addEnvironment(
+runPipelineLambda.addEnvironment(
   "COW_TABLE_NAME",
   cowTable.tableName
 );
-backend.runPipelineFunction.resources.lambda.addEnvironment(
+runPipelineLambda.addEnvironment(
   "STORAGE_BUCKET_NAME",
   bucket.bucketName
 );
 
+runPipelineLambda.addEnvironment(
+  "TRANSCRIBE_VOCABULARY_NAME",
+  process.env.TRANSCRIBE_VOCABULARY_NAME?.trim() || DEFAULT_TRANSCRIBE_VOCABULARY_NAME
+);
+
 // generateHistorySummary Lambda
-backend.generateHistorySummaryFunction.resources.lambda.addEnvironment(
+historySummaryLambda.addEnvironment(
   "VISIT_TABLE_NAME",
   visitTable.tableName
 );

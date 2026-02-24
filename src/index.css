@@ -15,17 +15,20 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
 }
 
 #root {
   width: 100%;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+}
+
+/* Ensure pre elements wrap text and fill background correctly */
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow-x: visible;
 }
 
 @media (prefers-color-scheme: light) {
