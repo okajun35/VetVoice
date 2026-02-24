@@ -6,6 +6,11 @@
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import { Button } from './ui/Button/Button';
+import { Input } from './ui/Input/Input';
+import { Card } from './ui/Card/Card';
+import { Badge } from './ui/Badge/Badge';
+import styles from './VisitEditor.module.css';
 
 const client = generateClient<Schema>();
 
@@ -46,56 +51,6 @@ interface VisitData {
   soapText?: string | null;
   kyosaiText?: string | null;
 }
-
-const sectionStyle: React.CSSProperties = {
-  marginBottom: '1.5rem',
-  padding: '1rem',
-  background: '#fafafa',
-  border: '1px solid #e0e0e0',
-  borderRadius: '6px',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  margin: '0 0 0.75rem 0',
-  fontSize: '1rem',
-  fontWeight: 'bold',
-  color: '#333',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '0.5rem',
-  fontSize: '0.95rem',
-  border: '1px solid #ccc',
-  borderRadius: '4px',
-  width: '100%',
-  boxSizing: 'border-box',
-};
-
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle,
-  resize: 'vertical',
-  fontFamily: 'inherit',
-};
-
-const confirmedBadge: React.CSSProperties = {
-  display: 'inline-block',
-  padding: '0.1rem 0.4rem',
-  background: '#d4edda',
-  color: '#155724',
-  borderRadius: '3px',
-  fontSize: '0.75rem',
-  marginLeft: '0.5rem',
-};
-
-const unconfirmedBadge: React.CSSProperties = {
-  display: 'inline-block',
-  padding: '0.1rem 0.4rem',
-  background: '#fff3cd',
-  color: '#856404',
-  borderRadius: '3px',
-  fontSize: '0.75rem',
-  marginLeft: '0.5rem',
-};
 
 export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
   const [visit, setVisit] = useState<VisitData | null>(null);
@@ -189,295 +144,220 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
   };
 
   if (loading) {
-    return <div style={{ padding: '1rem' }}>読み込み中...</div>;
+    return <div className={styles.loading}>読み込み中...</div>;
   }
 
   if (!visit) {
     return (
-      <div style={{ padding: '1rem' }}>
-        <p style={{ color: '#cc0000' }}>診療記録が見つかりません</p>
-        {onBack && <button type="button" onClick={onBack}>戻る</button>}
+      <div className={styles.notFound}>
+        <p className={styles.notFoundText}>診療記録が見つかりません</p>
+        {onBack && (
+          <Button variant="secondary" onClick={onBack}>
+            戻る
+          </Button>
+        )}
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '640px', margin: '0 auto', padding: '1rem' }}>
+    <div className={styles.container}>
       {onBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          style={{ marginBottom: '1rem', padding: '0.4rem 1rem', cursor: 'pointer' }}
-        >
-          ← 戻る
-        </button>
+        <div className={styles.backButton}>
+          <Button variant="ghost" onClick={onBack}>
+            ← 戻る
+          </Button>
+        </div>
       )}
 
-      <h2 style={{ marginTop: 0 }}>診療記録編集</h2>
+      <h2 className={styles.title}>診療記録編集</h2>
 
-      <div style={sectionStyle}>
-        <h3 style={sectionTitleStyle}>診療情報</h3>
+      <Card className={styles.section}>
+        <h3 className={styles.sectionTitle}>診療情報</h3>
         <InfoRow label="Visit ID" value={visit.visitId} />
         <InfoRow label="牛ID" value={visit.cowId} />
         <InfoRow label="日時" value={visit.datetime} />
         <InfoRow label="ステータス" value={visit.status ?? ''} />
         <InfoRow label="テンプレート" value={visit.templateType ?? ''} />
-      </div>
+      </Card>
 
       {visit.transcriptRaw && (
-        <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>文字起こし</h3>
-          <pre
-            style={{
-              background: '#f5f5f5',
-              padding: '0.75rem',
-              borderRadius: '4px',
-              whiteSpace: 'pre-wrap',
-              fontSize: '0.9rem',
-              margin: 0,
-            }}
-          >
-            {visit.transcriptRaw}
-          </pre>
-        </div>
+        <Card className={styles.section}>
+          <h3 className={styles.sectionTitle}>文字起こし</h3>
+          <pre className={styles.transcript}>{visit.transcriptRaw}</pre>
+        </Card>
       )}
 
       {extractedJson && (
-        <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>構造化データ編集</h3>
+        <Card className={styles.section}>
+          <h3 className={styles.sectionTitle}>構造化データ編集</h3>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem' }}>
-              体温 (°C)
-            </label>
-            <input
+          <div className={styles.formField}>
+            <Input
               type="number"
-              step="0.1"
-              value={extractedJson.vital.temp_c ?? ''}
+              label="体温 (°C)"
+              value={extractedJson.vital.temp_c?.toString() ?? ''}
               onChange={(e) => updateVitalTemp(e.target.value)}
               placeholder="例: 39.5"
-              style={{ ...inputStyle, width: '120px' }}
+              className={styles.tempInput}
             />
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem' }}>
-              稟告 (S)
-            </label>
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>稟告 (S)</label>
             <textarea
               rows={3}
               value={extractedJson.s ?? ''}
               onChange={(e) => updateS(e.target.value)}
-              style={textareaStyle}
+              className={styles.textarea}
             />
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.25rem' }}>
-              所見 (O)
-            </label>
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>所見 (O)</label>
             <textarea
               rows={3}
               value={extractedJson.o ?? ''}
               onChange={(e) => updateO(e.target.value)}
-              style={textareaStyle}
+              className={styles.textarea}
             />
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
-              診断 (A)
-            </label>
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>診断 (A)</label>
             {extractedJson.a.length === 0 && (
-              <p style={{ color: '#888', fontSize: '0.9rem' }}>診断なし</p>
+              <p className={styles.emptyState}>診断なし</p>
             )}
-            {extractedJson.a.map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  marginBottom: '0.5rem',
-                  background: '#fff',
-                  border: '1px solid #ddd',
-                  borderLeft: item.status === 'unconfirmed' ? '3px solid #ff9900' : '3px solid #28a745',
-                  borderRadius: '4px',
-                }}
-              >
-                <span style={{ fontWeight: 'bold' }}>{item.name}</span>
-                {item.status === 'confirmed' && <span style={confirmedBadge}>確定</span>}
-                {item.status === 'unconfirmed' && <span style={unconfirmedBadge}>未確認</span>}
-                {item.confidence != null && (
-                  <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '0.5rem' }}>
-                    信頼度: {(item.confidence * 100).toFixed(0)}%
-                  </span>
-                )}
-                {item.master_code && (
-                  <span style={{ fontSize: '0.8rem', color: '#555', marginLeft: '0.5rem' }}>
-                    [{item.master_code}]
-                  </span>
-                )}
-                {item.status === 'unconfirmed' && (
-                  <button
-                    type="button"
-                    onClick={() => confirmAItem(i)}
-                    style={{
-                      marginLeft: '0.75rem',
-                      padding: '0.2rem 0.6rem',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      background: '#fff3cd',
-                      border: '1px solid #ffc107',
-                      borderRadius: '3px',
-                    }}
-                  >
-                    確定
-                  </button>
-                )}
-              </div>
-            ))}
+            <div className={styles.itemList}>
+              {extractedJson.a.map((item, i) => (
+                <div
+                  key={i}
+                  className={`${styles.item} ${
+                    item.status === 'unconfirmed'
+                      ? styles['item--unconfirmed']
+                      : styles['item--confirmed']
+                  }`}
+                >
+                  <span className={styles.itemName}>{item.name}</span>
+                  {item.status === 'confirmed' && (
+                    <Badge variant="success" size="sm">
+                      確定
+                    </Badge>
+                  )}
+                  {item.status === 'unconfirmed' && (
+                    <Badge variant="warning" size="sm">
+                      未確認
+                    </Badge>
+                  )}
+                  {item.confidence != null && (
+                    <span className={styles.itemMeta}>
+                      信頼度: {(item.confidence * 100).toFixed(0)}%
+                    </span>
+                  )}
+                  {item.master_code && (
+                    <span className={styles.itemMeta}>[{item.master_code}]</span>
+                  )}
+                  {item.status === 'unconfirmed' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => confirmAItem(i)}
+                      className={styles.confirmButton}
+                    >
+                      確定
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div>
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
-              処置・投薬 (P)
-            </label>
+          <div className={styles.formField}>
+            <label className={styles.fieldLabel}>処置・投薬 (P)</label>
             {extractedJson.p.length === 0 && (
-              <p style={{ color: '#888', fontSize: '0.9rem' }}>処置・投薬なし</p>
+              <p className={styles.emptyState}>処置・投薬なし</p>
             )}
-            {extractedJson.p.map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  marginBottom: '0.5rem',
-                  background: '#fff',
-                  border: '1px solid #ddd',
-                  borderLeft: item.status === 'unconfirmed' ? '3px solid #ff9900' : '3px solid #28a745',
-                  borderRadius: '4px',
-                }}
-              >
-                <span style={{ fontWeight: 'bold' }}>{item.name}</span>
-                <span
-                  style={{
-                    marginLeft: '0.5rem',
-                    fontSize: '0.8rem',
-                    color: '#fff',
-                    background: item.type === 'drug' ? '#6c757d' : '#17a2b8',
-                    padding: '0.1rem 0.4rem',
-                    borderRadius: '3px',
-                  }}
+            <div className={styles.itemList}>
+              {extractedJson.p.map((item, i) => (
+                <div
+                  key={i}
+                  className={`${styles.item} ${
+                    item.status === 'unconfirmed'
+                      ? styles['item--unconfirmed']
+                      : styles['item--confirmed']
+                  }`}
                 >
-                  {item.type === 'drug' ? '薬剤' : '処置'}
-                </span>
-                {item.status === 'confirmed' && <span style={confirmedBadge}>確定</span>}
-                {item.status === 'unconfirmed' && <span style={unconfirmedBadge}>未確認</span>}
-                {item.dosage && (
-                  <span style={{ fontSize: '0.85rem', color: '#555', marginLeft: '0.5rem' }}>
-                    {item.dosage}
-                  </span>
-                )}
-                {item.confidence != null && (
-                  <span style={{ fontSize: '0.8rem', color: '#666', marginLeft: '0.5rem' }}>
-                    信頼度: {(item.confidence * 100).toFixed(0)}%
-                  </span>
-                )}
-                {item.master_code && (
-                  <span style={{ fontSize: '0.8rem', color: '#555', marginLeft: '0.5rem' }}>
-                    [{item.master_code}]
-                  </span>
-                )}
-                {item.status === 'unconfirmed' && (
-                  <button
-                    type="button"
-                    onClick={() => confirmPItem(i)}
-                    style={{
-                      marginLeft: '0.75rem',
-                      padding: '0.2rem 0.6rem',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      background: '#fff3cd',
-                      border: '1px solid #ffc107',
-                      borderRadius: '3px',
-                    }}
-                  >
-                    確定
-                  </button>
-                )}
-              </div>
-            ))}
+                  <span className={styles.itemName}>{item.name}</span>
+                  <Badge variant={item.type === 'drug' ? 'neutral' : 'info'} size="sm">
+                    {item.type === 'drug' ? '薬剤' : '処置'}
+                  </Badge>
+                  {item.status === 'confirmed' && (
+                    <Badge variant="success" size="sm">
+                      確定
+                    </Badge>
+                  )}
+                  {item.status === 'unconfirmed' && (
+                    <Badge variant="warning" size="sm">
+                      未確認
+                    </Badge>
+                  )}
+                  {item.dosage && <span className={styles.itemMeta}>{item.dosage}</span>}
+                  {item.confidence != null && (
+                    <span className={styles.itemMeta}>
+                      信頼度: {(item.confidence * 100).toFixed(0)}%
+                    </span>
+                  )}
+                  {item.master_code && (
+                    <span className={styles.itemMeta}>[{item.master_code}]</span>
+                  )}
+                  {item.status === 'unconfirmed' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => confirmPItem(i)}
+                      className={styles.confirmButton}
+                    >
+                      確定
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {visit.soapText && (
-        <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>SOAPサマリー</h3>
-          <pre
-            style={{
-              background: '#f0f8ff',
-              padding: '0.75rem',
-              borderRadius: '4px',
-              whiteSpace: 'pre-wrap',
-              fontSize: '0.9rem',
-              margin: 0,
-            }}
-          >
-            {visit.soapText}
-          </pre>
-        </div>
+        <Card className={styles.section}>
+          <h3 className={styles.sectionTitle}>SOAPサマリー</h3>
+          <pre className={styles.transcript}>{visit.soapText}</pre>
+        </Card>
       )}
 
       {visit.kyosaiText && (
-        <div style={sectionStyle}>
-          <h3 style={sectionTitleStyle}>家畜共済テキスト</h3>
-          <pre
-            style={{
-              background: '#f0fff0',
-              padding: '0.75rem',
-              borderRadius: '4px',
-              whiteSpace: 'pre-wrap',
-              fontSize: '0.9rem',
-              margin: 0,
-            }}
-          >
-            {visit.kyosaiText}
-          </pre>
-        </div>
+        <Card className={styles.section}>
+          <h3 className={styles.sectionTitle}>家畜共済テキスト</h3>
+          <pre className={styles.transcript}>{visit.kyosaiText}</pre>
+        </Card>
       )}
 
       {error && (
-        <div
-          role="alert"
-          style={{
-            padding: '0.75rem',
-            background: '#fff0f0',
-            border: '1px solid #cc0000',
-            borderRadius: '4px',
-            color: '#cc0000',
-            marginBottom: '1rem',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
+        <div role="alert" className={styles.error}>
           {error}
         </div>
       )}
 
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="lg"
         onClick={handleSave}
         disabled={saving || !extractedJson}
-        style={{
-          padding: '0.75rem 2rem',
-          background: saving ? '#ccc' : '#0066cc',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '4px',
-          fontSize: '1rem',
-          cursor: saving ? 'not-allowed' : 'pointer',
-        }}
+        loading={saving}
+        fullWidth
+        className={styles.saveButton}
       >
-        {saving ? '保存中...' : '保存'}
-      </button>
+        保存
+      </Button>
     </div>
   );
 }
@@ -485,8 +365,8 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
-    <div style={{ marginBottom: '0.4rem', fontSize: '0.9rem' }}>
-      <span style={{ fontWeight: 'bold', color: '#555' }}>{label}: </span>
+    <div className={styles.infoRow}>
+      <span className={styles.infoLabel}>{label}: </span>
       <span>{value}</span>
     </div>
   );

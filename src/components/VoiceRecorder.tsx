@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { uploadData } from 'aws-amplify/storage';
+import { Button } from './ui/Button/Button';
+import { Spinner } from './ui/Spinner/Spinner';
+import styles from './VoiceRecorder.module.css';
 
 interface VoiceRecorderProps {
   cowId: string;
@@ -129,56 +132,62 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
 
   if (!isSupported) {
     return (
-      <div className="voice-recorder voice-recorder--unsupported">
-        <p>このブラウザは音声録音に対応していません。Chrome または Safari をご利用ください。</p>
+      <div className={styles.container}>
+        <div className={styles.unsupported}>
+          <p>このブラウザは音声録音に対応していません。Chrome または Safari をご利用ください。</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="voice-recorder">
+    <div className={styles.container}>
       {state === 'recording' && (
-        <div className="voice-recorder__indicator">
-          <span className="voice-recorder__dot" aria-hidden="true" />
+        <div className={styles.indicator}>
+          <span className={styles.dot} aria-hidden="true" />
           <span>録音中 — {formatTime(elapsed)}</span>
         </div>
       )}
 
       {state === 'uploading' && (
-        <div className="voice-recorder__status">アップロード中...</div>
+        <div className={styles.status}>
+          <Spinner size="sm" label="アップロード中..." />
+        </div>
       )}
 
       {state === 'done' && (
-        <div className="voice-recorder__status voice-recorder__status--done">
+        <div className={`${styles.status} ${styles['status--done']}`}>
           アップロード完了
         </div>
       )}
 
       {state === 'error' && errorMessage && (
-        <div className="voice-recorder__error" role="alert">
+        <div className={styles.error} role="alert">
           {errorMessage}
         </div>
       )}
 
-      <div className="voice-recorder__controls">
+      <div className={styles.controls}>
         {(state === 'idle' || state === 'done' || state === 'error') && (
-          <button
-            type="button"
-            className="voice-recorder__btn voice-recorder__btn--start"
+          <Button
+            variant="primary"
+            size="lg"
             onClick={state === 'idle' ? startRecording : reset}
+            fullWidth
           >
             {state === 'idle' ? '録音開始' : 'もう一度録音'}
-          </button>
+          </Button>
         )}
 
         {state === 'recording' && (
-          <button
-            type="button"
-            className="voice-recorder__btn voice-recorder__btn--stop"
+          <Button
+            variant="danger"
+            size="lg"
             onClick={stopRecording}
+            fullWidth
           >
             録音停止
-          </button>
+          </Button>
         )}
       </div>
     </div>

@@ -2,11 +2,15 @@
  * CowRegistrationForm component
  * Task 18b.1: Register a new cow with individual identification number
  * Task 5.1: Add mode and initialData props for edit mode support
+ * Task 12.1: Refactored to use design system (Input, Button, CSS Module)
  * Requirements: 19.1, 19.2, 19.3, 19.4, 19.6, 4.2, 4.3, 4.4, 4.5, 4.6
  */
 import { useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import { Input } from './ui/Input/Input';
+import { Button } from './ui/Button/Button';
+import styles from './CowRegistrationForm.module.css';
 
 const client = generateClient<Schema>();
 
@@ -29,39 +33,6 @@ interface CowRegistrationFormProps {
   onRegistered: (cowId: string) => void;
   onCancel?: () => void;
 }
-
-const fieldStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  marginBottom: '1rem',
-};
-
-const labelStyle: React.CSSProperties = {
-  fontWeight: 'bold',
-  marginBottom: '0.25rem',
-  fontSize: '0.9rem',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '0.5rem',
-  fontSize: '1rem',
-  border: '1px solid #ccc',
-  borderRadius: '4px',
-  width: '100%',
-  boxSizing: 'border-box',
-};
-
-const inputErrorStyle: React.CSSProperties = {
-  ...inputStyle,
-  border: '1px solid #cc0000',
-};
-
-const readOnlyInputStyle: React.CSSProperties = {
-  ...inputStyle,
-  background: '#f5f5f5',
-  color: '#666',
-  cursor: 'not-allowed',
-};
 
 /** Pure helper: compute initial FormState from props. Exported for testing. */
 export function buildInitialFormState(
@@ -169,40 +140,32 @@ export function CowRegistrationForm({
   };
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '1rem' }}>
-      <h2 style={{ marginTop: 0 }}>{isEditMode ? '牛の情報編集' : '牛の新規登録'}</h2>
-      <form onSubmit={handleSubmit} noValidate>
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="cowId">
-            個体識別番号 <span style={{ color: '#cc0000' }}>*</span>
-          </label>
-          <input
-            id="cowId"
-            type="text"
-            value={form.cowId}
-            onChange={(e) => handleChange('cowId', e.target.value)}
-            placeholder="0000000000（10桁）"
-            maxLength={10}
-            style={isEditMode ? readOnlyInputStyle : (cowIdError ? inputErrorStyle : inputStyle)}
-            disabled={loading}
-            readOnly={isEditMode}
-          />
-          {cowIdError && (
-            <span style={{ color: '#cc0000', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              {cowIdError}
-            </span>
-          )}
-        </div>
+    <div className={styles.container}>
+      <h2 className={styles.title}>{isEditMode ? '牛の情報編集' : '牛の新規登録'}</h2>
+      <form onSubmit={handleSubmit} noValidate className={styles.form}>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="sex">
-            性別 <span style={{ color: '#cc0000' }}>*</span>
+        <Input
+          id="cowId"
+          label="個体識別番号 *"
+          type="text"
+          value={form.cowId}
+          onChange={(e) => handleChange('cowId', e.target.value)}
+          placeholder="0000000000（10桁）"
+          maxLength={10}
+          disabled={loading || isEditMode}
+          readOnly={isEditMode}
+          error={cowIdError ?? undefined}
+        />
+
+        <div className={styles.field}>
+          <label htmlFor="sex" className={styles.selectLabel}>
+            性別 <span className={styles.required}>*</span>
           </label>
           <select
             id="sex"
             value={form.sex}
             onChange={(e) => handleChange('sex', e.target.value)}
-            style={inputStyle}
+            className={styles.select}
             disabled={loading}
           >
             <option value="">選択してください</option>
@@ -212,152 +175,99 @@ export function CowRegistrationForm({
           </select>
         </div>
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="breed">
-            品種 <span style={{ color: '#cc0000' }}>*</span>
-          </label>
-          <input
-            id="breed"
-            type="text"
-            value={form.breed}
-            onChange={(e) => handleChange('breed', e.target.value)}
-            placeholder="例: ホルスタイン"
-            style={inputStyle}
-            disabled={loading}
-          />
-        </div>
+        <Input
+          id="breed"
+          label="品種 *"
+          type="text"
+          value={form.breed}
+          onChange={(e) => handleChange('breed', e.target.value)}
+          placeholder="例: ホルスタイン"
+          disabled={loading}
+        />
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="birthDate">
-            生年月日 <span style={{ color: '#cc0000' }}>*</span>
-          </label>
-          <input
-            id="birthDate"
-            type="date"
-            value={form.birthDate}
-            onChange={(e) => handleChange('birthDate', e.target.value)}
-            style={inputStyle}
-            disabled={loading}
-          />
-        </div>
+        <Input
+          id="birthDate"
+          label="生年月日 *"
+          type="date"
+          value={form.birthDate}
+          onChange={(e) => handleChange('birthDate', e.target.value)}
+          disabled={loading}
+        />
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="earTagNo">耳標番号</label>
-          <input
-            id="earTagNo"
-            type="text"
-            value={form.earTagNo}
-            onChange={(e) => handleChange('earTagNo', e.target.value)}
-            placeholder="任意"
-            style={inputStyle}
-            disabled={loading}
-          />
-        </div>
+        <Input
+          id="earTagNo"
+          label="耳標番号"
+          type="text"
+          value={form.earTagNo}
+          onChange={(e) => handleChange('earTagNo', e.target.value)}
+          placeholder="任意"
+          disabled={loading}
+        />
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="parity">産次</label>
-          <input
-            id="parity"
-            type="number"
-            min={0}
-            value={form.parity}
-            onChange={(e) => handleChange('parity', e.target.value)}
-            placeholder="任意"
-            style={inputStyle}
-            disabled={loading}
-          />
-        </div>
+        <Input
+          id="parity"
+          label="産次"
+          type="number"
+          min={0}
+          value={form.parity}
+          onChange={(e) => handleChange('parity', e.target.value)}
+          placeholder="任意"
+          disabled={loading}
+        />
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="lastCalvingDate">最終分娩日</label>
-          <input
-            id="lastCalvingDate"
-            type="date"
-            value={form.lastCalvingDate}
-            onChange={(e) => handleChange('lastCalvingDate', e.target.value)}
-            style={inputStyle}
-            disabled={loading}
-          />
-        </div>
+        <Input
+          id="lastCalvingDate"
+          label="最終分娩日"
+          type="date"
+          value={form.lastCalvingDate}
+          onChange={(e) => handleChange('lastCalvingDate', e.target.value)}
+          disabled={loading}
+        />
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="name">名前</label>
-          <input
-            id="name"
-            type="text"
-            value={form.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            placeholder="任意"
-            style={inputStyle}
-            disabled={loading}
-          />
-        </div>
+        <Input
+          id="name"
+          label="名前"
+          type="text"
+          value={form.name}
+          onChange={(e) => handleChange('name', e.target.value)}
+          placeholder="任意"
+          disabled={loading}
+        />
 
-        <div style={fieldStyle}>
-          <label style={labelStyle} htmlFor="farm">農場</label>
-          <input
-            id="farm"
-            type="text"
-            value={form.farm}
-            onChange={(e) => handleChange('farm', e.target.value)}
-            placeholder="任意"
-            style={inputStyle}
-            disabled={loading}
-          />
-        </div>
+        <Input
+          id="farm"
+          label="農場"
+          type="text"
+          value={form.farm}
+          onChange={(e) => handleChange('farm', e.target.value)}
+          placeholder="任意"
+          disabled={loading}
+        />
 
         {error && (
-          <div
-            role="alert"
-            style={{
-              padding: '0.75rem',
-              background: '#fff0f0',
-              border: '1px solid #cc0000',
-              borderRadius: '4px',
-              color: '#cc0000',
-              marginBottom: '1rem',
-              whiteSpace: 'pre-wrap',
-            }}
-          >
+          <div role="alert" className={styles.errorAlert}>
             {error}
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button
+        <div className={styles.actions}>
+          <Button
             type="submit"
-            disabled={loading}
-            style={{
-              flex: 1,
-              padding: '0.75rem',
-              background: loading ? '#ccc' : '#0066cc',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '1rem',
-              cursor: loading ? 'not-allowed' : 'pointer',
-            }}
+            variant="primary"
+            loading={loading}
+            fullWidth
           >
-            {isEditMode
-              ? (loading ? '更新中...' : '更新する')
-              : (loading ? '登録中...' : '牛を登録する')}
-          </button>
+            {isEditMode ? '更新する' : '牛を登録する'}
+          </Button>
           {onCancel && (
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={onCancel}
               disabled={loading}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: '#fff',
-                border: '1px solid #ccc',
-                borderRadius: '4px',
-                fontSize: '1rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
             >
               キャンセル
-            </button>
+            </Button>
           )}
         </div>
       </form>

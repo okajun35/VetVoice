@@ -10,6 +10,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, type CameraDevice } from 'html5-qrcode';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import { Button } from './ui/Button/Button';
+import { Spinner } from './ui/Spinner/Spinner';
+import styles from './QRScanner.module.css';
 
 const client = generateClient<Schema>();
 
@@ -138,23 +141,23 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
   };
 
   return (
-    <div className="qr-scanner">
-      <h2 className="qr-scanner__title">QRコードをスキャン</h2>
-      <p className="qr-scanner__description">
+    <div className={styles.scanner}>
+      <h2 className={styles.title}>QRコードをスキャン</h2>
+      <p className={styles.description}>
         牛の耳標またはケージに貼付されたQRコードをカメラに向けてください。
       </p>
 
       {/* Camera viewport — always in DOM so Html5Qrcode can bind to it */}
       <div
         id={SCANNER_ELEMENT_ID}
-        className="qr-scanner__reader"
+        className={styles.reader}
         style={{ display: scannerState === 'scanning' ? 'block' : 'none' }}
       />
 
       {scannerState === 'idle' && (
-        <div className="qr-scanner__controls">
+        <div className={styles.controls}>
           {cameras.length > 1 && (
-            <div className="qr-scanner__camera-select">
+            <div className={styles.cameraSelect}>
               <label htmlFor="camera-select">カメラ選択:</label>
               <select
                 id="camera-select"
@@ -169,45 +172,56 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
               </select>
             </div>
           )}
-          <button
+          <Button
             type="button"
-            className="qr-scanner__start-btn"
             onClick={handleStart}
             disabled={!selectedCameraId}
+            variant="primary"
+            size="lg"
           >
             スキャン開始
-          </button>
+          </Button>
         </div>
       )}
 
       {scannerState === 'scanning' && (
-        <div className="qr-scanner__controls">
-          <button type="button" className="qr-scanner__stop-btn" onClick={handleStop}>
+        <div className={styles.controls}>
+          <Button
+            type="button"
+            onClick={handleStop}
+            variant="secondary"
+            size="lg"
+          >
             スキャン停止
-          </button>
+          </Button>
         </div>
       )}
 
       {scannerState === 'loading' && (
-        <div className="qr-scanner__status" aria-live="polite">
-          <div className="qr-scanner__spinner" aria-hidden="true" />
+        <div className={styles.status} aria-live="polite">
+          <Spinner size="lg" />
           <p>
             牛情報を取得中...
             {scannedCowId && (
-              <span className="qr-scanner__cow-id"> (ID: {scannedCowId})</span>
+              <span className={styles.cowId}> (ID: {scannedCowId})</span>
             )}
           </p>
         </div>
       )}
 
       {scannerState === 'error' && (
-        <div className="qr-scanner__error" role="alert">
-          <p className="qr-scanner__error-message">
+        <div className={styles.error} role="alert">
+          <p className={styles.errorMessage}>
             {errorMessage ?? 'エラーが発生しました。'}
           </p>
-          <button type="button" className="qr-scanner__retry-btn" onClick={handleRetry}>
+          <Button
+            type="button"
+            onClick={handleRetry}
+            variant="primary"
+            size="md"
+          >
             再スキャン
-          </button>
+          </Button>
         </div>
       )}
     </div>

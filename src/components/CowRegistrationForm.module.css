@@ -1,0 +1,103 @@
+/* ========================================
+   CowRegistrationForm Component Styles
+   ======================================== */
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--spacing-4);
+}
+
+.title {
+  margin-top: 0;
+  margin-bottom: var(--spacing-6);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   Form Fields
+   ======================================== */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.required {
+  color: var(--color-danger);
+  margin-left: var(--spacing-1);
+}
+
+/* Select field - mirrors Input component design tokens */
+.select {
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+  min-height: var(--touch-target-min);
+  box-sizing: border-box;
+  appearance: auto;
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.select:focus {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-color: var(--color-primary);
+}
+
+.select:disabled {
+  background-color: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+  border-color: var(--color-disabled-border);
+  cursor: not-allowed;
+}
+
+.selectLabel {
+  display: block;
+  margin-bottom: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   Error Alert
+   ======================================== */
+
+.errorAlert {
+  padding: var(--spacing-3) var(--spacing-4);
+  background: var(--color-danger-subtle);
+  border: 2px solid var(--color-danger-outline);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  white-space: pre-wrap;
+  font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   Actions
+   ======================================== */
+
+.actions {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+}

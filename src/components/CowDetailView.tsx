@@ -7,6 +7,10 @@ import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import type { CowData } from '../lib/cow-filter';
+import { Button } from './ui/Button/Button';
+import { Card } from './ui/Card/Card';
+import { Spinner } from './ui/Spinner/Spinner';
+import styles from './CowDetailView.module.css';
 
 const client = generateClient<Schema>();
 
@@ -22,33 +26,6 @@ const SEX_LABELS: Record<string, string> = {
   FEMALE: '雌',
   MALE: '雄',
   CASTRATED: '去勢',
-};
-
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  borderBottom: '1px solid #eee',
-  padding: '0.5rem 0',
-};
-
-const labelStyle: React.CSSProperties = {
-  fontWeight: 'bold',
-  width: '140px',
-  flexShrink: 0,
-  color: '#555',
-  fontSize: '0.9rem',
-};
-
-const valueStyle: React.CSSProperties = {
-  flex: 1,
-  fontSize: '0.95rem',
-};
-
-const buttonStyle: React.CSSProperties = {
-  padding: '0.6rem 1rem',
-  border: 'none',
-  borderRadius: '4px',
-  fontSize: '0.95rem',
-  cursor: 'pointer',
 };
 
 export function CowDetailView({
@@ -86,120 +63,116 @@ export function CowDetailView({
 
   if (loading) {
     return (
-      <div style={{ padding: '1rem', textAlign: 'center', color: '#555' }}>
-        読み込み中...
+      <div className={styles.loadingContainer}>
+        <Spinner label="読み込み中..." />
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-        <button
-          type="button"
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onBack}
-          style={{ ...buttonStyle, background: 'none', border: '1px solid #ccc', color: '#333' }}
         >
           ← 戻る
-        </button>
-        <h2 style={{ margin: 0, fontSize: '1.1rem' }}>牛の詳細</h2>
+        </Button>
+        <h2 className={styles.title}>牛の詳細</h2>
       </div>
 
       {error && (
         <div
           role="alert"
-          style={{
-            padding: '0.75rem',
-            background: '#fff0f0',
-            border: '1px solid #cc0000',
-            borderRadius: '4px',
-            color: '#cc0000',
-            marginBottom: '1rem',
-          }}
+          className={styles.errorAlert}
         >
           {error}
-          <div style={{ marginTop: '0.5rem' }}>
-            <button
-              type="button"
+          <div className={styles.errorActions}>
+            <Button
+              variant="danger"
+              size="sm"
               onClick={fetchCow}
-              style={{ ...buttonStyle, background: '#cc0000', color: '#fff', fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
             >
               再取得
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {!error && !cow && (
-        <div style={{ padding: '1rem', color: '#555', textAlign: 'center' }}>
+        <div className={styles.notFound}>
           牛が見つかりません
         </div>
       )}
 
       {cow && (
         <>
-          <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: '6px', padding: '1rem', marginBottom: '1rem' }}>
-            <div style={rowStyle}>
-              <span style={labelStyle}>個体識別番号</span>
-              <span style={valueStyle}>{cow.cowId}</span>
+          <Card className={styles.detailsCard}>
+            <div className={styles.row}>
+              <span className={styles.label}>個体識別番号</span>
+              <span className={styles.value}>{cow.cowId}</span>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>耳標番号</span>
-              <span style={valueStyle}>{cow.earTagNo ?? '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>耳標番号</span>
+              <span className={styles.value}>{cow.earTagNo ?? '—'}</span>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>性別</span>
-              <span style={valueStyle}>{cow.sex ? (SEX_LABELS[cow.sex] ?? cow.sex) : '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>性別</span>
+              <span className={styles.value}>{cow.sex ? (SEX_LABELS[cow.sex] ?? cow.sex) : '—'}</span>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>品種</span>
-              <span style={valueStyle}>{cow.breed ?? '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>品種</span>
+              <span className={styles.value}>{cow.breed ?? '—'}</span>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>生年月日</span>
-              <span style={valueStyle}>{cow.birthDate ?? '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>生年月日</span>
+              <span className={styles.value}>{cow.birthDate ?? '—'}</span>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>産次</span>
-              <span style={valueStyle}>{cow.parity != null ? String(cow.parity) : '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>産次</span>
+              <span className={styles.value}>{cow.parity != null ? String(cow.parity) : '—'}</span>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>最終分娩日</span>
-              <span style={valueStyle}>{cow.lastCalvingDate ?? '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>最終分娩日</span>
+              <span className={styles.value}>{cow.lastCalvingDate ?? '—'}</span>
             </div>
-            <div style={rowStyle}>
-              <span style={labelStyle}>名前</span>
-              <span style={valueStyle}>{cow.name ?? '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>名前</span>
+              <span className={styles.value}>{cow.name ?? '—'}</span>
             </div>
-            <div style={{ ...rowStyle, borderBottom: 'none' }}>
-              <span style={labelStyle}>農場名</span>
-              <span style={valueStyle}>{cow.farm ?? '—'}</span>
+            <div className={styles.row}>
+              <span className={styles.label}>農場名</span>
+              <span className={styles.value}>{cow.farm ?? '—'}</span>
             </div>
-          </div>
+          </Card>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button
-              type="button"
+          <div className={styles.actions}>
+            <Button
+              variant="primary"
+              size="md"
+              fullWidth
               onClick={() => onStartVisit(cow.cowId)}
-              style={{ ...buttonStyle, background: '#0066cc', color: '#fff', fontWeight: 'bold' }}
             >
               診療開始
-            </button>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                type="button"
+            </Button>
+            <div className={styles.actionRow}>
+              <Button
+                variant="secondary"
+                size="md"
                 onClick={onEdit}
-                style={{ ...buttonStyle, flex: 1, background: '#fff', border: '1px solid #0066cc', color: '#0066cc' }}
+                style={{ flex: 1 }}
               >
                 編集
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
                 onClick={onGenerateQR}
-                style={{ ...buttonStyle, flex: 1, background: '#fff', border: '1px solid #555', color: '#333' }}
+                style={{ flex: 1 }}
               >
                 QRコード生成
-              </button>
+              </Button>
             </div>
           </div>
         </>
@@ -208,4 +181,3 @@ export function CowDetailView({
   );
 }
 
-export default CowDetailView;

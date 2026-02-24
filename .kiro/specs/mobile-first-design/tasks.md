@@ -31,7 +31,7 @@ VetVoiceのモバイルファーストデザインシステムを実装します
     - Verify CSS variables are available globally
     - _Requirements: 1.7_
 
-- [ ] 2. Phase 2: Core UI Components - Button
+- [x] 2. Phase 2: Core UI Components - Button
   - [x] 2.1 Implement Button component
     - Create `src/components/ui/Button/Button.tsx` with TypeScript interface
     - Support variants: primary, secondary, danger, ghost
@@ -60,7 +60,7 @@ VetVoiceのモバイルファーストデザインシステムを実装します
     - **Property 3: Button variant rendering**
     - **Validates: Requirements 5.1**
 
-- [ ] 3. Phase 2: Core UI Components - Input
+- [x] 3. Phase 2: Core UI Components - Input
   - [x] 3.1 Implement Input component
     - Create `src/components/ui/Input/Input.tsx` with TypeScript interface
     - Support label, error message, helper text
@@ -184,8 +184,8 @@ VetVoiceのモバイルファーストデザインシステムを実装します
     - Test different types
     - _Requirements: 5.7, 6.3_
 
-- [ ] 8. Phase 4: Theme Management
-  - [ ] 8.1 Implement theme utilities
+- [x] 8. Phase 4: Theme Management
+  - [x] 8.1 Implement theme utilities
     - Create `src/lib/theme.ts` with Theme type
     - Implement getTheme() with localStorage fallback
     - Implement setTheme() with localStorage persistence
@@ -193,34 +193,34 @@ VetVoiceのモバイルファーストデザインシステムを実装します
     - Implement getEffectiveTheme() for auto mode
     - _Requirements: 8.1, 8.2, 8.3_
   
-  - [ ] 8.2 Implement useTheme hook
+  - [x] 8.2 Implement useTheme hook
     - Create `src/hooks/useTheme.ts`
     - Use theme utilities
     - Apply data-theme attribute to document root
     - _Requirements: 8.2, 8.4_
   
-  - [ ] 8.3 Implement ThemeSwitcher component
+  - [x] 8.3 Implement ThemeSwitcher component
     - Create `src/components/ThemeSwitcher.tsx`
     - Support light, dark, auto options
     - Use Button component for UI
     - _Requirements: 8.2_
   
-  - [ ] 8.4 Write unit tests for theme utilities
+  - [x] 8.4 Write unit tests for theme utilities
     - Test getTheme() returns default when localStorage is empty
     - Test setTheme() persists to localStorage
     - Test getSystemTheme() detects system preference
     - Test getEffectiveTheme() resolves auto mode
     - _Requirements: 8.1, 8.2, 8.3_
   
-  - [ ] 8.5 Write property test for theme persistence
+  - [x] 8.5 Write property test for theme persistence
     - **Property 13: Theme persistence round-trip**
     - **Validates: Requirements 8.3**
 
-- [ ] 9. Checkpoint - Theme management complete
+- [x] 9. Checkpoint - Theme management complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Phase 5: Component Refactoring - CowListScreen
-  - [ ] 10.1 Refactor CowListScreen to use design system
+- [x] 10. Phase 5: Component Refactoring - CowListScreen
+  - [x] 10.1 Refactor CowListScreen to use design system
     - Replace inline styles with CSS Module
     - Use Button component for action buttons
     - Use Card component for cow list items
@@ -228,13 +228,13 @@ VetVoiceのモバイルファーストデザインシステムを実装します
     - Maintain existing functionality
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
   
-  - [ ] 10.2 Verify CowListScreen tests still pass
+  - [x] 10.2 Verify CowListScreen tests still pass
     - Run existing tests for CowListScreen
     - Ensure no functionality regression
     - _Requirements: 7.6_
 
-- [ ] 11. Phase 5: Component Refactoring - CowDetailView
-  - [ ] 11.1 Refactor CowDetailView to use design system
+- [x] 11. Phase 5: Component Refactoring - CowDetailView
+  - [x] 11.1 Refactor CowDetailView to use design system
     - Replace inline styles with CSS Module
     - Use Button component for action buttons
     - Use Card component for detail sections
@@ -242,13 +242,13 @@ VetVoiceのモバイルファーストデザインシステムを実装します
     - Maintain existing functionality
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
   
-  - [ ] 11.2 Verify CowDetailView tests still pass
+  - [x] 11.2 Verify CowDetailView tests still pass
     - Run existing tests for CowDetailView
     - Ensure no functionality regression
     - _Requirements: 7.6_
 
-- [ ] 12. Phase 5: Component Refactoring - CowRegistrationForm
-  - [ ] 12.1 Refactor CowRegistrationForm to use design system
+- [-] 12. Phase 5: Component Refactoring - CowRegistrationForm
+  - [x] 12.1 Refactor CowRegistrationForm to use design system
     - Replace inline styles with CSS Module
     - Use Input component for form fields
     - Use Button component for submit button
@@ -256,54 +256,54 @@ VetVoiceのモバイルファーストデザインシステムを実装します
     - Maintain existing functionality
     - _Requirements: 7.1, 7.2, 7.3, 7.5_
   
-  - [ ] 12.2 Verify CowRegistrationForm tests still pass
+  - [x] 12.2 Verify CowRegistrationForm tests still pass
     - Run existing tests for CowRegistrationForm
     - Ensure no functionality regression
     - _Requirements: 7.6_
 
-- [ ] 13. Phase 5: Component Refactoring - Other Components
-  - [ ] 13.1 Refactor VoiceRecorder to use design system
+- [x] 13. Phase 5: Component Refactoring - Other Components
+  - [x] 13.1 Refactor VoiceRecorder to use design system
     - Replace inline styles with CSS Module
     - Use Button component for record/stop buttons
     - Use Spinner component for loading states
     - _Requirements: 7.1, 7.2, 7.5_
   
-  - [ ] 13.2 Refactor VisitEditor to use design system
+  - [x] 13.2 Refactor VisitEditor to use design system
     - Replace inline styles with CSS Module
     - Use Input component for form fields
     - Use Button component for action buttons
     - Use Card component for sections
     - _Requirements: 7.1, 7.2, 7.3, 7.5_
   
-  - [ ] 13.3 Refactor QRScanner to use design system
+  - [x] 13.3 Refactor QRScanner to use design system
     - Replace inline styles with CSS Module
     - Use Button component for action buttons
     - Use Modal component if applicable
     - _Requirements: 7.1, 7.2, 7.5_
 
-- [ ] 14. Checkpoint - Component refactoring complete
+- [x] 14. Checkpoint - Component refactoring complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 15. Phase 6: Accessibility & Polish
-  - [ ] 15.1 Audit ARIA attributes across all components
+- [x] 15. Phase 6: Accessibility & Polish
+  - [x] 15.1 Audit ARIA attributes across all components
     - Verify all interactive elements have appropriate ARIA labels
     - Verify form fields have proper associations
     - Verify error messages are announced
     - _Requirements: 6.1, 6.2, 6.3_
   
-  - [ ] 15.2 Test keyboard navigation
+  - [x] 15.2 Test keyboard navigation
     - Verify all interactive elements are keyboard accessible
     - Verify Tab order is logical
     - Verify Enter/Space activate buttons
     - Verify Escape closes modals
     - _Requirements: 6.7_
   
-  - [ ] 15.3 Verify color contrast ratios
+  - [x] 15.3 Verify color contrast ratios
     - Check all text colors meet WCAG AA standards (4.5:1 for normal, 3:1 for large)
     - Check both light and dark themes
     - _Requirements: 6.6_
   
-  - [ ] 15.4 Polish animations and transitions
+  - [x] 15.4 Polish animations and transitions
     - Verify all transitions use appropriate durations (150-300ms)
     - Verify prefers-reduced-motion is respected
     - Verify animations don't block interaction

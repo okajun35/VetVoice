@@ -1,0 +1,85 @@
+/* CowDetailView CSS Module */
+
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--spacing-4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.errorAlert {
+  padding: var(--spacing-3);
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-outline);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  margin-bottom: var(--spacing-4);
+}
+
+.errorActions {
+  margin-top: var(--spacing-2);
+}
+
+.notFound {
+  padding: var(--spacing-4);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.detailsCard {
+  margin-bottom: var(--spacing-4);
+}
+
+.row {
+  display: flex;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: var(--spacing-2) 0;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-weight: var(--font-weight-semibold);
+  width: 140px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.value {
+  flex: 1;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.actionRow {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.loadingContainer {
+  padding: var(--spacing-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
