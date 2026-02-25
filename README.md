@@ -61,6 +61,7 @@ TRANSCRIBE_VOCABULARY_NAME=vetvoice-ja-vocab-v1
 | `assets/dictionary.csv` | 略語・言い間違いの正規化辞書 | `Dictionary_Expander`（ルールベース展開） | 運用者（獣医ドメイン知識あり） |
 | `assets/byoumei.csv` | 病名マスタ（病名コード候補） | `Master_Matcher`（`a[]` の病名照合） | 運用者（公式マスタ改定時） |
 | `assets/shinryo_tensu_master_flat.csv` | 処置/点数マスタ | `Master_Matcher`（`p[]` の処置照合） | 運用者（点数改定時） |
+| `assets/normalization_rules.json` | 正規化ルール（薬剤名・投与経路・canonical補正） | `Master_Matcher` / `runPipeline` | 運用者＋開発者（誤認識対策時） |
 | `assets/transcribe-vocabulary-vetvoice-ja-v1.txt` | Transcribe Custom Vocabulary（読み補助） | Amazon Transcribe（音声認識前段） | 運用者（専門語追加時） |
 | `assets/prompts/extractor.txt` | Extractor用プロンプト | Extractor LLM | 開発者（抽出仕様変更時） |
 
@@ -86,6 +87,27 @@ npm run build
 
 補足:
 - CI/Amplify build でも `npm run generate-assets` は実行されますが、ローカルでも先に実行して差分をコミットする運用を推奨します。
+
+## 正規化ルールの使い方（案3）
+
+薬剤名や投与経路の置換ルールは `assets/normalization_rules.json` で管理します。  
+追加・修正したら、以下を実行してください。
+
+```bash
+# 1) ルール編集
+$EDITOR assets/normalization_rules.json
+
+# 2) 生成モジュール更新
+npm run generate-assets
+
+# 3) 動作確認
+npm test
+npm run build
+```
+
+ポイント:
+- `amplify/data/handlers/generated/normalization-rules-data.ts` は自動生成物です（直接編集しない）。
+- ルール仕様（各キーの意味・適用順序・注意事項）は `doc/normalization-rules.md` を参照。
 
 ## Transcribe語彙ファイル更新手順（AWS側反映が必要）
 
