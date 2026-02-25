@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   matchDisease,
   matchProcedure,
+  matchDrug,
   resetMasterMatcherCache,
   CONFIDENCE_THRESHOLD,
 } from "../../amplify/data/handlers/master-matcher";
@@ -128,6 +129,14 @@ describe("Master_Matcher: matchDisease()", () => {
     expect(result.candidates[0].code).toBe("03-14");
     expect(result.top_confirmed).toBe(true);
   });
+
+  it("normalizes speculative phrase and matches '乳房炎かと思います' to a 07 category disease", () => {
+    const result = matchDisease("乳房炎かと思います");
+
+    expect(result.candidates.length).toBeGreaterThan(0);
+    expect(result.candidates[0].code.startsWith("07")).toBe(true);
+    expect(result.top_confirmed).toBe(true);
+  });
 });
 
 describe("Master_Matcher: matchProcedure()", () => {
@@ -225,8 +234,8 @@ describe("Master_Matcher: confidence threshold behavior", () => {
     resetMasterMatcherCache();
   });
 
-  it("CONFIDENCE_THRESHOLD is 0.5", () => {
-    expect(CONFIDENCE_THRESHOLD).toBe(0.5);
+  it("CONFIDENCE_THRESHOLD is 0.6", () => {
+    expect(CONFIDENCE_THRESHOLD).toBe(0.6);
   });
 
   it("top_confirmed is true when top candidate confidence >= threshold", () => {
@@ -250,5 +259,36 @@ describe("Master_Matcher: confidence threshold behavior", () => {
   it("exact match for procedure produces high confidence score", () => {
     const result = matchProcedure("初診");
     expect(result.candidates[0].confidence).toBeGreaterThan(0.8);
+  });
+});
+
+describe("Master_Matcher: matchDrug()", () => {
+  beforeEach(() => {
+    resetMasterMatcherCache();
+  });
+
+  it("matches generic drug name and returns drug_reference source", () => {
+    const result = matchDrug("アスコルビン酸注射液");
+
+    expect(result.candidates.length).toBeGreaterThan(0);
+    expect(result.candidates[0].name).toBe("アスコルビン酸注射液");
+    expect(result.candidates[0].master_source).toBe("drug_reference");
+    expect(result.candidates[0].code).toBe("DRUG:アスコルビン酸注射液");
+    expect(result.top_confirmed).toBe(true);
+  });
+
+  it("normalizes product alias to generic_name", () => {
+    const result = matchDrug("アモキシシリンLA注");
+
+    expect(result.candidates.length).toBeGreaterThan(0);
+    expect(result.candidates[0].name).toBe("アモキシシリン油性懸濁注射液");
+    expect(result.top_confirmed).toBe(true);
+  });
+
+  it("returns empty candidates for empty input", () => {
+    const result = matchDrug("");
+
+    expect(result.candidates).toHaveLength(0);
+    expect(result.top_confirmed).toBe(false);
   });
 });

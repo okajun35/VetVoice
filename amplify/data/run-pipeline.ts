@@ -20,7 +20,7 @@ import { transcribe } from "./handlers/transcriber";
 import { expand } from "./handlers/dictionary-expander";
 import { extract } from "./handlers/extractor";
 import { parse, stringify, type ExtractedJSON } from "./handlers/parser";
-import { matchDisease, matchProcedure } from "./handlers/master-matcher";
+import { matchDisease, matchProcedure, matchDrug } from "./handlers/master-matcher";
 import { selectTemplate } from "./handlers/template-selector";
 import { generateSOAP } from "./handlers/soap-generator";
 import { generateKyosai } from "./handlers/kyosai-generator";
@@ -57,6 +57,7 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
 
     return {
       ...item,
+      ...(result.top_confirmed && { name: top.name }),
       confidence: top.confidence,
       master_code: top.code,
       status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),
@@ -64,12 +65,16 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
   });
 
   const enrichedP = extractedJson.p.map((item) => {
-    // Current procedure master is for treatment codes; skip drug terms.
-    if (item.type !== "procedure") {
+    const result =
+      item.type === "procedure"
+        ? matchProcedure(item.name)
+        : item.type === "drug"
+          ? matchDrug(item.name)
+          : null;
+
+    if (!result) {
       return item;
     }
-
-    const result = matchProcedure(item.name);
     const top = result.candidates[0];
 
     if (!top || top.confidence <= 0) {
@@ -78,6 +83,7 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
 
     return {
       ...item,
+      ...(result.top_confirmed && { name: top.name }),
       confidence: top.confidence,
       master_code: top.code,
       status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),

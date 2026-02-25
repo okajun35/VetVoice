@@ -3,7 +3,8 @@
  * Feature: vet-voice-medical-record
  * Task 5.1
  *
- * Fuzzy string matching against byoumei.csv and shinryo_tensu_master_flat.csv.
+ * Fuzzy string matching against byoumei.csv, shinryo_tensu_master_flat.csv,
+ * and reference_compact.csv (drug reference).
  * LLM: Not used (deterministic fuzzy matching)
  * Dependencies: None (pure function, CSV loaded at cold start)
  *
@@ -12,6 +13,7 @@
 
 import { BYOUMEI_CSV } from "./generated/byoumei-data";
 import { SHINRYO_TENSU_CSV } from "./generated/shinryo-tensu-data";
+import { REFERENCE_COMPACT_CSV } from "./generated/reference-compact-data";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,7 +23,7 @@ export interface MatchCandidate {
   name: string;
   code: string;
   confidence: number; // 0.0 - 1.0
-  master_source: "byoumei" | "shinryo_tensu";
+  master_source: "byoumei" | "shinryo_tensu" | "drug_reference";
   details: Record<string, string | number>;
 }
 
@@ -36,7 +38,7 @@ export interface MatchResult {
 // ---------------------------------------------------------------------------
 
 /** Candidates below this threshold are considered "unconfirmed" */
-export const CONFIDENCE_THRESHOLD = 0.5;
+export const CONFIDENCE_THRESHOLD = 0.6;
 
 /** Maximum number of candidates to return */
 const MAX_CANDIDATES = 3;
@@ -67,12 +69,19 @@ interface ProcedureEntry {
   pointsA: number;
 }
 
+interface DrugEntry {
+  genericName: string;
+  code: string;
+  aliases: string[];
+}
+
 // ---------------------------------------------------------------------------
 // Module-level cache (cold start optimization)
 // ---------------------------------------------------------------------------
 
 let diseaseCache: DiseaseEntry[] | null = null;
 let procedureCache: ProcedureEntry[] | null = null;
+let drugCache: DrugEntry[] | null = null;
 
 // ---------------------------------------------------------------------------
 // CSV loading helpers
@@ -206,6 +215,67 @@ function loadProcedures(): ProcedureEntry[] {
 }
 
 /**
+ * Parse reference_compact.csv into DrugEntry[].
+ * CSV format:
+ *   display_name,generic_name,product_name,manufacturer,spec_unit,price_yen,notes,...
+ *
+ * Dedupe by generic_name and merge aliases (display_name/product_name/notes).
+ */
+function loadDrugs(): DrugEntry[] {
+  if (drugCache) return drugCache;
+
+  const lines = REFERENCE_COMPACT_CSV.split("\n").slice(1); // skip header
+  const entries = new Map<string, { genericName: string; aliases: Set<string> }>();
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+
+    const parts = splitCsvLine(line);
+    if (parts.length < 2) continue;
+
+    const displayName = (parts[0] ?? "").trim();
+    const genericName = (parts[1] ?? "").trim() || displayName;
+    const productName = (parts[2] ?? "").trim();
+    const notes = (parts[6] ?? "").trim();
+
+    if (!genericName) continue;
+
+    const key = normalizeMatchText(genericName);
+    if (!key) continue;
+
+    const row = entries.get(key) ?? {
+      genericName,
+      aliases: new Set<string>(),
+    };
+
+    row.aliases.add(genericName);
+    if (displayName) row.aliases.add(displayName);
+    if (productName) row.aliases.add(productName);
+    for (const alias of splitAliasesFromNotes(notes)) {
+      row.aliases.add(alias);
+    }
+
+    entries.set(key, row);
+  }
+
+  drugCache = Array.from(entries.values()).map((entry) => ({
+    genericName: entry.genericName,
+    code: `DRUG:${entry.genericName}`,
+    aliases: Array.from(entry.aliases),
+  }));
+
+  return drugCache;
+}
+
+function splitAliasesFromNotes(notes: string): string[] {
+  if (!notes) return [];
+  return notes
+    .split(/[、，,/]/u)
+    .map((text) => text.trim())
+    .filter((text) => text.length > 0);
+}
+
+/**
  * Simple CSV line splitter that handles double-quoted fields.
  */
 function splitCsvLine(line: string): string[] {
@@ -242,12 +312,33 @@ function normalizeMatchText(text: string): string {
 }
 
 function normalizeDiseaseQuery(text: string): string {
-  const normalized = normalizeMatchText(text);
+  const normalized = stripSpeculationSuffix(normalizeMatchText(text));
   return normalized
     .replace(/(?:の)?疑いあり$/u, "")
     .replace(/(?:の)?疑い$/u, "")
     .replace(/疑$/u, "")
     .replace(/未確認$/u, "");
+}
+
+function normalizeProcedureQuery(text: string): string {
+  return stripSpeculationSuffix(normalizeMatchText(text));
+}
+
+function normalizeDrugQuery(text: string): string {
+  return stripSpeculationSuffix(normalizeMatchText(text))
+    .replace(/(?:を)?投与(?:した)?$/u, "")
+    .replace(/(?:を)?注射(?:した)?$/u, "");
+}
+
+function stripSpeculationSuffix(text: string): string {
+  return text
+    .replace(/(?:か)?と思います$/u, "")
+    .replace(/(?:か)?と考えます$/u, "")
+    .replace(/(?:と思われます|と考えられます)$/u, "")
+    .replace(/(?:と推定されます|と推定)$/u, "")
+    .replace(/(?:の)?可能性(?:があります)?$/u, "")
+    .replace(/(?:かもしれません|かも)$/u, "")
+    .replace(/(?:でしょう)$/u, "");
 }
 
 /**
@@ -387,7 +478,7 @@ export function matchDisease(name: string): MatchResult {
  */
 export function matchProcedure(name: string): MatchResult {
   const procedures = loadProcedures();
-  const queryForMatch = normalizeMatchText(name);
+  const queryForMatch = normalizeProcedureQuery(name);
 
   if (!queryForMatch) {
     return { query: name, candidates: [], top_confirmed: false };
@@ -423,10 +514,54 @@ export function matchProcedure(name: string): MatchResult {
 }
 
 /**
+ * Match a drug name against reference_compact.csv generic_name master.
+ *
+ * @param name Drug name to match (e.g. "アンピシリン", "アモキシシリンLA注")
+ * @returns MatchResult with top 3 candidates and confirmation status
+ */
+export function matchDrug(name: string): MatchResult {
+  const drugs = loadDrugs();
+  const queryForMatch = normalizeDrugQuery(name);
+
+  if (!queryForMatch) {
+    return { query: name, candidates: [], top_confirmed: false };
+  }
+
+  const scored = drugs.map((entry) => ({
+    entry,
+    score: entry.aliases.reduce((best, alias) => {
+      const aliasScore = computeFuzzyScore(queryForMatch, alias);
+      return aliasScore > best ? aliasScore : best;
+    }, 0),
+  }));
+
+  scored.sort((a, b) => b.score - a.score);
+
+  const candidates: MatchCandidate[] = scored
+    .slice(0, MAX_CANDIDATES)
+    .map(({ entry, score }) => ({
+      name: entry.genericName,
+      code: entry.code,
+      confidence: Math.round(score * 1000) / 1000,
+      master_source: "drug_reference" as const,
+      details: {
+        genericName: entry.genericName,
+        aliasCount: entry.aliases.length,
+      },
+    }));
+
+  const top_confirmed =
+    candidates.length > 0 && candidates[0].confidence >= CONFIDENCE_THRESHOLD;
+
+  return { query: name, candidates, top_confirmed };
+}
+
+/**
  * Reset master data caches (for test isolation).
  * @internal
  */
 export function resetMasterMatcherCache(): void {
   diseaseCache = null;
   procedureCache = null;
+  drugCache = null;
 }

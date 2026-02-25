@@ -114,4 +114,4 @@ export function getModelConfig(
  * Candidates below this score are marked as Unconfirmed.
  * Centralized here for use across components.
  */
-export const CONFIDENCE_THRESHOLD = 0.5;
+export const CONFIDENCE_THRESHOLD = 0.6;
