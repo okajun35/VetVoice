@@ -7,7 +7,13 @@ import './styles/reset.css';
 import './styles/global.css';
 import './styles/design-system.css';
 import './index.css';
-import outputs from '../amplify_outputs.json';
+
+const amplifyOutputsModules = import.meta.glob('../amplify_outputs.json', { eager: true });
+const outputs =
+  '../amplify_outputs.json' in amplifyOutputsModules
+    ? (amplifyOutputsModules['../amplify_outputs.json'] as { default: Record<string, unknown> })
+        .default
+    : {};
 
 Amplify.configure(outputs);
 

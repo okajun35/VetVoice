@@ -56,6 +56,7 @@ export function parse(jsonString: string): ParseResult {
   const errors: string[] = [];
 
   // Step 1: JSON文字列のパース
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Runtime shape is validated field-by-field below.
   let parsed: any;
   try {
     parsed = JSON.parse(jsonString);

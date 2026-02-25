@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildInitialFormState,
   type FormState,
-} from '../../src/components/CowRegistrationForm';
+} from '../../src/components/cowRegistrationForm.helpers';
 
 // ---------------------------------------------------------------------------
 // Helpers

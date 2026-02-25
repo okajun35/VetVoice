@@ -4,9 +4,9 @@
  * Task 2.2
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import { completeVisitArb, cowIdArb, visitIdArb, isoDatetimeArb, extractedJsonArb } from "../helpers/generators";
+import { completeVisitArb, cowIdArb, isoDatetimeArb, extractedJsonArb } from "../helpers/generators";
 
 /**
  * モックAmplify Dataクライアント
@@ -17,9 +17,9 @@ interface Visit {
   cowId: string;
   datetime: string;
   status: "IN_PROGRESS" | "COMPLETED";
-  transcriptRaw?: string;
+  transcriptRaw?: string | null;
   transcriptExpanded?: string;
-  extractedJson?: any;
+  extractedJson?: unknown;
   soapText?: string;
   kyosaiText?: string;
   templateType?: string;
@@ -168,17 +168,17 @@ describe("Feature: vet-voice-medical-record, Property 11: Visitデータ保全�
 
         // transcript_raw を削除しようとする（null）
         await expect(
-          dataStore.updateVisit(visit.visitId, { transcriptRaw: null as any })
+          dataStore.updateVisit(visit.visitId, { transcriptRaw: null })
         ).rejects.toThrow("Cannot delete or clear transcriptRaw");
 
         // extracted_json を削除しようとする（null）
         await expect(
-          dataStore.updateVisit(visit.visitId, { extractedJson: null as any })
+          dataStore.updateVisit(visit.visitId, { extractedJson: null })
         ).rejects.toThrow("Cannot delete or clear extractedJson");
 
         // extracted_json を削除しようとする（undefined）
         await expect(
-          dataStore.updateVisit(visit.visitId, { extractedJson: undefined as any })
+          dataStore.updateVisit(visit.visitId, { extractedJson: undefined })
         ).rejects.toThrow("Cannot delete or clear extractedJson");
 
         // 元のデータが保持されていることを確認

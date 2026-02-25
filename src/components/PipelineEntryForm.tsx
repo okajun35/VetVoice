@@ -10,6 +10,12 @@ import { generateClient } from 'aws-amplify/data';
 import { uploadData } from 'aws-amplify/storage';
 import type { Schema } from '../../amplify/data/resource';
 import { VoiceRecorder } from './VoiceRecorder';
+import {
+  TABS_BY_MODE,
+  TAB_LABELS,
+  type FormMode,
+  type TabMode,
+} from './pipelineEntryForm.constants';
 
 const client = generateClient<Schema>();
 
@@ -29,9 +35,7 @@ export interface PipelineResult {
   warnings?: (string | null)[] | null;
 }
 
-export type FormMode = 'dev' | 'production';
-
-export type TabMode = 'TEXT_INPUT' | 'AUDIO_FILE' | 'JSON_INPUT' | 'PRODUCTION';
+export type { FormMode, TabMode } from './pipelineEntryForm.constants';
 
 export interface PipelineEntryFormProps {
   cowId: string;
@@ -43,18 +47,6 @@ export interface PipelineEntryFormProps {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-export const TABS_BY_MODE: Record<FormMode, TabMode[]> = {
-  dev: ['TEXT_INPUT', 'AUDIO_FILE', 'JSON_INPUT', 'PRODUCTION'],
-  production: ['PRODUCTION', 'TEXT_INPUT'],
-};
-
-export const TAB_LABELS: Record<TabMode, string> = {
-  TEXT_INPUT: 'テキスト入力',
-  AUDIO_FILE: '音声ファイル',
-  JSON_INPUT: 'JSON入力',
-  PRODUCTION: '本番（録音）',
-};
 
 const MODEL_OPTIONS = [
   { value: '', label: '(default)' },

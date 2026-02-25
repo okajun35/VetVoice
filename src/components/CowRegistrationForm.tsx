@@ -10,21 +10,15 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
 import { Input } from './ui/Input/Input';
 import { Button } from './ui/Button/Button';
+import {
+  buildInitialFormState,
+  type FormState,
+} from './cowRegistrationForm.helpers';
 import styles from './CowRegistrationForm.module.css';
 
 const client = generateClient<Schema>();
 
-export interface FormState {
-  cowId: string;
-  earTagNo: string;
-  sex: 'FEMALE' | 'MALE' | 'CASTRATED' | '';
-  breed: string;
-  birthDate: string;
-  parity: string;
-  lastCalvingDate: string;
-  name: string;
-  farm: string;
-}
+export type { FormState } from './cowRegistrationForm.helpers';
 
 interface CowRegistrationFormProps {
   mode?: 'create' | 'edit';
@@ -32,27 +26,6 @@ interface CowRegistrationFormProps {
   initialData?: Partial<FormState>;
   onRegistered: (cowId: string) => void;
   onCancel?: () => void;
-}
-
-/** Pure helper: compute initial FormState from props. Exported for testing. */
-export function buildInitialFormState(
-  initialCowId: string,
-  initialData?: Partial<FormState>,
-): FormState {
-  return {
-    cowId: initialData?.cowId ?? initialCowId,
-    earTagNo: initialData?.earTagNo ?? '',
-    sex: initialData?.sex ?? '',
-    breed: initialData?.breed ?? '',
-    birthDate: initialData?.birthDate ?? '',
-    parity:
-      initialData?.parity !== undefined && initialData.parity !== null
-        ? String(initialData.parity)
-        : '',
-    lastCalvingDate: initialData?.lastCalvingDate ?? '',
-    name: initialData?.name ?? '',
-    farm: initialData?.farm ?? '',
-  };
 }
 
 export function CowRegistrationForm({

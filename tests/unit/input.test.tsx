@@ -117,7 +117,7 @@ describe('Input component', () => {
     });
 
     it('hides helper text when error is present', () => {
-      const { container } = render(
+      render(
         <Input label="Email" helperText="Enter your email" error="Invalid email" />
       );
       
