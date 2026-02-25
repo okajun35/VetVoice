@@ -30,7 +30,7 @@ export interface MatchCandidate {
 export interface MatchResult {
   query: string;
   candidates: MatchCandidate[]; // top 3
-  top_confirmed: boolean; // true if top candidate >= CONFIDENCE_THRESHOLD
+  top_confirmed: boolean; // true if top candidate >= per-kind threshold
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,9 @@ export interface MatchResult {
 // ---------------------------------------------------------------------------
 
 /** Candidates below this threshold are considered "unconfirmed" */
-export const CONFIDENCE_THRESHOLD = 0.6;
+export const DISEASE_CONFIDENCE_THRESHOLD = 0.65;
+export const PROCEDURE_CONFIDENCE_THRESHOLD = 0.85;
+export const DRUG_CONFIDENCE_THRESHOLD = 0.8;
 
 /** Maximum number of candidates to return */
 const MAX_CANDIDATES = 3;
@@ -465,7 +467,8 @@ export function matchDisease(name: string): MatchResult {
     }));
 
   const top_confirmed =
-    candidates.length > 0 && candidates[0].confidence >= CONFIDENCE_THRESHOLD;
+    candidates.length > 0 &&
+    candidates[0].confidence >= DISEASE_CONFIDENCE_THRESHOLD;
 
   return { query: name, candidates, top_confirmed };
 }
@@ -508,7 +511,8 @@ export function matchProcedure(name: string): MatchResult {
     }));
 
   const top_confirmed =
-    candidates.length > 0 && candidates[0].confidence >= CONFIDENCE_THRESHOLD;
+    candidates.length > 0 &&
+    candidates[0].confidence >= PROCEDURE_CONFIDENCE_THRESHOLD;
 
   return { query: name, candidates, top_confirmed };
 }
@@ -551,7 +555,7 @@ export function matchDrug(name: string): MatchResult {
     }));
 
   const top_confirmed =
-    candidates.length > 0 && candidates[0].confidence >= CONFIDENCE_THRESHOLD;
+    candidates.length > 0 && candidates[0].confidence >= DRUG_CONFIDENCE_THRESHOLD;
 
   return { query: name, candidates, top_confirmed };
 }
