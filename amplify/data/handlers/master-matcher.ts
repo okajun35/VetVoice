@@ -236,8 +236,8 @@ function normalizeMatchText(text: string): string {
   return text
     .normalize("NFKC")
     .trim()
-    .replace(/[　\s]+/g, "")
-    .replace(/[()（）\[\]［］「」『』、。・,:;'"`]/g, "")
+    .replace(/[\u3000\s]+/g, "")
+    .replace(/[()（）\u005b\u005d［］「」『』、。・,:;'"`]/g, "")
     .replace(/[?？]+$/g, "");
 }
 

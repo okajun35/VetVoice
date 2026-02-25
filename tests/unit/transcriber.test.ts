@@ -10,6 +10,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { transcribe } from "../../amplify/data/handlers/transcriber";
 import type { TranscribeInput } from "../../amplify/data/handlers/transcriber";
 
+type TranscribeClientArg = Parameters<typeof transcribe>[1];
+type S3ClientArg = NonNullable<Parameters<typeof transcribe>[2]>;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -39,6 +42,14 @@ function makeS3Client(body: string) {
       },
     }),
   };
+}
+
+function asTranscribeClient(client: { send: ReturnType<typeof vi.fn> }): TranscribeClientArg {
+  return client as unknown as TranscribeClientArg;
+}
+
+function asS3Client(client: { send: ReturnType<typeof vi.fn> }): S3ClientArg {
+  return client as unknown as S3ClientArg;
 }
 
 const BASE_INPUT: TranscribeInput = {
@@ -76,7 +87,7 @@ describe("Transcriber: happy path", () => {
         },
       });
 
-    const promise = transcribe(BASE_INPUT, mockTranscribeClient as any, mockS3 as any, 1);
+    const promise = transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 1);
     await vi.runAllTimersAsync();
     await promise;
 
@@ -104,7 +115,7 @@ describe("Transcriber: happy path", () => {
         },
       });
 
-    const promise = transcribe(BASE_INPUT, mockTranscribeClient as any, mockS3 as any, 1);
+    const promise = transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 1);
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -128,7 +139,7 @@ describe("Transcriber: happy path", () => {
         },
       });
 
-    const promise = transcribe(BASE_INPUT, mockTranscribeClient as any, mockS3 as any, 3);
+    const promise = transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 3);
     await vi.runAllTimersAsync();
     await promise;
 
@@ -150,7 +161,7 @@ describe("Transcriber: happy path", () => {
         },
       });
 
-    const promise = transcribe(BASE_INPUT, mockTranscribeClient as any, mockS3 as any, 1);
+    const promise = transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 1);
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -175,7 +186,7 @@ describe("Transcriber: happy path", () => {
       vocabularyName: "vetvoice-vocabulary",
     };
 
-    const promise = transcribe(inputWithVocab, mockTranscribeClient as any, mockS3 as any, 1);
+    const promise = transcribe(inputWithVocab, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 1);
     await vi.runAllTimersAsync();
     await promise;
 
@@ -196,7 +207,7 @@ describe("Transcriber: happy path", () => {
         },
       });
 
-    const promise = transcribe(BASE_INPUT, mockTranscribeClient as any, mockS3 as any, 1);
+    const promise = transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 1);
     await vi.runAllTimersAsync();
     await promise;
 
@@ -218,7 +229,7 @@ describe("Transcriber: happy path", () => {
       });
 
     const mp3Input: TranscribeInput = { ...BASE_INPUT, audioKey: "audio/recording.mp3" };
-    const promise = transcribe(mp3Input, mockTranscribeClient as any, mockS3 as any, 1);
+    const promise = transcribe(mp3Input, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 1);
     await vi.runAllTimersAsync();
     await promise;
 
@@ -244,7 +255,7 @@ describe("Transcriber: happy path", () => {
         },
       });
 
-    const promise = transcribe(BASE_INPUT, mockTranscribeClient as any, mockS3 as any, 1);
+    const promise = transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 1);
     await vi.runAllTimersAsync();
     const result = await promise;
 
@@ -289,7 +300,7 @@ describe("Transcriber: error handling", () => {
       });
 
     await expect(
-      runWithTimers(() => transcribe(BASE_INPUT, mockTranscribeClient as any, undefined, 1)),
+      runWithTimers(() => transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), undefined, 1)),
     ).rejects.toThrow("Transcription job failed: Unsupported audio format");
   });
 
@@ -301,7 +312,7 @@ describe("Transcriber: error handling", () => {
       });
 
     await expect(
-      runWithTimers(() => transcribe(BASE_INPUT, mockTranscribeClient as any, undefined, 1)),
+      runWithTimers(() => transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), undefined, 1)),
     ).rejects.toThrow("Transcription job failed: Unknown failure");
   });
 
@@ -311,7 +322,7 @@ describe("Transcriber: error handling", () => {
     });
 
     await expect(
-      runWithTimers(() => transcribe(BASE_INPUT, mockTranscribeClient as any, undefined, 2)),
+      runWithTimers(() => transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), undefined, 2)),
     ).rejects.toThrow("Transcription job timed out");
   });
 
@@ -322,7 +333,7 @@ describe("Transcriber: error handling", () => {
 
     // maxPolls=3, POLL_INTERVAL_MS=5000 => 15 seconds
     await expect(
-      runWithTimers(() => transcribe(BASE_INPUT, mockTranscribeClient as any, undefined, 3)),
+      runWithTimers(() => transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), undefined, 3)),
     ).rejects.toThrow("15 seconds");
   });
 
@@ -337,7 +348,7 @@ describe("Transcriber: error handling", () => {
       });
 
     await expect(
-      runWithTimers(() => transcribe(BASE_INPUT, mockTranscribeClient as any, undefined, 1)),
+      runWithTimers(() => transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), undefined, 1)),
     ).rejects.toThrow("TranscriptFileUri is missing");
   });
 });
@@ -370,7 +381,7 @@ describe("Transcriber: QUEUED status handling", () => {
         },
       });
 
-    const promise = transcribe(BASE_INPUT, mockTranscribeClient as any, mockS3 as any, 3);
+    const promise = transcribe(BASE_INPUT, asTranscribeClient(mockTranscribeClient), asS3Client(mockS3), 3);
     await vi.runAllTimersAsync();
     const result = await promise;
 

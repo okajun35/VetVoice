@@ -12,6 +12,8 @@ import { extract } from "../../amplify/data/handlers/extractor";
 import { parse, stringify } from "../../amplify/data/handlers/parser";
 import { extractedJsonArb } from "../helpers/generators";
 
+type ExtractorClient = Parameters<typeof extract>[1];
+
 // ---------------------------------------------------------------------------
 // Helper: build a mock BedrockRuntimeClient that returns a given JSON string
 // ---------------------------------------------------------------------------
@@ -26,6 +28,10 @@ function makeBedrockClient(responseText: string) {
       },
     }),
   };
+}
+
+function asExtractorClient(client: { send: ReturnType<typeof vi.fn> }): ExtractorClient {
+  return client as unknown as ExtractorClient;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,7 +51,7 @@ describe("Feature: vet-voice-medical-record, Property 14: Extractor output schem
 
         const result = await extract(
           { expanded_text: "診療テキスト" },
-          client as any,
+          asExtractorClient(client),
         );
 
         // The result must round-trip through parse/stringify successfully
@@ -63,7 +69,7 @@ describe("Feature: vet-voice-medical-record, Property 14: Extractor output schem
 
         const result = await extract(
           { expanded_text: "診療テキスト" },
-          client as any,
+          asExtractorClient(client),
         );
 
         // Result should match the mock JSON exactly
@@ -82,7 +88,7 @@ describe("Feature: vet-voice-medical-record, Property 14: Extractor output schem
 
         const result = await extract(
           { expanded_text: "診療テキスト" },
-          client as any,
+          asExtractorClient(client),
         );
 
         // Must always return a schema-compliant object
@@ -100,7 +106,7 @@ describe("Feature: vet-voice-medical-record, Property 14: Extractor output schem
 
         const result = await extract(
           { expanded_text: "診療テキスト" },
-          client as any,
+          asExtractorClient(client),
         );
 
         // Must always return a schema-compliant object (falls back to empty default)

@@ -41,8 +41,16 @@ vi.mock('aws-amplify/storage', () => {
 });
 
 // Get mock references
-const { __mockRunPipeline: mockRunPipeline } = await import('aws-amplify/data') as any;
-const { __mockUploadData: mockUploadData } = await import('aws-amplify/storage') as any;
+const { __mockRunPipeline: mockRunPipeline } = await import(
+  'aws-amplify/data'
+) as unknown as {
+  __mockRunPipeline: ReturnType<typeof vi.fn>;
+};
+const { __mockUploadData: mockUploadData } = await import(
+  'aws-amplify/storage'
+) as unknown as {
+  __mockUploadData: ReturnType<typeof vi.fn>;
+};
 
 // Mock VoiceRecorder component
 vi.mock('../../src/components/VoiceRecorder', () => ({
@@ -425,7 +433,7 @@ describe('PipelineEntryForm component', () => {
       const user = userEvent.setup();
       
       // Create a promise that we can control
-      let resolvePromise: (value: any) => void;
+      let resolvePromise: (value: unknown) => void;
       const promise = new Promise((resolve) => {
         resolvePromise = resolve;
       });
@@ -474,7 +482,7 @@ describe('PipelineEntryForm component', () => {
       const user = userEvent.setup();
       
       // Create a controlled promise for upload
-      let resolveUpload: (value: any) => void;
+      let resolveUpload: (value: unknown) => void;
       const uploadPromise = new Promise((resolve) => {
         resolveUpload = resolve;
       });

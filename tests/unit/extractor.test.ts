@@ -11,6 +11,8 @@ import { extract } from "../../amplify/data/handlers/extractor";
 import type { ExtractorInput } from "../../amplify/data/handlers/extractor";
 import type { ExtractedJSON } from "../../amplify/data/handlers/parser";
 
+type ExtractorClient = Parameters<typeof extract>[1];
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -31,6 +33,10 @@ function makeFailingBedrockClient(error: Error = new Error("Bedrock error")) {
   return {
     send: vi.fn().mockRejectedValue(error),
   };
+}
+
+function asExtractorClient(client: { send: ReturnType<typeof vi.fn> }): ExtractorClient {
+  return client as unknown as ExtractorClient;
 }
 
 const EMPTY_EXTRACTED_JSON: ExtractedJSON = {
@@ -61,7 +67,7 @@ describe("Extractor: happy path", () => {
     const client = makeBedrockClient(JSON.stringify(mockJson));
     const result = await extract(
       { expanded_text: "体温39.5度、食欲不振、第四胃変位疑い" },
-      client as any,
+      asExtractorClient(client),
     );
 
     expect(result.vital.temp_c).toBe(39.5);
@@ -82,7 +88,7 @@ describe("Extractor: happy path", () => {
     };
 
     const client = makeBedrockClient(JSON.stringify(mockJson));
-    const result = await extract({ expanded_text: "体温40.2度" }, client as any);
+    const result = await extract({ expanded_text: "体温40.2度" }, asExtractorClient(client));
 
     expect(result.vital.temp_c).toBe(40.2);
   });
@@ -97,7 +103,7 @@ describe("Extractor: happy path", () => {
     };
 
     const client = makeBedrockClient(JSON.stringify(mockJson));
-    const result = await extract({ expanded_text: "乳房炎の疑い" }, client as any);
+    const result = await extract({ expanded_text: "乳房炎の疑い" }, asExtractorClient(client));
 
     expect(result.s).toBe("3日前から乳量が減少");
     expect(result.o).toBe("乳房硬結あり、発熱なし");
@@ -113,7 +119,7 @@ describe("Extractor: happy path", () => {
     };
 
     const client = makeBedrockClient(JSON.stringify(mockJson));
-    const result = await extract({ expanded_text: "乳房炎、ケトーシス疑い" }, client as any);
+    const result = await extract({ expanded_text: "乳房炎、ケトーシス疑い" }, asExtractorClient(client));
 
     expect(result.a).toHaveLength(2);
     expect(result.a[0].name).toBe("乳房炎");
@@ -135,7 +141,7 @@ describe("Extractor: happy path", () => {
     const client = makeBedrockClient(JSON.stringify(mockJson));
     const result = await extract(
       { expanded_text: "アンピシリン投与、直腸検査実施" },
-      client as any,
+      asExtractorClient(client),
     );
 
     expect(result.p).toHaveLength(2);
@@ -157,7 +163,7 @@ describe("Extractor: happy path", () => {
 
     const wrapped = "```json\n" + JSON.stringify(mockJson) + "\n```";
     const client = makeBedrockClient(wrapped);
-    const result = await extract({ expanded_text: "体温38.9度" }, client as any);
+    const result = await extract({ expanded_text: "体温38.9度" }, asExtractorClient(client));
 
     expect(result.vital.temp_c).toBe(38.9);
   });
@@ -177,7 +183,7 @@ describe("Extractor: happy path", () => {
       template_type: "reproduction_soap",
     };
 
-    await extract(input, client as any);
+    await extract(input, asExtractorClient(client));
 
     const callArg = client.send.mock.calls[0][0];
     const promptText: string = callArg.input.messages[0].content[0].text;
@@ -194,7 +200,7 @@ describe("Extractor: happy path", () => {
     };
 
     const client = makeBedrockClient(JSON.stringify(mockJson));
-    await extract({ expanded_text: "test" }, client as any);
+    await extract({ expanded_text: "test" }, asExtractorClient(client));
 
     expect(client.send).toHaveBeenCalledTimes(1);
     const callArg = client.send.mock.calls[0][0];
@@ -211,14 +217,14 @@ describe("Extractor: happy path", () => {
 describe("Extractor: error handling", () => {
   it("returns empty ExtractedJSON when Bedrock throws an error", async () => {
     const client = makeFailingBedrockClient(new Error("ThrottlingException"));
-    const result = await extract({ expanded_text: "test" }, client as any);
+    const result = await extract({ expanded_text: "test" }, asExtractorClient(client));
 
     expect(result).toEqual(EMPTY_EXTRACTED_JSON);
   });
 
   it("returns empty ExtractedJSON when Bedrock response is invalid JSON", async () => {
     const client = makeBedrockClient("This is not JSON at all");
-    const result = await extract({ expanded_text: "test" }, client as any);
+    const result = await extract({ expanded_text: "test" }, asExtractorClient(client));
 
     expect(result).toEqual(EMPTY_EXTRACTED_JSON);
   });
@@ -226,7 +232,7 @@ describe("Extractor: error handling", () => {
   it("returns empty ExtractedJSON when response fails schema validation", async () => {
     // Missing required fields (s, o, a, p)
     const client = makeBedrockClient(JSON.stringify({ vital: { temp_c: 39.0 } }));
-    const result = await extract({ expanded_text: "test" }, client as any);
+    const result = await extract({ expanded_text: "test" }, asExtractorClient(client));
 
     expect(result).toEqual(EMPTY_EXTRACTED_JSON);
   });
@@ -237,7 +243,7 @@ describe("Extractor: error handling", () => {
         output: { message: { content: [] } },
       }),
     };
-    const result = await extract({ expanded_text: "test" }, client as any);
+    const result = await extract({ expanded_text: "test" }, asExtractorClient(client));
 
     expect(result).toEqual(EMPTY_EXTRACTED_JSON);
   });
@@ -245,7 +251,7 @@ describe("Extractor: error handling", () => {
   it("never throws — always resolves with a valid ExtractedJSON shape", async () => {
     const client = makeFailingBedrockClient(new Error("ServiceUnavailableException"));
 
-    await expect(extract({ expanded_text: "test" }, client as any)).resolves.toMatchObject({
+    await expect(extract({ expanded_text: "test" }, asExtractorClient(client))).resolves.toMatchObject({
       vital: expect.objectContaining({ temp_c: null }),
       a: expect.any(Array),
       p: expect.any(Array),

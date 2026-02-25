@@ -10,12 +10,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fc from 'fast-check';
 import { render, waitFor, fireEvent } from '@testing-library/react';
+import { PipelineEntryForm } from '../../src/components/PipelineEntryForm';
 import {
-  PipelineEntryForm,
   TABS_BY_MODE,
   TAB_LABELS,
   type TabMode,
-} from '../../src/components/PipelineEntryForm';
+} from '../../src/components/pipelineEntryForm.constants';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -42,7 +42,11 @@ vi.mock('aws-amplify/storage', () => ({
 }));
 
 // Get mock references
-const { __mockRunPipeline: mockRunPipeline } = await import('aws-amplify/data') as any;
+const { __mockRunPipeline: mockRunPipeline } = await import(
+  'aws-amplify/data'
+) as unknown as {
+  __mockRunPipeline: ReturnType<typeof vi.fn>;
+};
 
 // Mock VoiceRecorder component
 vi.mock('../../src/components/VoiceRecorder', () => ({

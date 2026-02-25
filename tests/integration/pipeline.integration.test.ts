@@ -64,6 +64,9 @@ vi.mock("@aws-sdk/lib-dynamodb", () => ({
 
 import { handler } from "../../amplify/data/run-pipeline";
 
+type RunPipelineEvent = Parameters<typeof handler>[0];
+type RunPipelineContext = Parameters<typeof handler>[1];
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -99,8 +102,10 @@ function makeEvent(args: Record<string, unknown>) {
     },
     prev: null,
     stash: {},
-  } as any;
+  } as RunPipelineEvent;
 }
+
+const MOCK_CONTEXT = {} as RunPipelineContext;
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -123,7 +128,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "体温39.5度、食欲不振" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.visitId).toBeTruthy();
@@ -140,7 +145,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.templateType).toBe("general_soap");
@@ -155,7 +160,7 @@ describe("runPipeline integration", () => {
           transcriptText: "妊娠鑑定",
           templateType: "reproduction_soap",
         }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.templateType).toBe("reproduction_soap");
@@ -166,7 +171,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       // soapText and kyosaiText are now generated via Bedrock
@@ -180,7 +185,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       // extractor.ts catches Bedrock errors internally and returns EMPTY_EXTRACTED_JSON
@@ -195,7 +200,7 @@ describe("runPipeline integration", () => {
     it("adds warning when transcriptText is missing", async () => {
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.warnings).toEqual(
@@ -208,7 +213,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "体温39.5度、食欲不振" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       // Must be object or null — never a string (double-stringification bug)
@@ -232,19 +237,19 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "JSON_INPUT", extractedJson: SAMPLE_EXTRACTED_JSON }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       // extractedJson is returned as object — verify structure directly
       expect(typeof result.extractedJson).toBe("object");
-      const json = result.extractedJson as any;
+      const json = result.extractedJson as { vital: { temp_c: number | null } };
       expect(json.vital.temp_c).toBe(39.5);
     });
 
     it("adds warning when extractedJson is null", async () => {
       const result = await handler(
         makeEvent({ entryPoint: "JSON_INPUT", extractedJson: null }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.warnings).toEqual(
@@ -256,7 +261,7 @@ describe("runPipeline integration", () => {
     it("adds warning when extractedJson fails schema validation", async () => {
       const result = await handler(
         makeEvent({ entryPoint: "JSON_INPUT", extractedJson: { invalid: true } }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.warnings).toEqual(
@@ -277,7 +282,7 @@ describe("runPipeline integration", () => {
           entryPoint: "PRODUCTION",
           transcriptText: "フォールバックテキスト",
         }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.warnings).toEqual(
@@ -295,7 +300,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "AUDIO_FILE", transcriptText: "フォールバック" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.warnings).toEqual(
@@ -313,7 +318,7 @@ describe("runPipeline integration", () => {
 
       await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(dynamoMockSend).toHaveBeenCalledOnce();
@@ -328,7 +333,7 @@ describe("runPipeline integration", () => {
 
       await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       const putArg = dynamoMockSend.mock.calls[0][0];
@@ -341,7 +346,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(result.warnings).toEqual(
@@ -358,7 +363,7 @@ describe("runPipeline integration", () => {
 
       const result = await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       expect(dynamoMockSend).not.toHaveBeenCalled();
@@ -372,7 +377,7 @@ describe("runPipeline integration", () => {
 
       await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
-        {} as any
+        MOCK_CONTEXT
       );
 
       const putArg = dynamoMockSend.mock.calls[0][0];

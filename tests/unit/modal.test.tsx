@@ -333,7 +333,6 @@ describe('Modal component', () => {
   // ---------------------------------------------------------------------------
   describe('focus management', () => {
     it('returns focus to trigger element when modal closes', async () => {
-      const onClose = vi.fn();
       const TriggerButton = () => {
         const [open, setOpen] = React.useState(false);
         return (
