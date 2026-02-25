@@ -43,5 +43,8 @@ lerna-debug.log*
 # TypeScript
 *.tsbuildinfo
 
+# Local evaluation outputs
+tmp/eval/
+
 # Credentials / secrets (do not commit)
 .kiro/steering/dev-credentials.md

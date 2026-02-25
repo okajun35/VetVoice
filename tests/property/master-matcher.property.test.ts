@@ -13,8 +13,11 @@ import * as fc from "fast-check";
 import {
   matchDisease,
   matchProcedure,
+  matchDrug,
   resetMasterMatcherCache,
-  CONFIDENCE_THRESHOLD,
+  DISEASE_CONFIDENCE_THRESHOLD,
+  PROCEDURE_CONFIDENCE_THRESHOLD,
+  DRUG_CONFIDENCE_THRESHOLD,
 } from "../../amplify/data/handlers/master-matcher";
 
 // Arbitrary for non-empty strings (at least 1 non-whitespace character)
@@ -222,7 +225,7 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
     resetMasterMatcherCache();
   });
 
-  it("matchDisease: top_confirmed is true iff top candidate confidence >= CONFIDENCE_THRESHOLD", () => {
+  it("matchDisease: top_confirmed is true iff top candidate confidence >= DISEASE_CONFIDENCE_THRESHOLD", () => {
     fc.assert(
       fc.property(nonEmptyStringArb, (query) => {
         const result = matchDisease(query);
@@ -231,7 +234,7 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
           expect(result.top_confirmed).toBe(false);
         } else {
           const topConfidence = result.candidates[0].confidence;
-          if (topConfidence >= CONFIDENCE_THRESHOLD) {
+          if (topConfidence >= DISEASE_CONFIDENCE_THRESHOLD) {
             expect(result.top_confirmed).toBe(true);
           } else {
             expect(result.top_confirmed).toBe(false);
@@ -242,7 +245,7 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
     );
   });
 
-  it("matchProcedure: top_confirmed is true iff top candidate confidence >= CONFIDENCE_THRESHOLD", () => {
+  it("matchProcedure: top_confirmed is true iff top candidate confidence >= PROCEDURE_CONFIDENCE_THRESHOLD", () => {
     fc.assert(
       fc.property(nonEmptyStringArb, (query) => {
         const result = matchProcedure(query);
@@ -251,7 +254,7 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
           expect(result.top_confirmed).toBe(false);
         } else {
           const topConfidence = result.candidates[0].confidence;
-          if (topConfidence >= CONFIDENCE_THRESHOLD) {
+          if (topConfidence >= PROCEDURE_CONFIDENCE_THRESHOLD) {
             expect(result.top_confirmed).toBe(true);
           } else {
             expect(result.top_confirmed).toBe(false);
@@ -287,7 +290,9 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
 
         if (result.top_confirmed) {
           expect(result.candidates.length).toBeGreaterThan(0);
-          expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(CONFIDENCE_THRESHOLD);
+          expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(
+            DISEASE_CONFIDENCE_THRESHOLD
+          );
         }
       }),
       { numRuns: 100 }
@@ -301,7 +306,9 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
 
         if (result.top_confirmed) {
           expect(result.candidates.length).toBeGreaterThan(0);
-          expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(CONFIDENCE_THRESHOLD);
+          expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(
+            PROCEDURE_CONFIDENCE_THRESHOLD
+          );
         }
       }),
       { numRuns: 100 }
@@ -316,7 +323,9 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
     for (const disease of knownDiseases) {
       const result = matchDisease(disease);
       expect(result.top_confirmed).toBe(true);
-      expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(CONFIDENCE_THRESHOLD);
+      expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(
+        DISEASE_CONFIDENCE_THRESHOLD
+      );
     }
   });
 
@@ -326,7 +335,25 @@ describe("Feature: vet-voice-medical-record, Property 5: Confidence閾値によ�
     for (const proc of knownProcedures) {
       const result = matchProcedure(proc);
       expect(result.top_confirmed).toBe(true);
-      expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(CONFIDENCE_THRESHOLD);
+      expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(
+        PROCEDURE_CONFIDENCE_THRESHOLD
+      );
     }
+  });
+
+  it("matchDrug: if top_confirmed is true, top confidence must be >= drug threshold", () => {
+    fc.assert(
+      fc.property(nonEmptyStringArb, (query) => {
+        const result = matchDrug(query);
+
+        if (result.top_confirmed) {
+          expect(result.candidates.length).toBeGreaterThan(0);
+          expect(result.candidates[0].confidence).toBeGreaterThanOrEqual(
+            DRUG_CONFIDENCE_THRESHOLD
+          );
+        }
+      }),
+      { numRuns: 100 }
+    );
   });
 });

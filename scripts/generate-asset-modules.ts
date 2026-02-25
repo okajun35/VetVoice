@@ -61,6 +61,11 @@ const ASSET_SPECS: AssetSpec[] = [
     exportName: "SHINRYO_TENSU_CSV",
   },
   {
+    src: "reference_compact.csv",
+    outName: "reference-compact-data",
+    exportName: "REFERENCE_COMPACT_CSV",
+  },
+  {
     src: "shinryo_betsu_snow_regions.csv",
     outName: "snow-regions-data",
     exportName: "SNOW_REGIONS_CSV",

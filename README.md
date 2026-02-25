@@ -179,6 +179,16 @@ npm run test:watch
 npm run test:coverage
 ```
 
+## 評価（固定セット + F1 + confirmed誤り率）
+
+```bash
+npm run eval
+```
+
+- デフォルト入力: `assets/eval/gold.v1.jsonl`
+- 出力: `tmp/eval/latest.json`, `tmp/eval/latest.md`
+- 詳細運用: `doc/evaluation-baseline.md`
+
 ## デプロイ
 
 ```bash

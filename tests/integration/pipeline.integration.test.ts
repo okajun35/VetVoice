@@ -268,6 +268,89 @@ describe("runPipeline integration", () => {
         expect.arrayContaining([expect.stringContaining("parse failed")])
       );
     });
+
+    it("replaces confirmed disease/drug names with canonical master names", async () => {
+      bedrockMockSend.mockResolvedValue({
+        output: { message: { content: [{ text: "generated text" }] } },
+      });
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "JSON_INPUT",
+          extractedJson: {
+            vital: { temp_c: null },
+            s: null,
+            o: null,
+            a: [{ name: "肺炎疑い" }],
+            p: [{ name: "アモキシシリンLA注", type: "drug" }],
+          },
+        }),
+        MOCK_CONTEXT
+      );
+
+      const json = result.extractedJson as {
+        a: Array<{
+          name: string;
+          canonical_name?: string;
+          master_code?: string;
+          status?: string;
+        }>;
+        p: Array<{
+          name: string;
+          canonical_name?: string;
+          master_code?: string;
+          status?: string;
+        }>;
+      };
+
+      expect(json.a[0].name).toBe("肺炎疑い");
+      expect(json.a[0].canonical_name).toBe("肺炎");
+      expect(json.a[0].status).toBe("confirmed");
+      expect(json.p[0].name).toBe("アモキシシリンLA注");
+      expect(json.p[0].canonical_name).toBe("アモキシシリン油性懸濁注射液");
+      expect(json.p[0].master_code).toBe("DRUG:アモキシシリン油性懸濁注射液");
+      expect(json.p[0].status).toBe("confirmed");
+    });
+
+    it("does not set canonical_name when top match is unconfirmed", async () => {
+      bedrockMockSend.mockResolvedValue({
+        output: { message: { content: [{ text: "generated text" }] } },
+      });
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "JSON_INPUT",
+          extractedJson: {
+            vital: { temp_c: null },
+            s: null,
+            o: null,
+            a: [{ name: "心炎" }],
+            p: [{ name: "静注x", type: "procedure" }],
+          },
+        }),
+        MOCK_CONTEXT
+      );
+
+      const json = result.extractedJson as {
+        a: Array<{
+          name: string;
+          canonical_name?: string;
+          status?: string;
+        }>;
+        p: Array<{
+          name: string;
+          canonical_name?: string;
+          status?: string;
+        }>;
+      };
+
+      expect(json.a[0].name).toBe("心炎");
+      expect(json.a[0].status).toBe("unconfirmed");
+      expect(json.a[0].canonical_name).toBeUndefined();
+      expect(json.p[0].name).toBe("静注x");
+      expect(json.p[0].status).toBe("unconfirmed");
+      expect(json.p[0].canonical_name).toBeUndefined();
+    });
   });
 
   // -------------------------------------------------------------------------

@@ -23,12 +23,14 @@ export interface ExtractedJSON {
   o: string | null;
   a: Array<{
     name: string;
+    canonical_name?: string;
     confidence?: number;
     master_code?: string;
     status?: "confirmed" | "unconfirmed";
   }>;
   p: Array<{
     name: string;
+    canonical_name?: string;
     type: "procedure" | "drug";
     dosage?: string;
     confidence?: number;
@@ -136,6 +138,14 @@ export function parse(jsonString: string): ParseResult {
         }
       }
 
+      if (
+        "canonical_name" in item &&
+        item.canonical_name !== undefined &&
+        typeof item.canonical_name !== "string"
+      ) {
+        errors.push(`Field 'a[${i}].canonical_name' must be a string`);
+      }
+
       if ("master_code" in item && item.master_code !== undefined && typeof item.master_code !== "string") {
         errors.push(`Field 'a[${i}].master_code' must be a string`);
       }
@@ -173,6 +183,14 @@ export function parse(jsonString: string): ParseResult {
 
       if ("dosage" in item && item.dosage !== undefined && item.dosage !== null && typeof item.dosage !== "string") {
         errors.push(`Field 'p[${i}].dosage' must be a string`);
+      }
+
+      if (
+        "canonical_name" in item &&
+        item.canonical_name !== undefined &&
+        typeof item.canonical_name !== "string"
+      ) {
+        errors.push(`Field 'p[${i}].canonical_name' must be a string`);
       }
 
       if ("confidence" in item && item.confidence !== undefined) {

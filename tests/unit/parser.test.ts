@@ -61,6 +61,7 @@ describe("Parser: parse() function", () => {
       a: [
         {
           name: "乳房炎",
+          canonical_name: "急性乳房炎",
           confidence: 0.95,
           master_code: "07-01",
           status: "confirmed",
@@ -69,6 +70,7 @@ describe("Parser: parse() function", () => {
       p: [
         {
           name: "アンピシリン",
+          canonical_name: "アンピシリン注射液",
           type: "drug",
           dosage: "500mg",
           confidence: 0.9,
@@ -83,9 +85,11 @@ describe("Parser: parse() function", () => {
     expect(result.success).toBe(true);
     expect(result.data).toBeDefined();
     expect(result.data?.a[0].confidence).toBe(0.95);
+    expect(result.data?.a[0].canonical_name).toBe("急性乳房炎");
     expect(result.data?.a[0].master_code).toBe("07-01");
     expect(result.data?.a[0].status).toBe("confirmed");
     expect(result.data?.p[0].dosage).toBe("500mg");
+    expect(result.data?.p[0].canonical_name).toBe("アンピシリン注射液");
     expect(result.data?.p[0].confidence).toBe(0.9);
     expect(result.data?.p[0].master_code).toBe("S05-123");
     expect(result.data?.p[0].status).toBe("confirmed");
@@ -271,6 +275,23 @@ describe("Parser: parse() function", () => {
     expect(result.success).toBe(false);
     expect(result.errors).toBeDefined();
     expect(result.errors!.some((e) => e.includes("status"))).toBe(true);
+  });
+
+  it("canonical_nameが文字列以外の場合にエラーを返す", () => {
+    const jsonString = JSON.stringify({
+      vital: { temp_c: 38.5 },
+      s: null,
+      o: null,
+      a: [{ name: "病名", canonical_name: 123 }],
+      p: [{ name: "薬剤", type: "drug", canonical_name: { bad: true } }],
+    });
+
+    const result = parse(jsonString);
+
+    expect(result.success).toBe(false);
+    expect(result.errors).toBeDefined();
+    expect(result.errors!.some((e) => e.includes("a[0].canonical_name"))).toBe(true);
+    expect(result.errors!.some((e) => e.includes("p[0].canonical_name"))).toBe(true);
   });
 });
 

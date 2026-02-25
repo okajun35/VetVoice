@@ -10,12 +10,14 @@ export interface ExtractedJSON {
   o: string | null;
   a: Array<{
     name: string;
+    canonical_name?: string;
     confidence?: number;
     master_code?: string;
     status?: 'confirmed' | 'unconfirmed';
   }>;
   p: Array<{
     name: string;
+    canonical_name?: string;
     type: 'procedure' | 'drug';
     dosage?: string;
     confidence?: number;
