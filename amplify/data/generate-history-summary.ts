@@ -82,10 +82,18 @@ export async function generateHistorySummaryCore(
         if (json.s) parts.push(`稟告: ${json.s}`);
         if (json.o) parts.push(`所見: ${json.o}`);
         if (Array.isArray(json.a) && json.a.length > 0) {
-          parts.push(`診断: ${json.a.map((a: { name: string }) => a.name).join(", ")}`);
+          parts.push(
+            `診断: ${json.a
+              .map((a: { name: string; canonical_name?: string }) => a.canonical_name ?? a.name)
+              .join(", ")}`
+          );
         }
         if (Array.isArray(json.p) && json.p.length > 0) {
-          parts.push(`処置・薬剤: ${json.p.map((p: { name: string }) => p.name).join(", ")}`);
+          parts.push(
+            `処置・薬剤: ${json.p
+              .map((p: { name: string; canonical_name?: string }) => p.canonical_name ?? p.name)
+              .join(", ")}`
+          );
         }
         clinicalData = parts.join(" / ");
       } catch {

@@ -57,7 +57,7 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
 
     return {
       ...item,
-      ...(result.top_confirmed && { name: top.name }),
+      ...(result.top_confirmed ? { canonical_name: top.name } : {}),
       confidence: top.confidence,
       master_code: top.code,
       status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),
@@ -83,7 +83,7 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
 
     return {
       ...item,
-      ...(result.top_confirmed && { name: top.name }),
+      ...(result.top_confirmed ? { canonical_name: top.name } : {}),
       confidence: top.confidence,
       master_code: top.code,
       status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),
@@ -101,6 +101,20 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
       p: enrichedP,
     },
     unconfirmedCount,
+  };
+}
+
+function buildCanonicalPreferredView(extractedJson: ExtractedJSON): ExtractedJSON {
+  return {
+    ...extractedJson,
+    a: extractedJson.a.map((item) => ({
+      ...item,
+      name: item.canonical_name ?? item.name,
+    })),
+    p: extractedJson.p.map((item) => ({
+      ...item,
+      name: item.canonical_name ?? item.name,
+    })),
   };
 }
 
@@ -261,11 +275,13 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   let kyosaiText: string | null = null;
 
   if (extractedJson) {
+    const canonicalPreferredJson = buildCanonicalPreferredView(extractedJson);
+
     // Template selection (auto or manual override)
     if (templateType) {
       resolvedTemplateType = templateType as TemplateType;
     } else {
-      const templateResult = selectTemplate(extractedJson);
+      const templateResult = selectTemplate(canonicalPreferredJson);
       resolvedTemplateType = templateResult.selectedType;
       if (templateResult.missingFields.length > 0) {
         warnings.push(`Missing fields for template: ${templateResult.missingFields.join(", ")}`);
@@ -276,7 +292,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     try {
       const soapOutput = await generateSOAP(
         {
-          extracted_json: extractedJson,
+          extracted_json: canonicalPreferredJson,
           template_type: resolvedTemplateType,
           cow_id: cowId,
           visit_datetime: datetime,
@@ -297,7 +313,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     try {
       const kyosaiOutput = await generateKyosai(
         {
-          extracted_json: extractedJson,
+          extracted_json: canonicalPreferredJson,
           template_type: resolvedTemplateType,
           cow_id: cowId,
           visit_datetime: datetime,

@@ -26,12 +26,14 @@ interface ExtractedJSON {
   o: string | null;
   a: Array<{
     name: string;
+    canonical_name?: string;
     confidence?: number;
     master_code?: string;
     status?: 'confirmed' | 'unconfirmed';
   }>;
   p: Array<{
     name: string;
+    canonical_name?: string;
     type: 'procedure' | 'drug';
     dosage?: string;
     confidence?: number;
@@ -238,7 +240,7 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
                       : styles['item--confirmed']
                   }`}
                 >
-                  <span className={styles.itemName}>{item.name}</span>
+                  <span className={styles.itemName}>{item.canonical_name ?? item.name}</span>
                   {item.status === 'confirmed' && (
                     <Badge variant="success" size="sm">
                       確定
@@ -287,7 +289,7 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
                       : styles['item--confirmed']
                   }`}
                 >
-                  <span className={styles.itemName}>{item.name}</span>
+                  <span className={styles.itemName}>{item.canonical_name ?? item.name}</span>
                   <Badge variant={item.type === 'drug' ? 'neutral' : 'info'} size="sm">
                     {item.type === 'drug' ? '薬剤' : '処置'}
                   </Badge>

@@ -42,6 +42,7 @@ export const extractedJsonArb = fc.record({
   a: fc.array(
     fc.record({
       name: fc.string({ minLength: 1 }),
+      canonical_name: fc.option(fc.string({ minLength: 1 }), { nil: undefined }),
       confidence: fc.option(fc.float({ min: 0, max: 1, noNaN: true }), { nil: undefined }),
       master_code: fc.option(fc.string(), { nil: undefined }),
       status: fc.option(
@@ -56,6 +57,7 @@ export const extractedJsonArb = fc.record({
   p: fc.array(
     fc.record({
       name: fc.string({ minLength: 1 }),
+      canonical_name: fc.option(fc.string({ minLength: 1 }), { nil: undefined }),
       type: fc.oneof(
         fc.constant("procedure" as const),
         fc.constant("drug" as const)
