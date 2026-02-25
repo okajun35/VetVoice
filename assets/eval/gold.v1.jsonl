@@ -1,0 +1,6 @@
+{"id":"case-001","note":"肺炎疑い + 薬剤別名","input_extracted_json":{"vital":{"temp_c":39.8},"s":"食欲不振","o":"発熱","a":[{"name":"肺炎疑い"}],"p":[{"name":"アモキシシリンLA注","type":"drug","dosage":"10ml"}]},"gold_entities":[{"type":"disease","name":"肺炎"},{"type":"drug","name":"アモキシシリン油性懸濁注射液"}]}
+{"id":"case-002","note":"乳房炎の推量表現","input_extracted_json":{"vital":{"temp_c":39.4},"s":"乳量低下","o":"右前分房腫脹","a":[{"name":"乳房炎かと思います"}],"p":[]},"gold_entities":[{"type":"disease","name":"乳房炎"}]}
+{"id":"case-003","note":"ASR誤認識を含む乳房炎","input_extracted_json":{"vital":{"temp_c":39.2},"s":"右前分房が硬い","o":"熱感あり","a":[{"name":"尿乳房炎"}],"p":[]},"gold_entities":[{"type":"disease","name":"乳房炎"}]}
+{"id":"case-004","note":"処置が抽象語のみ","input_extracted_json":{"vital":{"temp_c":null},"s":"疼痛あり","o":"局所腫脹","a":[],"p":[{"name":"注射","type":"procedure"}]},"gold_entities":[{"type":"procedure","name":"皮下注射"}]}
+{"id":"case-005","note":"正規の処置名","input_extracted_json":{"vital":{"temp_c":null},"s":null,"o":null,"a":[],"p":[{"name":"初診","type":"procedure"}]},"gold_entities":[{"type":"procedure","name":"初診"}]}
+{"id":"case-006","note":"未知病名で未確定","input_extracted_json":{"vital":{"temp_c":38.5},"s":"元気低下","o":"軽度脱水","a":[{"name":"心炎"}],"p":[{"name":"静注x","type":"procedure"}]},"gold_entities":[{"type":"disease","name":"心筋炎"},{"type":"procedure","name":"静脈内注射"}]}
