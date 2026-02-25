@@ -72,9 +72,33 @@ const ASSET_SPECS: AssetSpec[] = [
   },
 ];
 
+// Mirrors ESLint no-irregular-whitespace targets (excluding normal spaces/newlines/tabs).
+const IRREGULAR_WHITESPACE_RE =
+  /[\u000B\u000C\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]/g;
+
+function toUnicodeEscape(char: string): string {
+  const codePoint = char.codePointAt(0);
+  if (codePoint === undefined) return char;
+
+  if (codePoint <= 0xffff) {
+    return `\\u${codePoint.toString(16).padStart(4, "0")}`;
+  }
+
+  return `\\u{${codePoint.toString(16)}}`;
+}
+
+function normalizeAssetContent(content: string): string {
+  // UTF-8 BOM at file start is not semantically meaningful for CSV/TXT payloads.
+  return content.replace(/^\uFEFF/, "");
+}
+
 function escapeForTemplateLiteral(content: string): string {
-  // Escape backticks and ${} template expressions
-  return content.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+  // Escape backslashes/backticks/template interpolation and problematic whitespace chars.
+  return content
+    .replace(/\\/g, "\\\\")
+    .replace(/`/g, "\\`")
+    .replace(/\$\{/g, "\\${")
+    .replace(IRREGULAR_WHITESPACE_RE, toUnicodeEscape);
 }
 
 function generate(): void {
@@ -93,8 +117,9 @@ function generate(): void {
       continue;
     }
 
-    const content = fs.readFileSync(srcPath, "utf-8");
-    const escaped = escapeForTemplateLiteral(content);
+    const rawContent = fs.readFileSync(srcPath, "utf-8");
+    const normalizedContent = normalizeAssetContent(rawContent);
+    const escaped = escapeForTemplateLiteral(normalizedContent);
 
     const tsContent = `${GENERATED_HEADER}
 export const ${spec.exportName} = \`${escaped}\`;

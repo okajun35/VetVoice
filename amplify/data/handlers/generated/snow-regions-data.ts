@@ -2,7 +2,7 @@
 // Source: assets/ directory
 // Regenerate: npm run generate-assets
 
-export const SNOW_REGIONS_CSV = `﻿prefecture,district,municipality
+export const SNOW_REGIONS_CSV = `prefecture,district,municipality
 宮城県,,仙台市（旧宮城町、旧秋保町のみ）
 宮城県,,白石市
 宮城県,,栗原市（旧瀬峰町を除く。）
