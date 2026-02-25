@@ -51,7 +51,6 @@ export function CowListScreen({ onNavigateToVisit, onBack }: CowListScreenProps)
 
   useEffect(() => {
     fetchCows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // --- Sub-views ---

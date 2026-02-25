@@ -72,9 +72,32 @@ const ASSET_SPECS: AssetSpec[] = [
   },
 ];
 
-// Mirrors ESLint no-irregular-whitespace targets (excluding normal spaces/newlines/tabs).
-const IRREGULAR_WHITESPACE_RE =
-  /[\u000B\u000C\u0085\u00A0\u1680\u180E\u2000-\u200B\u2028\u2029\u202F\u205F\u3000\uFEFF]/g;
+const IRREGULAR_WHITESPACE_CODE_POINTS = new Set<number>([
+  0x000b,
+  0x000c,
+  0x0085,
+  0x00a0,
+  0x1680,
+  0x180e,
+  0x2028,
+  0x2029,
+  0x202f,
+  0x205f,
+  0x3000,
+  0xfeff,
+]);
+
+function isIrregularWhitespaceChar(char: string): boolean {
+  const codePoint = char.codePointAt(0);
+  if (codePoint === undefined) return false;
+
+  // U+2000 through U+200B are all considered irregular in lint context.
+  if (codePoint >= 0x2000 && codePoint <= 0x200b) {
+    return true;
+  }
+
+  return IRREGULAR_WHITESPACE_CODE_POINTS.has(codePoint);
+}
 
 function toUnicodeEscape(char: string): string {
   const codePoint = char.codePointAt(0);
@@ -98,7 +121,9 @@ function escapeForTemplateLiteral(content: string): string {
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
     .replace(/\$\{/g, "\\${")
-    .replace(IRREGULAR_WHITESPACE_RE, toUnicodeEscape);
+    .split("")
+    .map((char) => (isIrregularWhitespaceChar(char) ? toUnicodeEscape(char) : char))
+    .join("");
 }
 
 function generate(): void {
