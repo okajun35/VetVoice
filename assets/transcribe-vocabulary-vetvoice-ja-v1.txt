@@ -55,3 +55,4 @@ Phrase	SoundsLike	IPA	DisplayAs
 チリョウケイゾク			治療継続
 ハイヨウ			廃用
 トウタ			淘汰
+シキュウ			子宮

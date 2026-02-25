@@ -14,6 +14,7 @@
 import { BYOUMEI_CSV } from "./generated/byoumei-data";
 import { SHINRYO_TENSU_CSV } from "./generated/shinryo-tensu-data";
 import { REFERENCE_COMPACT_CSV } from "./generated/reference-compact-data";
+import { normalizeDrugQueryByRules } from "./normalization-rules";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -221,7 +222,10 @@ function loadProcedures(): ProcedureEntry[] {
  * CSV format:
  *   display_name,generic_name,product_name,manufacturer,spec_unit,price_yen,notes,...
  *
- * Dedupe by generic_name and merge aliases (display_name/product_name/notes).
+ * Dedupe by generic_name and merge aliases (display_name/product_name).
+ * NOTE:
+ *   `notes` often contains broad class names (e.g. ブドウ糖注射液) shared by many products.
+ *   Including notes as aliases causes generic mis-ranking, so notes are intentionally excluded.
  */
 function loadDrugs(): DrugEntry[] {
   if (drugCache) return drugCache;
@@ -238,8 +242,6 @@ function loadDrugs(): DrugEntry[] {
     const displayName = (parts[0] ?? "").trim();
     const genericName = (parts[1] ?? "").trim() || displayName;
     const productName = (parts[2] ?? "").trim();
-    const notes = (parts[6] ?? "").trim();
-
     if (!genericName) continue;
 
     const key = normalizeMatchText(genericName);
@@ -253,9 +255,6 @@ function loadDrugs(): DrugEntry[] {
     row.aliases.add(genericName);
     if (displayName) row.aliases.add(displayName);
     if (productName) row.aliases.add(productName);
-    for (const alias of splitAliasesFromNotes(notes)) {
-      row.aliases.add(alias);
-    }
 
     entries.set(key, row);
   }
@@ -267,14 +266,6 @@ function loadDrugs(): DrugEntry[] {
   }));
 
   return drugCache;
-}
-
-function splitAliasesFromNotes(notes: string): string[] {
-  if (!notes) return [];
-  return notes
-    .split(/[、，,/]/u)
-    .map((text) => text.trim())
-    .filter((text) => text.length > 0);
 }
 
 /**
@@ -327,9 +318,11 @@ function normalizeProcedureQuery(text: string): string {
 }
 
 function normalizeDrugQuery(text: string): string {
-  return stripSpeculationSuffix(normalizeMatchText(text))
+  const normalized = stripSpeculationSuffix(normalizeMatchText(text))
     .replace(/(?:を)?投与(?:した)?$/u, "")
     .replace(/(?:を)?注射(?:した)?$/u, "");
+
+  return normalizeDrugQueryByRules(normalized);
 }
 
 function stripSpeculationSuffix(text: string): string {

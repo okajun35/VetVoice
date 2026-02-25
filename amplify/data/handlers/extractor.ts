@@ -28,6 +28,7 @@ export interface ExtractorInput {
   expanded_text: string;    // Output from Dictionary_Expander
   template_type?: string;   // Optional template hint
   model_id_override?: string; // Optional runtime model override (dev/testing)
+  strict_errors?: boolean; // If true, propagate extraction failures as errors
 }
 
 // ---------------------------------------------------------------------------
@@ -117,8 +118,12 @@ export async function extract(
     rawText = response.output?.message?.content?.[0]?.text ?? "";
     console.log("Bedrock raw response length:", rawText.length, "text:", rawText.substring(0, 500));
   } catch (err) {
-    // Bedrock API error — log and return empty default to keep pipeline alive
+    const msg = err instanceof Error ? err.message : String(err);
     console.error("Bedrock extract call failed:", err);
+    if (input.strict_errors) {
+      throw new Error(`Bedrock extract call failed: ${msg}`);
+    }
+    // Keep legacy behavior in non-strict mode.
     return { ...EMPTY_EXTRACTED_JSON };
   }
 
@@ -130,8 +135,12 @@ export async function extract(
 
   const parseResult = parse(cleaned);
   if (!parseResult.success || !parseResult.data) {
-    // Parse/validation error — log and return empty default
+    // Parse/validation error — optionally propagate in strict mode
     console.error("Extractor parse failed:", { rawText: cleaned, errors: parseResult.errors });
+    if (input.strict_errors) {
+      const details = (parseResult.errors ?? []).join(", ");
+      throw new Error(`Extractor parse failed${details ? `: ${details}` : ""}`);
+    }
     return { ...EMPTY_EXTRACTED_JSON };
   }
 

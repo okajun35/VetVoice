@@ -180,7 +180,7 @@ describe("runPipeline integration", () => {
       expect(typeof result.kyosaiText === "string" || result.kyosaiText === null).toBe(true);
     });
 
-    it("returns empty extractedJson when Bedrock fails (extractor swallows errors by design)", async () => {
+    it("returns warning and null extractedJson when strict extraction fails", async () => {
       bedrockMockSend.mockRejectedValue(new Error("Bedrock throttled"));
 
       const result = await handler(
@@ -188,13 +188,12 @@ describe("runPipeline integration", () => {
         MOCK_CONTEXT
       );
 
-      // extractor.ts catches Bedrock errors internally and returns EMPTY_EXTRACTED_JSON
-      // so the pipeline still produces a valid (empty) result
       expect(result.visitId).toBeTruthy();
       expect(result.cowId).toBe("0123456789");
-      if (result.extractedJson) {
-        expect(typeof result.extractedJson).toBe("object");
-      }
+      expect(result.extractedJson).toBeNull();
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([expect.stringContaining("Extraction failed: Bedrock extract call failed")])
+      );
     });
 
     it("adds warning when transcriptText is missing", async () => {
@@ -312,6 +311,42 @@ describe("runPipeline integration", () => {
       expect(json.p[0].status).toBe("confirmed");
     });
 
+    it("normalizes glucose fluid and administration wording for downstream docs", async () => {
+      bedrockMockSend.mockResolvedValue({
+        output: { message: { content: [{ text: "generated text" }] } },
+      });
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "JSON_INPUT",
+          extractedJson: {
+            vital: { temp_c: null },
+            s: null,
+            o: "ケトン体強陽性",
+            a: [{ name: "ケトーシス" }],
+            p: [{ name: "50%ブドウ糖液", type: "drug", dosage: "1本（静脈内投与）" }],
+          },
+        }),
+        MOCK_CONTEXT
+      );
+
+      const json = result.extractedJson as {
+        p: Array<{
+          name: string;
+          dosage?: string;
+          canonical_name?: string;
+          master_code?: string;
+          status?: string;
+        }>;
+      };
+
+      expect(json.p[0].name).toBe("50%ブドウ糖液");
+      expect(json.p[0].canonical_name).toBe("ブドウ糖注射液");
+      expect(json.p[0].master_code).toBe("DRUG:ブドウ糖注射液");
+      expect(json.p[0].dosage).toContain("静脈内注射");
+      expect(json.p[0].status).toBe("confirmed");
+    });
+
     it("does not set canonical_name when top match is unconfirmed", async () => {
       bedrockMockSend.mockResolvedValue({
         output: { message: { content: [{ text: "generated text" }] } },
@@ -347,7 +382,7 @@ describe("runPipeline integration", () => {
       expect(json.a[0].name).toBe("心炎");
       expect(json.a[0].status).toBe("unconfirmed");
       expect(json.a[0].canonical_name).toBeUndefined();
-      expect(json.p[0].name).toBe("静注x");
+      expect(json.p[0].name).toBe("静脈内注射x");
       expect(json.p[0].status).toBe("unconfirmed");
       expect(json.p[0].canonical_name).toBeUndefined();
     });

@@ -257,4 +257,20 @@ describe("Extractor: error handling", () => {
       p: expect.any(Array),
     });
   });
+
+  it("throws in strict mode when Bedrock call fails", async () => {
+    const client = makeFailingBedrockClient(new Error("ValidationException"));
+
+    await expect(
+      extract({ expanded_text: "test", strict_errors: true }, asExtractorClient(client))
+    ).rejects.toThrow("Bedrock extract call failed");
+  });
+
+  it("throws in strict mode when model output is invalid JSON", async () => {
+    const client = makeBedrockClient("not-json");
+
+    await expect(
+      extract({ expanded_text: "test", strict_errors: true }, asExtractorClient(client))
+    ).rejects.toThrow("Extractor parse failed");
+  });
 });

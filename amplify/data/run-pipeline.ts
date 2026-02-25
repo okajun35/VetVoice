@@ -21,6 +21,10 @@ import { expand } from "./handlers/dictionary-expander";
 import { extract } from "./handlers/extractor";
 import { parse, stringify, type ExtractedJSON } from "./handlers/parser";
 import { matchDisease, matchProcedure, matchDrug } from "./handlers/master-matcher";
+import {
+  applyDrugCanonicalOverrides,
+  normalizePlanTextByRules,
+} from "./handlers/normalization-rules";
 import { selectTemplate } from "./handlers/template-selector";
 import { generateSOAP } from "./handlers/soap-generator";
 import { generateKyosai } from "./handlers/kyosai-generator";
@@ -42,6 +46,19 @@ const dynamoClient = DynamoDBDocumentClient.from(
  * Can still be overridden via environment variable when needed.
  */
 const DEFAULT_TRANSCRIBE_VOCABULARY_NAME = "vetvoice-ja-vocab-v1";
+
+function normalizePlanItem(
+  item: ExtractedJSON["p"][number]
+): ExtractedJSON["p"][number] {
+  const sourceText = `${item.name}${item.dosage ?? ""}`;
+  const normalized = {
+    ...item,
+    name: item.type === "procedure" ? normalizePlanTextByRules(item.name) : item.name,
+    dosage: item.dosage ? normalizePlanTextByRules(item.dosage) : item.dosage,
+  };
+
+  return applyDrugCanonicalOverrides(normalized, sourceText);
+}
 
 function applyMasterMatching(extractedJson: ExtractedJSON): {
   enriched: ExtractedJSON;
@@ -73,21 +90,21 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
           : null;
 
     if (!result) {
-      return item;
+      return normalizePlanItem(item);
     }
     const top = result.candidates[0];
 
     if (!top || top.confidence <= 0) {
-      return item;
+      return normalizePlanItem(item);
     }
 
-    return {
+    return normalizePlanItem({
       ...item,
       ...(result.top_confirmed ? { canonical_name: top.name } : {}),
       confidence: top.confidence,
       master_code: top.code,
       status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),
-    };
+    });
   });
 
   const unconfirmedCount =
@@ -233,6 +250,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
             expanded_text: transcriptExpanded ?? workingText,
             template_type: templateType ?? undefined,
             model_id_override: extractorModelId ?? undefined,
+            strict_errors: true,
           },
           bedrockClient
         );
