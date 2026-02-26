@@ -71,6 +71,11 @@ const ASSET_SPECS: AssetSpec[] = [
     exportName: "NORMALIZATION_RULES_JSON",
   },
   {
+    src: "abbrev_lexicon.json",
+    outName: "abbrev-lexicon-data",
+    exportName: "ABBREV_LEXICON_JSON",
+  },
+  {
     src: "shinryo_betsu_snow_regions.csv",
     outName: "snow-regions-data",
     exportName: "SNOW_REGIONS_CSV",

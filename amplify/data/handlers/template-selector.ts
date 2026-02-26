@@ -109,6 +109,16 @@ export function selectTemplate(
     };
   }
 
+  // Model-provided diagnostic pattern hint (used only for reproduction template).
+  if (extractedJson.diagnostic_pattern === "reproductive") {
+    const missingFields = validateRequiredFields(extractedJson, reproductionTemplate);
+    return {
+      selectedType: "reproduction_soap",
+      confidence: 0.9,
+      missingFields,
+    };
+  }
+
   // Check specific templates in priority order (reproduction first, then hoof)
   const specificTemplates = TEMPLATES.filter(
     (t) => t.type !== "general_soap" && t.type !== "kyosai" && t.keywords.length > 0

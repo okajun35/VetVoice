@@ -56,6 +56,14 @@ describe("selectTemplate", () => {
     expect(result.selectedType).toBe("reproduction_soap");
   });
 
+  it("diagnostic_pattern=reproductive selects reproduction_soap even when keywords are sparse", () => {
+    const result = selectTemplate(
+      makeJson({ diagnostic_pattern: "reproductive" })
+    );
+    expect(result.selectedType).toBe("reproduction_soap");
+    expect(result.confidence).toBe(0.9);
+  });
+
   // --- hoof_soap ---
 
   it('s containing "跛行" → hoof_soap', () => {

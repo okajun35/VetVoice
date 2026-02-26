@@ -25,6 +25,15 @@
 7. Kyosai Generator LLM で 家畜共済ドラフト生成
 8. Visit レコード保存（DynamoDB）
 
+## ドキュメント索引
+
+- `doc/assets-architecture-map.md`（assetsとランタイムの全体マップ）
+- `doc/normalization-rules.md`（正規化ルール仕様）
+- `doc/abbrev-lexicon.md`（略語レキシコン運用）
+- `doc/save-and-display-flow.md`（保存から表示までの導線）
+- `doc/evaluation-baseline.md`（評価手順）
+- `doc/whisper-poc-plan.md`（Whisper比較POC）
+
 ## 3つのLLMコンポーネント（明示）
 
 本システムはパイプライン内で **3つのLLM** を使います（`runPipeline` 内）。
@@ -59,6 +68,7 @@ TRANSCRIBE_VOCABULARY_NAME=vetvoice-ja-vocab-v1
 | ファイル | 用途 | どこで使われるか | 更新責任 |
 |---|---|---|---|
 | `assets/dictionary.csv` | 略語・言い間違いの正規化辞書 | `Dictionary_Expander`（ルールベース展開） | 運用者（獣医ドメイン知識あり） |
+| `assets/abbrev_lexicon.json` | 略語レキシコン正本（カテゴリ/揺れ候補） | 運用基盤（既存辞書・語彙更新の元データ） | 運用者＋開発者 |
 | `assets/byoumei.csv` | 病名マスタ（病名コード候補） | `Master_Matcher`（`a[]` の病名照合） | 運用者（公式マスタ改定時） |
 | `assets/shinryo_tensu_master_flat.csv` | 処置/点数マスタ | `Master_Matcher`（`p[]` の処置照合） | 運用者（点数改定時） |
 | `assets/normalization_rules.json` | 正規化ルール（薬剤名・投与経路・canonical補正） | `Master_Matcher` / `runPipeline` | 運用者＋開発者（誤認識対策時） |
@@ -68,6 +78,7 @@ TRANSCRIBE_VOCABULARY_NAME=vetvoice-ja-vocab-v1
 注意:
 - `amplify/data/handlers/generated/*.ts` は自動生成物です。直接編集しません。
 - 辞書/マスタ更新時は必ず `assets/` 側を編集します。
+- 略語レキシコンの運用ルールは `doc/abbrev-lexicon.md` を参照してください。
 
 ## 辞書更新の反映手順（アプリ内辞書）
 
