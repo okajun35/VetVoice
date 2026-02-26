@@ -386,6 +386,42 @@ describe("runPipeline integration", () => {
       expect(json.p[0].status).toBe("unconfirmed");
       expect(json.p[0].canonical_name).toBeUndefined();
     });
+
+    it("reroutes CIDR from assessment to plan and selects reproduction template", async () => {
+      bedrockMockSend.mockResolvedValue({
+        output: { message: { content: [{ text: "generated text" }] } },
+      });
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "JSON_INPUT",
+          extractedJson: {
+            vital: { temp_c: null },
+            s: null,
+            o: "右なし左CLの5。V=0、UV+",
+            a: [{ name: "cidr" }],
+            p: [],
+          },
+        }),
+        MOCK_CONTEXT
+      );
+
+      const json = result.extractedJson as {
+        a: Array<{ name: string }>;
+        p: Array<{ name: string; type: "procedure" | "drug" }>;
+      };
+
+      expect(json.a).toEqual([]);
+      expect(json.p.some((item) => item.type === "procedure" && /cidr/i.test(item.name))).toBe(
+        true
+      );
+      expect(result.templateType).toBe("reproduction_soap");
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("Reclassified 1 assessment item(s) into plan entries"),
+        ])
+      );
+    });
   });
 
   // -------------------------------------------------------------------------

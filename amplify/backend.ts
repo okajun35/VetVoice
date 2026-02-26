@@ -29,8 +29,11 @@ backend.runPipelineFunction.resources.lambda.addToRolePolicy(
     actions: ["bedrock:InvokeModel"],
     resources: [
       "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-*",
+      "arn:aws:bedrock:*::foundation-model/amazon.nova-*",
       "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
       "arn:aws:bedrock:*::foundation-model/anthropic.claude-*",
+      "arn:aws:bedrock:us-east-1:*:inference-profile/us.amazon.nova-*",
+      "arn:aws:bedrock:us-east-1:*:inference-profile/global.amazon.nova-*",
       "arn:aws:bedrock:us-east-1:*:inference-profile/us.anthropic.claude-*",
       "arn:aws:bedrock:us-east-1:*:inference-profile/global.anthropic.claude-*",
     ],
@@ -89,8 +92,11 @@ backend.generateHistorySummaryFunction.resources.lambda.addToRolePolicy(
     actions: ["bedrock:InvokeModel"],
     resources: [
       "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-*",
+      "arn:aws:bedrock:*::foundation-model/amazon.nova-*",
       "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*",
       "arn:aws:bedrock:*::foundation-model/anthropic.claude-*",
+      "arn:aws:bedrock:us-east-1:*:inference-profile/us.amazon.nova-*",
+      "arn:aws:bedrock:us-east-1:*:inference-profile/global.amazon.nova-*",
       "arn:aws:bedrock:us-east-1:*:inference-profile/us.anthropic.claude-*",
       "arn:aws:bedrock:us-east-1:*:inference-profile/global.anthropic.claude-*",
     ],

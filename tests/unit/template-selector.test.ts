@@ -42,6 +42,20 @@ describe("selectTemplate", () => {
     expect(result.selectedType).toBe("reproduction_soap");
   });
 
+  it('o containing shorthand "左CLあり" → reproduction_soap', () => {
+    const result = selectTemplate(
+      makeJson({ o: "右なし左CLあり。V=0、UV+。処置CIDR" })
+    );
+    expect(result.selectedType).toBe("reproduction_soap");
+  });
+
+  it("contextText containing shorthand selects reproduction_soap even when extracted fields are sparse", () => {
+    const result = selectTemplate(makeJson(), {
+      contextText: "右なし左clの5、V=0、UV+、処置はcidr",
+    });
+    expect(result.selectedType).toBe("reproduction_soap");
+  });
+
   // --- hoof_soap ---
 
   it('s containing "跛行" → hoof_soap', () => {

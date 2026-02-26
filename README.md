@@ -115,35 +115,27 @@ npm run build
 以下を実行して AWS 側の語彙を更新してください。
 
 ```bash
-# 0) 例: 語彙ファイルをS3へ配置
-aws s3 cp assets/transcribe-vocabulary-vetvoice-ja-v1.txt \
-  s3://<your-bucket>/transcribe/transcribe-vocabulary-vetvoice-ja-v1.txt \
-  --region us-east-1
+# 必須: バケット名
+export TRANSCRIBE_VOCAB_BUCKET=<your-bucket>
 
-# 1) 既存語彙を上書き更新
-aws transcribe update-vocabulary \
-  --vocabulary-name vetvoice-ja-vocab-v1 \
-  --language-code ja-JP \
-  --vocabulary-file-uri s3://<your-bucket>/transcribe/transcribe-vocabulary-vetvoice-ja-v1.txt \
-  --region us-east-1
+# 1) update/create（自動判定）
+npm run transcribe:vocab:update
 
 # 2) READY確認
-aws transcribe get-vocabulary \
-  --vocabulary-name vetvoice-ja-vocab-v1 \
-  --region us-east-1 \
-  --query '{Name:VocabularyName,State:VocabularyState,Failure:FailureReason}'
+npm run transcribe:vocab:status
 ```
 
 `State` が `READY` になるまで待機し、`FAILED` の場合は `FailureReason` を確認して修正します。
 
-初回作成時（まだ語彙が存在しない場合）は `create-vocabulary` を使用します。
+利用可能な環境変数:
 
 ```bash
-aws transcribe create-vocabulary \
-  --vocabulary-name vetvoice-ja-vocab-v1 \
-  --language-code ja-JP \
-  --vocabulary-file-uri s3://<your-bucket>/transcribe/transcribe-vocabulary-vetvoice-ja-v1.txt \
-  --region us-east-1
+AWS_REGION=us-east-1
+TRANSCRIBE_VOCABULARY_NAME=vetvoice-ja-vocab-v1
+TRANSCRIBE_LANGUAGE_CODE=ja-JP
+TRANSCRIBE_VOCAB_FILE=assets/transcribe-vocabulary-vetvoice-ja-v1.txt
+TRANSCRIBE_VOCAB_BUCKET=<your-bucket>                         # 必須
+TRANSCRIBE_VOCAB_S3_KEY=transcribe/transcribe-vocabulary-vetvoice-ja-v1.txt
 ```
 
 ### Transcribe語彙ファイルのフォーマット

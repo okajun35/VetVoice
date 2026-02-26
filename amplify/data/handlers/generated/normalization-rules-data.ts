@@ -3,6 +3,13 @@
 // Regenerate: npm run generate-assets
 
 export const NORMALIZATION_RULES_JSON = `{
+  "preExtractionTextNormalizationRules": [
+    {
+      "pattern": "(?:分|糞|ふん)は?(?:南べ|なんべん|軟便)",
+      "replacement": "糞は軟便",
+      "flags": "gu"
+    }
+  ],
   "drugQueryNormalizationRules": [
     {
       "pattern": "([0-9０-９]+[%％])?ブドウ糖液",

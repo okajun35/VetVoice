@@ -50,6 +50,7 @@ export interface PipelineEntryFormProps {
 
 const MODEL_OPTIONS = [
   { value: '', label: '(default)' },
+  { value: 'us.amazon.nova-premier-v1:0', label: 'Amazon Nova Premier (US Profile)' },
   { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
   { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
   { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },

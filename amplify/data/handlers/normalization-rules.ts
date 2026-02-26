@@ -22,6 +22,7 @@ interface DrugCanonicalOverrideRule {
 }
 
 interface NormalizationRulesSchema {
+  preExtractionTextNormalizationRules?: RegexReplaceRule[];
   drugQueryNormalizationRules?: RegexReplaceRule[];
   planTextNormalizationRules?: RegexReplaceRule[];
   drugCanonicalOverrideRules?: DrugCanonicalOverrideRule[];
@@ -33,6 +34,7 @@ interface CompiledRegexRule {
 }
 
 interface CompiledNormalizationRules {
+  preExtractionTextNormalizationRules: CompiledRegexRule[];
   drugQueryNormalizationRules: CompiledRegexRule[];
   planTextNormalizationRules: CompiledRegexRule[];
   drugCanonicalOverrideRules: DrugCanonicalOverrideRule[];
@@ -71,6 +73,9 @@ function loadRules(): CompiledNormalizationRules {
   }
 
   cache = {
+    preExtractionTextNormalizationRules: compileRegexRules(
+      parsed.preExtractionTextNormalizationRules
+    ),
     drugQueryNormalizationRules: compileRegexRules(parsed.drugQueryNormalizationRules),
     planTextNormalizationRules: compileRegexRules(parsed.planTextNormalizationRules),
     drugCanonicalOverrideRules: parsed.drugCanonicalOverrideRules ?? [],
@@ -91,6 +96,12 @@ export function normalizeDrugQueryByRules(text: string): string {
   if (!text) return text;
   const rules = loadRules();
   return applyRegexRules(text, rules.drugQueryNormalizationRules);
+}
+
+export function normalizePreExtractionTextByRules(text: string): string {
+  if (!text) return text;
+  const rules = loadRules();
+  return applyRegexRules(text, rules.preExtractionTextNormalizationRules);
 }
 
 export function normalizePlanTextByRules(text: string): string {
@@ -150,4 +161,3 @@ export function applyDrugCanonicalOverrides<
 export function resetNormalizationRulesCache(): void {
   cache = null;
 }
-
