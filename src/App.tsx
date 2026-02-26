@@ -1,11 +1,111 @@
 import { useState } from 'react';
-import { Authenticator } from '@aws-amplify/ui-react';
+import { Authenticator, ThemeProvider, createTheme } from '@aws-amplify/ui-react';
+import { I18n } from 'aws-amplify/utils';
 import '@aws-amplify/ui-react/styles.css';
 import { QRScanner } from './components/QRScanner';
 import { CowRegistrationForm } from './components/CowRegistrationForm';
 import { VisitManager } from './components/VisitManager';
 import { CowListScreen } from './components/CowListScreen';
 import DevEntryPoints from './components/DevEntryPoints';
+import { Button } from './components/ui/Button/Button';
+import styles from './App.module.css';
+
+// Task 7.1: Configure Japanese translations for Amplify UI Authenticator
+I18n.putVocabularies({
+  ja: {
+    'Sign In': 'サインイン',
+    'Sign in': 'サインイン',
+    'Sign Up': 'アカウント作成',
+    'Sign Out': 'サインアウト',
+    'Sign in to your account': 'アカウントにサインイン',
+    'Username': 'ユーザー名',
+    'Password': 'パスワード',
+    'Enter your Username': 'ユーザー名を入力',
+    'Enter your Password': 'パスワードを入力',
+    'Forgot your password?': 'パスワードをお忘れですか？',
+    'Reset Password': 'パスワードをリセット',
+    'No account?': 'アカウントをお持ちでない方は',
+    'Create account': 'アカウント作成',
+    'Have an account?': 'アカウントをお持ちの方は',
+    'Back to Sign In': 'サインインに戻る',
+    'Send code': 'コードを送信',
+    'Confirm': '確認',
+    'Confirmation Code': '確認コード',
+    'Enter your code': '確認コードを入力',
+    'New Password': '新しいパスワード',
+    'Email': 'メールアドレス',
+    'Phone Number': '電話番号',
+    'Incorrect username or password.': 'ユーザー名またはパスワードが正しくありません。',
+    'User does not exist.': 'ユーザーが存在しません。',
+    'User already exists': 'ユーザーはすでに存在します',
+    'Invalid verification code provided, please try again.': '確認コードが無効です。もう一度お試しください。',
+    'An account with the given email already exists.': 'このメールアドレスはすでに使用されています。',
+    'Password did not conform with policy: Password not long enough': 'パスワードが短すぎます。',
+    'Loading': '読み込み中',
+  },
+});
+I18n.setLanguage('ja');
+
+// Task 7.2: VetVoice theme - map design-system.css color tokens to Amplify UI theme tokens
+// --color-primary: #1E6BFF, --color-primary-hover: #3B82FF, --color-primary-active: #1557D8
+// --color-focus-ring: #93C5FD, --color-border-input: #D1D5DB
+const vetVoiceTheme = createTheme({
+  name: 'vet-voice-theme',
+  tokens: {
+    colors: {
+      brand: {
+        primary: {
+          10: { value: '#EFF6FF' },
+          20: { value: '#DBEAFE' },
+          40: { value: '#93C5FD' },
+          60: { value: '#3B82FF' },
+          80: { value: '#1E6BFF' },
+          90: { value: '#1557D8' },
+          100: { value: '#1557D8' },
+        },
+      },
+    },
+    components: {
+      authenticator: {
+        router: {
+          borderWidth: { value: '1px' },
+          borderStyle: { value: 'solid' },
+          borderColor: { value: '#E5E7EB' },
+          boxShadow: { value: '0 4px 6px -1px rgba(0,0,0,0.1)' },
+        },
+      },
+      button: {
+        primary: {
+          backgroundColor: { value: '#1E6BFF' },
+          _hover: {
+            backgroundColor: { value: '#3B82FF' },
+          },
+          _active: {
+            backgroundColor: { value: '#1557D8' },
+          },
+        },
+      },
+      fieldcontrol: {
+        borderColor: { value: '#D1D5DB' },
+        _focus: {
+          borderColor: { value: '#1E6BFF' },
+          boxShadow: { value: '0 0 0 3px #93C5FD' },
+        },
+      },
+    },
+    fonts: {
+      default: {
+        variable: { value: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
+        static: { value: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
+      },
+    },
+    radii: {
+      small: { value: '0.25rem' },
+      medium: { value: '0.5rem' },
+      large: { value: '0.75rem' },
+    },
+  },
+});
 
 /**
  * VetVoice main application
@@ -47,100 +147,81 @@ function App() {
   };
 
   return (
-    <Authenticator>
-      {({ signOut, user }) => (
-        <main style={{ padding: '1rem', maxWidth: '720px', margin: '0 auto' }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1rem',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-            }}
-          >
-            <h1 style={{ margin: 0, fontSize: '1.2rem' }}>VetVoice</h1>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {!devMode && view === 'qr' && (
-                <button
+    <ThemeProvider theme={vetVoiceTheme}>
+      <Authenticator>
+        {({ signOut, user }) => (
+          <main className={styles.appMain}>
+            <div className={styles.header}>
+              <h1 className={styles.headerTitle}>VetVoice</h1>
+              <div className={styles.headerActions}>
+                {!devMode && view === 'qr' && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setView('cow_list')}
+                  >
+                    牛一覧
+                  </Button>
+                )}
+                <Button
                   type="button"
-                  onClick={() => setView('cow_list')}
-                  style={{
-                    padding: '0.3rem 0.75rem',
-                    fontSize: '0.85rem',
-                    background: '#fff',
-                    border: '1px solid #0066cc',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    color: '#0066cc',
-                  }}
+                  variant="secondary"
+                  size="sm"
+                  className={devMode ? styles.devModeActive : undefined}
+                  onClick={() => setDevMode((v) => !v)}
                 >
-                  牛一覧
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setDevMode((v) => !v)}
-                style={{
-                  padding: '0.3rem 0.75rem',
-                  fontSize: '0.8rem',
-                  background: devMode ? '#e8f0fe' : '#fff',
-                  border: '1px solid #0066cc',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  color: '#0066cc',
-                }}
-              >
-                {devMode ? '開発モード ON' : '開発モード'}
-              </button>
-              <span style={{ fontSize: '0.85rem', color: '#555' }}>
-                {user?.signInDetails?.loginId}
-              </span>
-              <button
-                type="button"
-                onClick={signOut}
-                style={{ padding: '0.3rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer' }}
-              >
-                サインアウト
-              </button>
+                  {devMode ? '開発モード ON' : '開発モード'}
+                </Button>
+                <span className={styles.userId}>
+                  {user?.signInDetails?.loginId}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={signOut}
+                >
+                  サインアウト
+                </Button>
+              </div>
             </div>
-          </div>
 
-          {devMode ? (
-            <DevEntryPoints />
-          ) : (
-            <>
-              {view === 'qr' && (
-                <QRScanner onCowFound={handleCowFound} onNewCow={handleNewCow} />
-              )}
+            {devMode ? (
+              <DevEntryPoints />
+            ) : (
+              <>
+                {view === 'qr' && (
+                  <QRScanner onCowFound={handleCowFound} onNewCow={handleNewCow} />
+                )}
 
-              {view === 'register' && (
-                <CowRegistrationForm
-                  initialCowId={pendingCowId ?? ''}
-                  onRegistered={handleRegistered}
-                  onCancel={handleCancelRegistration}
-                />
-              )}
+                {view === 'register' && (
+                  <CowRegistrationForm
+                    initialCowId={pendingCowId ?? ''}
+                    onRegistered={handleRegistered}
+                    onCancel={handleCancelRegistration}
+                  />
+                )}
 
-              {view === 'visit_manager' && currentCowId && (
-                <VisitManager cowId={currentCowId} onBack={handleBackToQr} />
-              )}
+                {view === 'visit_manager' && currentCowId && (
+                  <VisitManager cowId={currentCowId} onBack={handleBackToQr} />
+                )}
 
-              {view === 'cow_list' && (
-                <CowListScreen
-                  onNavigateToVisit={(cowId) => {
-                    setCurrentCowId(cowId);
-                    setView('visit_manager');
-                  }}
-                  onBack={() => setView('qr')}
-                />
-              )}
-            </>
-          )}
-        </main>
-      )}
-    </Authenticator>
+                {view === 'cow_list' && (
+                  <CowListScreen
+                    onNavigateToVisit={(cowId) => {
+                      setCurrentCowId(cowId);
+                      setView('visit_manager');
+                    }}
+                    onBack={() => setView('qr')}
+                  />
+                )}
+              </>
+            )}
+          </main>
+        )}
+      </Authenticator>
+    </ThemeProvider>
   );
 }
 

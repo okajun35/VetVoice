@@ -561,11 +561,8 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
 
             fireEvent.click(jsonTab as HTMLElement);
 
-            // Find the textarea
-            const textareas = container.querySelectorAll('textarea');
-            const jsonTextarea = Array.from(textareas).find(
-              (ta) => ta.style.fontFamily === 'monospace'
-            );
+            // Find the textarea (JSON_INPUT tab renders only one textarea)
+            const jsonTextarea = container.querySelector('textarea');
 
             if (!jsonTextarea) {
               return false;
@@ -659,11 +656,8 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
 
             fireEvent.click(jsonTab as HTMLElement);
 
-            // Find the textarea
-            const textareas = container.querySelectorAll('textarea');
-            const jsonTextarea = Array.from(textareas).find(
-              (ta) => ta.style.fontFamily === 'monospace'
-            );
+            // Find the textarea (JSON_INPUT tab renders only one textarea)
+            const jsonTextarea = container.querySelector('textarea');
 
             if (!jsonTextarea) {
               return false;

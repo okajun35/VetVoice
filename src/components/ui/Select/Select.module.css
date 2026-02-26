@@ -1,0 +1,96 @@
+/* ========================================
+   Select Component Styles
+   ======================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--spacing-2);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+.select {
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+
+  border: 2px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+
+  transition: all var(--transition-fast);
+
+  min-height: var(--touch-target-min);
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-4) center;
+  padding-right: calc(var(--spacing-4) * 2 + 12px);
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.select:focus {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-color: var(--color-primary);
+}
+
+.select--error {
+  border-color: var(--color-danger-outline);
+}
+
+.select--error:focus {
+  outline-color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.select:disabled {
+  background-color: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+  border-color: var(--color-disabled-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.helper {
+  display: block;
+  margin-top: var(--spacing-2);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.error {
+  display: block;
+  margin-top: var(--spacing-2);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-danger);
+  font-weight: var(--font-weight-medium);
+}

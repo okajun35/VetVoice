@@ -1,0 +1,44 @@
+/* App layout — CSS Modules */
+
+.appMain {
+  padding: var(--spacing-4);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* Header */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-4);
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+
+.headerTitle {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.headerActions {
+  display: flex;
+  gap: var(--spacing-2);
+  align-items: center;
+}
+
+/* Dev mode active state */
+
+.devModeActive {
+  background-color: var(--color-warning-subtle, #fef9c3);
+  color: var(--color-warning, #854d0e);
+  border-color: var(--color-warning, #854d0e);
+}
+
+/* User ID display */
+
+.userId {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}

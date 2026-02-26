@@ -1,0 +1,137 @@
+/* ========================================
+   VisitManager Component Styles
+   References design-system.css tokens via var(--token-name)
+   ======================================== */
+
+/* ========================================
+   Page wrapper
+   ======================================== */
+
+.wrapper {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--spacing-4);
+}
+
+/* ========================================
+   Card spacing overrides (cow info + new-visit)
+   ======================================== */
+
+.cowCard {
+  margin-bottom: var(--spacing-6);
+}
+
+.newVisitCard {
+  margin-bottom: var(--spacing-6);
+}
+
+/* ========================================
+   Info row (label + value pair)
+   ======================================== */
+
+.infoRow {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-bottom: 0.35rem;
+  font-size: var(--font-size-sm);
+}
+
+.infoLabel {
+  font-weight: var(--font-weight-bold);
+  min-width: 120px;
+}
+
+/* ========================================
+   Section header row (title + action button)
+   ======================================== */
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-3);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+/* ========================================
+   New-visit header row (back button + title)
+   ======================================== */
+
+.newVisitHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-4);
+}
+
+/* ========================================
+   Visit history item (button row)
+   ======================================== */
+
+.visitItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--spacing-3) var(--spacing-4);
+  margin-bottom: var(--spacing-2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-base);
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.visitItem:hover {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-background);
+}
+
+.visitItemDate {
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-1);
+}
+
+.visitItemMeta {
+  color: var(--color-text-secondary);
+  display: flex;
+  gap: var(--spacing-4);
+}
+
+.visitStatusCompleted {
+  color: var(--color-success);
+}
+
+.visitStatusInProgress {
+  color: var(--color-warning);
+}
+
+/* ========================================
+   Empty state
+   ======================================== */
+
+.emptyText {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* ========================================
+   Back button spacing
+   ======================================== */
+
+.backButton {
+  margin-bottom: var(--spacing-4);
+}
+
+/* ========================================
+   Error alert spacing
+   ======================================== */
+
+.errorMargin {
+  margin-bottom: var(--spacing-4);
+}

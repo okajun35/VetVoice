@@ -1,0 +1,262 @@
+/* ========================================
+   PipelineEntryForm Component Styles
+   References design-system.css tokens via var(--token-name)
+   ======================================== */
+
+/* ========================================
+   Field base (input / textarea / file input)
+   ======================================== */
+
+.field {
+  width: 100%;
+  min-height: var(--touch-target-min);
+  padding: var(--spacing-2) var(--spacing-3);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+
+  transition: border-color var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.field:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.field:focus {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-color: var(--color-primary);
+}
+
+.field:disabled {
+  background-color: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+  border-color: var(--color-disabled-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ========================================
+   Select field
+   ======================================== */
+
+.selectField {
+  composes: field;
+  appearance: auto;
+}
+
+/* ========================================
+   Primary button
+   ======================================== */
+
+.primaryButton {
+  min-height: var(--touch-target-min);
+  padding: var(--spacing-2) var(--spacing-6);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+
+  color: var(--color-on-primary);
+  background-color: var(--color-primary);
+
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+
+  cursor: pointer;
+  transition: background-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.primaryButton:active:not(:disabled) {
+  background-color: var(--color-primary-active);
+  border-color: var(--color-primary-active);
+}
+
+.primaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ========================================
+   Cow ID row (dev mode only)
+   ======================================== */
+
+.cowIdRow {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.cowIdInput {
+  composes: field;
+  width: 200px;
+}
+
+/* ========================================
+   Model overrides grid (dev mode only)
+   ======================================== */
+
+.modelOverrides {
+  margin-top: var(--spacing-3);
+  display: grid;
+  gap: var(--spacing-2);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.modelOverrideLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.modelOverrideSelect {
+  composes: selectField;
+  flex: 1;
+}
+
+/* ========================================
+   Tab bar
+   ======================================== */
+
+.tabBar {
+  margin-top: var(--spacing-4);
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.tab {
+  padding: var(--spacing-2) var(--spacing-4);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+  color: var(--color-text-secondary);
+}
+
+.tab:hover:not(.tabActive) {
+  background-color: var(--color-background);
+  border-color: var(--color-border-strong);
+}
+
+.tabActive {
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--color-info-subtle);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* ========================================
+   Tab content panel
+   ======================================== */
+
+.tabContent {
+  border: 1px solid var(--color-border-subtle);
+  padding: var(--spacing-4);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);
+}
+
+/* ========================================
+   Action row (button row below inputs)
+   ======================================== */
+
+.actionRow {
+  margin-top: var(--spacing-2);
+}
+
+/* ========================================
+   File info / status text
+   ======================================== */
+
+.fileInfo {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.statusText {
+  color: var(--color-info);
+}
+
+/* ========================================
+   Error display
+   ======================================== */
+
+.errorBox {
+  margin-top: var(--spacing-4);
+  padding: var(--spacing-3);
+  background-color: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-outline);
+  border-radius: var(--radius-sm);
+  color: var(--color-danger);
+  white-space: pre-wrap;
+}
+
+/* ========================================
+   Result section
+   ======================================== */
+
+.resultSection {
+  margin-top: var(--spacing-4);
+}
+
+.resultField {
+  margin-top: var(--spacing-2);
+}
+
+.resultPre {
+  background-color: var(--color-background);
+  padding: var(--spacing-3);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  margin-top: var(--spacing-1);
+}
+
+.resultPreSoap {
+  composes: resultPre;
+  background-color: var(--color-info-subtle);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-base);
+}
+
+.resultPreKyosai {
+  composes: resultPre;
+  background-color: var(--color-success-subtle);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-base);
+}
+
+.warningList {
+  margin-top: var(--spacing-1);
+  padding-left: var(--spacing-6);
+}
+
+.warningItem {
+  color: var(--color-warning);
+}
