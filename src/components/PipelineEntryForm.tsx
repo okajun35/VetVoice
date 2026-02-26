@@ -48,8 +48,35 @@ export interface PipelineEntryFormProps {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MODEL_OPTIONS = [
-  { value: '', label: '(default)' },
+const EXTRACTOR_MODEL_OPTIONS = [
+  { value: '', label: '(default) Claude Haiku 4.5' },
+  { value: 'us.amazon.nova-premier-v1:0', label: 'Amazon Nova Premier (US Profile)' },
+  { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
+  { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
+  { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
+  { value: 'anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (20250514)' },
+  { value: 'anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+  { value: 'anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5' },
+  { value: 'anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet' },
+  { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
+];
+
+const SOAP_MODEL_OPTIONS = [
+  { value: '', label: '(default) Amazon Nova Lite' },
+  { value: 'us.amazon.nova-premier-v1:0', label: 'Amazon Nova Premier (US Profile)' },
+  { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
+  { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
+  { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
+  { value: 'anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (20250514)' },
+  { value: 'anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+  { value: 'anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5' },
+  { value: 'anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet' },
+  { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
+];
+
+const KYOSAI_MODEL_OPTIONS = [
+  { value: '', label: '(default) Amazon Nova Lite' },
+  { value: 'us.amazon.nova-premier-v1:0', label: 'Amazon Nova Premier (US Profile)' },
   { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
   { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
   { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
@@ -304,7 +331,7 @@ export function PipelineEntryForm({
               onChange={(e) => setExtractorModelId(e.target.value)}
               style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
             >
-              {MODEL_OPTIONS.map((opt) => (
+              {EXTRACTOR_MODEL_OPTIONS.map((opt) => (
                 <option key={opt.value || 'default-extractor'} value={opt.value}>
                   {opt.label}
                 </option>
@@ -318,7 +345,7 @@ export function PipelineEntryForm({
               onChange={(e) => setSoapModelId(e.target.value)}
               style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
             >
-              {MODEL_OPTIONS.map((opt) => (
+              {SOAP_MODEL_OPTIONS.map((opt) => (
                 <option key={opt.value || 'default-soap'} value={opt.value}>
                   {opt.label}
                 </option>
@@ -332,7 +359,7 @@ export function PipelineEntryForm({
               onChange={(e) => setKyosaiModelId(e.target.value)}
               style={{ ...SELECT_STYLE, marginLeft: '0.5rem' }}
             >
-              {MODEL_OPTIONS.map((opt) => (
+              {KYOSAI_MODEL_OPTIONS.map((opt) => (
                 <option key={opt.value || 'default-kyosai'} value={opt.value}>
                   {opt.label}
                 </option>

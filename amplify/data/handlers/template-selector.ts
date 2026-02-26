@@ -30,10 +30,30 @@ export interface TemplateSelectionResult {
   missingFields: string[];
 }
 
+export interface TemplateSelectionOptions {
+  contextText?: string | null;
+}
+
+const REPRODUCTION_SHORTHAND_PATTERNS: RegExp[] = [
+  /(?:^|[^a-z0-9])cidr(?:[^a-z0-9]|$)/i,
+  /(?:^|[^a-z0-9])cl(?:[^a-z0-9]|$)/i,
+  /v\s*=?\s*0/i,
+  /uv\s*\+?/i,
+  /黄体/u,
+  /子宮/u,
+];
+
+function normalizeKeywordText(text: string): string {
+  return text.normalize("NFKC").toLowerCase();
+}
+
 /**
  * Collect all text content from ExtractedJSON text fields
  */
-function collectAllText(extractedJson: ExtractedJSON): string {
+function collectAllText(
+  extractedJson: ExtractedJSON,
+  contextText?: string | null
+): string {
   const parts: string[] = [];
 
   if (extractedJson.s) parts.push(extractedJson.s);
@@ -47,7 +67,15 @@ function collectAllText(extractedJson: ExtractedJSON): string {
     parts.push(item.name);
   }
 
+  if (contextText) {
+    parts.push(contextText);
+  }
+
   return parts.join(" ");
+}
+
+function hasReproductionShorthand(text: string): boolean {
+  return REPRODUCTION_SHORTHAND_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 /**
@@ -63,8 +91,33 @@ function collectAllText(extractedJson: ExtractedJSON): string {
  * @param extractedJson - ExtractedJSON object to select template for
  * @returns Template selection result with type, confidence, and missing fields
  */
-export function selectTemplate(extractedJson: ExtractedJSON): TemplateSelectionResult {
-  const allText = collectAllText(extractedJson);
+export function selectTemplate(
+  extractedJson: ExtractedJSON,
+  options?: TemplateSelectionOptions
+): TemplateSelectionResult {
+  const allText = collectAllText(extractedJson, options?.contextText);
+  const normalizedAllText = normalizeKeywordText(allText);
+  const reproductionTemplate = TEMPLATES.find((t) => t.type === "reproduction_soap")!;
+
+  // Fast-path for shorthand-heavy reproduction notes (e.g. "CL", "CIDR", "V=0", "UV+")
+  if (hasReproductionShorthand(normalizedAllText)) {
+    const missingFields = validateRequiredFields(extractedJson, reproductionTemplate);
+    return {
+      selectedType: "reproduction_soap",
+      confidence: 0.95,
+      missingFields,
+    };
+  }
+
+  // Model-provided diagnostic pattern hint (used only for reproduction template).
+  if (extractedJson.diagnostic_pattern === "reproductive") {
+    const missingFields = validateRequiredFields(extractedJson, reproductionTemplate);
+    return {
+      selectedType: "reproduction_soap",
+      confidence: 0.9,
+      missingFields,
+    };
+  }
 
   // Check specific templates in priority order (reproduction first, then hoof)
   const specificTemplates = TEMPLATES.filter(
@@ -72,7 +125,9 @@ export function selectTemplate(extractedJson: ExtractedJSON): TemplateSelectionR
   );
 
   for (const template of specificTemplates) {
-    const matchedKeywords = template.keywords.filter((kw) => allText.includes(kw));
+    const matchedKeywords = template.keywords.filter((kw) =>
+      normalizedAllText.includes(normalizeKeywordText(kw))
+    );
 
     if (matchedKeywords.length > 0) {
       const confidence = matchedKeywords.length / template.keywords.length;

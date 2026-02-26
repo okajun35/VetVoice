@@ -15,12 +15,19 @@
 /**
  * Extracted_JSON型定義
  */
+export type DiagnosticPattern =
+  | "metabolic"
+  | "infectious"
+  | "reproductive"
+  | "unknown";
+
 export interface ExtractedJSON {
   vital: {
     temp_c: number | null;
   };
   s: string | null;
   o: string | null;
+  diagnostic_pattern?: DiagnosticPattern;
   a: Array<{
     name: string;
     canonical_name?: string;
@@ -37,6 +44,27 @@ export interface ExtractedJSON {
     master_code?: string;
     status?: "confirmed" | "unconfirmed";
   }>;
+}
+
+const DIAGNOSTIC_PATTERN_ALIASES: Record<string, DiagnosticPattern> = {
+  metabolic: "metabolic",
+  "代謝": "metabolic",
+  "たいしゃ": "metabolic",
+  infectious: "infectious",
+  "感染": "infectious",
+  "かんせん": "infectious",
+  reproductive: "reproductive",
+  repro: "reproductive",
+  "繁殖": "reproductive",
+  "はんしょく": "reproductive",
+  unknown: "unknown",
+  "不明": "unknown",
+};
+
+function normalizeDiagnosticPattern(value: string): DiagnosticPattern | null {
+  const normalized = value.normalize("NFKC").trim().toLowerCase();
+  if (!normalized) return null;
+  return DIAGNOSTIC_PATTERN_ALIASES[normalized] ?? null;
 }
 
 /**
@@ -111,6 +139,28 @@ export function parse(jsonString: string): ParseResult {
   // Step 6: o フィールドの検証
   if (parsed.o !== null && typeof parsed.o !== "string") {
     errors.push("Field 'o' must be a string or null");
+  }
+
+  // Step 6.5: diagnostic_pattern フィールドの検証（任意）
+  if ("diagnostic_pattern" in parsed) {
+    const value = parsed.diagnostic_pattern;
+
+    if (value == null || value === "") {
+      delete parsed.diagnostic_pattern;
+    } else if (typeof value !== "string") {
+      errors.push(
+        "Field 'diagnostic_pattern' must be one of 'metabolic'|'infectious'|'reproductive'|'unknown'"
+      );
+    } else {
+      const normalized = normalizeDiagnosticPattern(value);
+      if (!normalized) {
+        errors.push(
+          "Field 'diagnostic_pattern' must be one of 'metabolic'|'infectious'|'reproductive'|'unknown'"
+        );
+      } else {
+        parsed.diagnostic_pattern = normalized;
+      }
+    }
   }
 
   // Step 7: a フィールドの検証

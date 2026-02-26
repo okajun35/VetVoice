@@ -307,6 +307,15 @@ describe("Master_Matcher: matchDrug()", () => {
     expect(result.top_confirmed).toBe(true);
   });
 
+  it("normalizes 'ブドウ糖液' dictation to injectable generic", () => {
+    const result = matchDrug("50%ブドウ糖液");
+
+    expect(result.candidates.length).toBeGreaterThan(0);
+    expect(result.candidates[0].name).toBe("ブドウ糖注射液");
+    expect(result.candidates[0].code).toBe("DRUG:ブドウ糖注射液");
+    expect(result.top_confirmed).toBe(true);
+  });
+
   it("returns empty candidates for empty input", () => {
     const result = matchDrug("");
 
