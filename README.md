@@ -40,7 +40,7 @@
 
 | コンポーネント | 役割 | デフォルトモデル | 直接上書き（開発UI/API） | Lambda環境変数上書き |
 |---|---|---|---|---|
-| Extractor | 音声/テキストから構造化JSONを抽出 | `amazon.nova-pro-v1:0` | `extractorModelId` | `EXTRACTOR_MODEL_ID` |
+| Extractor | 音声/テキストから構造化JSONを抽出 | `anthropic.claude-haiku-4-5-20251001-v1:0` | `extractorModelId` | `EXTRACTOR_MODEL_ID` |
 | SOAP Generator | 構造化JSONからSOAP文を生成 | `amazon.nova-lite-v1:0` | `soapModelId` | `SOAP_GENERATOR_MODEL_ID` |
 | Kyosai Generator | 構造化JSONから家畜共済ドラフトを生成 | `amazon.nova-lite-v1:0` | `kyosaiModelId` | `KYOSAI_GENERATOR_MODEL_ID` |
 
@@ -168,7 +168,7 @@ Phrase    SoundsLike    IPA    DisplayAs
 環境変数で固定したい場合は以下を設定します。
 
 ```bash
-EXTRACTOR_MODEL_ID=amazon.nova-pro-v1:0
+EXTRACTOR_MODEL_ID=anthropic.claude-haiku-4-5-20251001-v1:0
 SOAP_GENERATOR_MODEL_ID=amazon.nova-lite-v1:0
 KYOSAI_GENERATOR_MODEL_ID=amazon.nova-lite-v1:0
 HISTORY_SUMMARY_MODEL_ID=amazon.nova-micro-v1:0

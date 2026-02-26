@@ -6,7 +6,7 @@
  * Extracts structured JSON (ExtractedJSON) from expanded veterinary text
  * using Amazon Bedrock Converse API.
  *
- * LLM: Amazon Nova Pro (default via model-config)
+ * LLM: Claude Haiku 4.5 (default via model-config)
  * Dependencies: BedrockRuntimeClient (injected)
  *
  * Requirements: 5.1, 5.2, 5.3, 15.1

@@ -18,10 +18,10 @@ export type ComponentName =
 
 type ModelAliasMap = Record<string, string>;
 
-// Default configs per component (Amazon Nova - recommended for competition)
+// Default configs per component
 const DEFAULT_CONFIGS: Record<ComponentName, ModelConfig> = {
   extractor: {
-    modelId: "amazon.nova-pro-v1:0",
+    modelId: "anthropic.claude-haiku-4-5-20251001-v1:0",
     region: "us-east-1",
     maxTokens: 4096,
     temperature: 0.1,
