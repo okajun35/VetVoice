@@ -40,6 +40,18 @@ backend.runPipelineFunction.resources.lambda.addToRolePolicy(
   })
 );
 
+// runPipeline Lambda: Bedrock Marketplace subscription check permissions
+backend.runPipelineFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: [
+      "aws-marketplace:ViewSubscriptions",
+      "aws-marketplace:Subscribe",
+    ],
+    resources: ["*"],
+  })
+);
+
 // runPipeline Lambda: Transcribe permissions
 backend.runPipelineFunction.resources.lambda.addToRolePolicy(
   new PolicyStatement({
