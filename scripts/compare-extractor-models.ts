@@ -21,6 +21,7 @@ const DEFAULT_MODEL_IDS = [
   "amazon.nova-premier-v1:0",
   "amazon.nova-pro-v1:0",
 ];
+const REQUIRED_FIELDS_TOTAL = 5;
 
 interface CliOptions {
   datasetPath: string;
@@ -159,7 +160,7 @@ async function main(): Promise<void> {
           latency_ms: latencyMs,
           schema_pass: false,
           required_fields_filled: 0,
-          required_fields_total: 5,
+          required_fields_total: REQUIRED_FIELDS_TOTAL,
           missing_count: structuredGold.length > 0 ? structuredGold.length : null,
           misclassified_count: structuredGold.length > 0 ? 0 : null,
           error: message,

@@ -132,6 +132,7 @@ describe("Feature: vet-voice-medical-record, Property 16: テンプレート自�
             ...extracted,
             s: keyword,
             o: null,
+            diagnostic_pattern: undefined,
             a: [],
             p: [],
           };

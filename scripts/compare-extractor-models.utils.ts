@@ -40,12 +40,17 @@ export function parseModelListArg(
 }
 
 export function parseCsvRows(rawCsv: string): ComparisonCsvRow[] {
-  const lines = rawCsv.split(/\r?\n/u).filter((line) => line.trim().length > 0);
-  if (lines.length === 0) {
+  const rawLines = rawCsv.split(/\r?\n/u);
+  const headerIndex = rawLines.findIndex((line) => {
+    const trimmed = line.trim();
+    return trimmed.length > 0 && !trimmed.startsWith("#");
+  });
+
+  if (headerIndex < 0) {
     throw new Error("CSV is empty.");
   }
 
-  const header = splitCsvLine(lines[0]).map((item) => item.trim());
+  const header = splitCsvLine(rawLines[headerIndex]).map((item) => item.trim());
   const headerSet = new Set(header);
   for (const required of REQUIRED_HEADERS) {
     if (!headerSet.has(required)) {
@@ -59,9 +64,10 @@ export function parseCsvRows(rawCsv: string): ComparisonCsvRow[] {
   }
 
   const rows: ComparisonCsvRow[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim().startsWith("#")) continue;
+  for (let i = headerIndex + 1; i < rawLines.length; i++) {
+    const line = rawLines[i];
+    const trimmed = line.trim();
+    if (trimmed.length === 0 || trimmed.startsWith("#")) continue;
     const cells = splitCsvLine(line);
     const values: Record<string, string> = {};
     for (let c = 0; c < header.length; c++) {

@@ -31,6 +31,22 @@ describe("compare-extractor-models utils", () => {
     expect(rows[0].values.gold_human_note).toBe("藤井さん,牛1234,処置はCIDR");
   });
 
+  it("preserves original line numbers when CSV contains blank lines", () => {
+    const rows = parseCsvRows(
+      [
+        "case_id,transcript_json_path,gold_human_note,note",
+        "",
+        '1,tmp/input-1.json,"1件目"',
+        "",
+        '2,tmp/input-2.json,"2件目"',
+      ].join("\n")
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0].lineNo).toBe(3);
+    expect(rows[1].lineNo).toBe(5);
+  });
+
   it("normalizes case rows with auto case_id and resolved path", () => {
     const rows = parseCsvRows(
       [
