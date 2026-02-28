@@ -214,6 +214,37 @@ npm run eval
 - 出力: `tmp/eval/latest.json`, `tmp/eval/latest.md`
 - 詳細運用: `doc/evaluation-baseline.md`
 
+## Extractorモデル比較（CSV + 人手正解メモ）
+
+`runPipeline`（Cognito経由）ではなく、ローカルCLIからBedrockへ直接実行します。
+
+```bash
+npm run eval:extractor:compare -- tmp/model-comparison-sample.csv tmp/model-compare
+```
+
+- 入力CSV例: `tmp/model-comparison-sample.csv`
+- 出力: `tmp/model-compare/comparison.latest.json`, `tmp/model-compare/comparison.latest.md`
+- デフォルト比較モデル:
+  - `anthropic.claude-haiku-4-5-20251001-v1:0`
+  - `amazon.nova-premier-v1:0`
+  - `amazon.nova-pro-v1:0`
+- モデル上書き例:
+
+```bash
+npm run eval:extractor:compare -- tmp/model-comparison-sample.csv tmp/model-compare --models anthropic.claude-haiku-4-5-20251001-v1:0,amazon.nova-pro-v1:0
+```
+
+CSVヘッダ（`gold_human_note` 必須）:
+
+```text
+case_id,transcript_json_path,transcript_text,gold_human_note,gold_diseases,gold_procedures,gold_drugs,note
+```
+
+- `transcript_json_path` または `transcript_text` のどちらか必須
+- `gold_human_note`: 人手の正解メモ（自由記述）
+- `gold_diseases` / `gold_procedures` / `gold_drugs`: `|` 区切り（任意）
+  - これらを入れた場合のみ `missing_count` / `misclassified_count` を自動集計
+
 ## デプロイ
 
 ```bash

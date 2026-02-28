@@ -10,6 +10,26 @@ export const NORMALIZATION_RULES_JSON = `{
       "flags": "gu"
     },
     {
+      "pattern": "地球(?=\\\\s*(?:が|は|内|口|角|トーン|[0-9０-９]))",
+      "replacement": "子宮",
+      "flags": "gu"
+    },
+    {
+      "pattern": "ケトン州(?=\\\\s*(?:あり|発する|強い|陽性|臭))",
+      "replacement": "ケトン臭",
+      "flags": "gu"
+    },
+    {
+      "pattern": "うち番号|内番号|打ち番号",
+      "replacement": "牛番号",
+      "flags": "gu"
+    },
+    {
+      "pattern": "南米(?=\\\\s*で)",
+      "replacement": "軟便",
+      "flags": "gu"
+    },
+    {
       "pattern": "(?<!外子宮口)室内(?=\\\\s*(?:(?:は|も)?\\\\s*)?(?:右|左|異常なし|問題なし|正常|清除|清))",
       "replacement": "膣内",
       "flags": "gu"

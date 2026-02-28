@@ -45,6 +45,7 @@ lerna-debug.log*
 
 # Local evaluation outputs
 tmp/eval/
+tmp/s3-amplify-vetvoice-audio-bucket/
 
 # Credentials / secrets (do not commit)
 .kiro/steering/dev-credentials.md
