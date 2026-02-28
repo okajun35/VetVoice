@@ -95,6 +95,38 @@ describe("Parser: parse() function", () => {
     expect(result.data?.p[0].status).toBe("confirmed");
   });
 
+  it("diagnostic_pattern を正規化して保持する", () => {
+    const jsonString = JSON.stringify({
+      vital: { temp_c: 38.5 },
+      s: null,
+      o: "ケトン臭強い",
+      diagnostic_pattern: "代謝",
+      a: [{ name: "ケトーシス" }],
+      p: [{ name: "ブドウ糖", type: "drug" }],
+    });
+
+    const result = parse(jsonString);
+
+    expect(result.success).toBe(true);
+    expect(result.data?.diagnostic_pattern).toBe("metabolic");
+  });
+
+  it("diagnostic_pattern が不正値の場合はエラーを返す", () => {
+    const jsonString = JSON.stringify({
+      vital: { temp_c: 38.5 },
+      s: null,
+      o: "所見",
+      diagnostic_pattern: "other",
+      a: [],
+      p: [],
+    });
+
+    const result = parse(jsonString);
+
+    expect(result.success).toBe(false);
+    expect(result.errors?.some((e) => e.includes("diagnostic_pattern"))).toBe(true);
+  });
+
   it("無効なJSON文字列を拒否する", () => {
     const invalidJson = "{ invalid json }";
 

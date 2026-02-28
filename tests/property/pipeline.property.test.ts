@@ -171,16 +171,15 @@ describe("Feature: vet-voice-medical-record, Property 13: エントリポイン�
   }, 20000);
 
   /**
-   * Property 13c: JSON_INPUT extractedJson round-trip
+   * Property 13c: JSON_INPUT preserves core fields through Parser path
    *
-   * When a valid ExtractedJSON is passed via JSON_INPUT, the returned
-   * extractedJson string parses back to an equivalent object.
-   * This verifies that the Parser validation step (shared by all entry points)
-   * preserves the data faithfully.
+   * When a valid ExtractedJSON is passed via JSON_INPUT, core scalar fields are
+   * preserved. A/P arrays may be reclassified by downstream routing logic
+   * (Step 2.2), so strict per-array length equality is not guaranteed.
    *
    * **Validates: Requirements 14.5**
    */
-  it("Property 13c: JSON_INPUT preserves extractedJson through Parser round-trip", async () => {
+  it("Property 13c: JSON_INPUT preserves core fields while allowing A/P reclassification", async () => {
     await fc.assert(
       fc.asyncProperty(
         extractedJsonArb,
@@ -208,12 +207,19 @@ describe("Feature: vet-voice-medical-record, Property 13: エントリポイン�
           ) as MinimalExtractedJson;
           const resultJson = result.extractedJson as MinimalExtractedJson;
 
-          // Core fields should be preserved across JSON_INPUT processing.
+          // Core scalar fields should be preserved across JSON_INPUT processing.
           expect(resultJson.vital.temp_c).toBe(normalizedExpected.vital.temp_c);
           expect(resultJson.s).toBe(normalizedExpected.s);
           expect(resultJson.o).toBe(normalizedExpected.o);
-          expect(resultJson.a.length).toBe(normalizedExpected.a.length);
-          expect(resultJson.p.length).toBe(normalizedExpected.p.length);
+
+          // A/P may be reclassified; ensure structural validity only.
+          expect(Array.isArray(resultJson.a)).toBe(true);
+          expect(Array.isArray(resultJson.p)).toBe(true);
+
+          // Reclassification and de-duplication must not increase total entities.
+          const totalIn = normalizedExpected.a.length + normalizedExpected.p.length;
+          const totalOut = resultJson.a.length + resultJson.p.length;
+          expect(totalOut).toBeLessThanOrEqual(totalIn);
         }
       ),
       { numRuns: 50 }

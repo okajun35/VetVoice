@@ -204,7 +204,9 @@ describe("Extractor: happy path", () => {
 
     expect(client.send).toHaveBeenCalledTimes(1);
     const callArg = client.send.mock.calls[0][0];
-    expect(callArg.input.modelId).toBe("amazon.nova-pro-v1:0");
+    expect(callArg.input.modelId).toBe(
+      "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    );
     expect(callArg.input.messages[0].role).toBe("user");
     expect(callArg.input.messages[0].content[0].text).toContain("診療テキストから構造化JSONを抽出");
   });
@@ -256,5 +258,21 @@ describe("Extractor: error handling", () => {
       a: expect.any(Array),
       p: expect.any(Array),
     });
+  });
+
+  it("throws in strict mode when Bedrock call fails", async () => {
+    const client = makeFailingBedrockClient(new Error("ValidationException"));
+
+    await expect(
+      extract({ expanded_text: "test", strict_errors: true }, asExtractorClient(client))
+    ).rejects.toThrow("Bedrock extract call failed");
+  });
+
+  it("throws in strict mode when model output is invalid JSON", async () => {
+    const client = makeBedrockClient("not-json");
+
+    await expect(
+      extract({ expanded_text: "test", strict_errors: true }, asExtractorClient(client))
+    ).rejects.toThrow("Extractor parse failed");
   });
 });

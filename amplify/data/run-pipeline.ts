@@ -21,6 +21,11 @@ import { expand } from "./handlers/dictionary-expander";
 import { extract } from "./handlers/extractor";
 import { parse, stringify, type ExtractedJSON } from "./handlers/parser";
 import { matchDisease, matchProcedure, matchDrug } from "./handlers/master-matcher";
+import {
+  applyDrugCanonicalOverrides,
+  normalizePreExtractionTextByRules,
+  normalizePlanTextByRules,
+} from "./handlers/normalization-rules";
 import { selectTemplate } from "./handlers/template-selector";
 import { generateSOAP } from "./handlers/soap-generator";
 import { generateKyosai } from "./handlers/kyosai-generator";
@@ -42,6 +47,105 @@ const dynamoClient = DynamoDBDocumentClient.from(
  * Can still be overridden via environment variable when needed.
  */
 const DEFAULT_TRANSCRIBE_VOCABULARY_NAME = "vetvoice-ja-vocab-v1";
+const CIDR_PATTERN = /(?:^|[^a-z0-9])cidr(?:[^a-z0-9]|$)/i;
+
+function normalizeRoutingText(text: string): string {
+  return text.normalize("NFKC").trim().toLowerCase();
+}
+
+function addPlanItemIfMissing(
+  items: ExtractedJSON["p"],
+  item: ExtractedJSON["p"][number]
+): boolean {
+  const key = normalizeRoutingText(item.name);
+  const exists = items.some(
+    (current) =>
+      current.type === item.type && normalizeRoutingText(current.name) === key
+  );
+
+  if (exists) {
+    return false;
+  }
+
+  items.push(item);
+  return true;
+}
+
+function reclassifyAssessmentItems(extractedJson: ExtractedJSON): {
+  normalized: ExtractedJSON;
+  movedCount: number;
+} {
+  const nextA: ExtractedJSON["a"] = [];
+  const nextP: ExtractedJSON["p"] = [...extractedJson.p];
+  let movedCount = 0;
+
+  for (const item of extractedJson.a) {
+    const name = item.name?.trim();
+    if (!name) {
+      nextA.push(item);
+      continue;
+    }
+
+    const normalizedName = normalizeRoutingText(name);
+
+    // Reproduction shorthand: CIDR is always a plan/procedure item.
+    if (CIDR_PATTERN.test(normalizedName)) {
+      addPlanItemIfMissing(nextP, { name, type: "procedure" });
+      movedCount += 1;
+      continue;
+    }
+
+    const diseaseResult = matchDisease(name);
+    if (diseaseResult.top_confirmed) {
+      nextA.push(item);
+      continue;
+    }
+
+    const procedureResult = matchProcedure(name);
+    const drugResult = matchDrug(name);
+
+    if (procedureResult.top_confirmed || drugResult.top_confirmed) {
+      const procedureScore = procedureResult.candidates[0]?.confidence ?? 0;
+      const drugScore = drugResult.candidates[0]?.confidence ?? 0;
+      const type =
+        drugResult.top_confirmed && drugScore >= procedureScore
+          ? ("drug" as const)
+          : ("procedure" as const);
+
+      addPlanItemIfMissing(nextP, { name, type });
+      movedCount += 1;
+      continue;
+    }
+
+    nextA.push(item);
+  }
+
+  if (movedCount === 0) {
+    return { normalized: extractedJson, movedCount };
+  }
+
+  return {
+    normalized: {
+      ...extractedJson,
+      a: nextA,
+      p: nextP,
+    },
+    movedCount,
+  };
+}
+
+function normalizePlanItem(
+  item: ExtractedJSON["p"][number]
+): ExtractedJSON["p"][number] {
+  const sourceText = `${item.name}${item.dosage ?? ""}`;
+  const normalized = {
+    ...item,
+    name: item.type === "procedure" ? normalizePlanTextByRules(item.name) : item.name,
+    dosage: item.dosage ? normalizePlanTextByRules(item.dosage) : item.dosage,
+  };
+
+  return applyDrugCanonicalOverrides(normalized, sourceText);
+}
 
 function applyMasterMatching(extractedJson: ExtractedJSON): {
   enriched: ExtractedJSON;
@@ -73,21 +177,21 @@ function applyMasterMatching(extractedJson: ExtractedJSON): {
           : null;
 
     if (!result) {
-      return item;
+      return normalizePlanItem(item);
     }
     const top = result.candidates[0];
 
     if (!top || top.confidence <= 0) {
-      return item;
+      return normalizePlanItem(item);
     }
 
-    return {
+    return normalizePlanItem({
       ...item,
       ...(result.top_confirmed ? { canonical_name: top.name } : {}),
       confidence: top.confidence,
       master_code: top.code,
       status: result.top_confirmed ? ("confirmed" as const) : ("unconfirmed" as const),
-    };
+    });
   });
 
   const unconfirmedCount =
@@ -218,11 +322,11 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
       // Step 2a: Dictionary expansion
       try {
         const expanderOutput = expand(workingText);
-        transcriptExpanded = expanderOutput.expanded_text;
+        transcriptExpanded = normalizePreExtractionTextByRules(expanderOutput.expanded_text);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         warnings.push(`Dictionary expansion failed: ${msg}; using raw text`);
-        transcriptExpanded = workingText;
+        transcriptExpanded = normalizePreExtractionTextByRules(workingText);
       }
 
       // Step 2b: Structured extraction via Bedrock
@@ -233,6 +337,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
             expanded_text: transcriptExpanded ?? workingText,
             template_type: templateType ?? undefined,
             model_id_override: extractorModelId ?? undefined,
+            strict_errors: true,
           },
           bedrockClient
         );
@@ -255,9 +360,17 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   }
 
   // -------------------------------------------------------------------------
-  // Step 2.2: Master matching (disease / procedure)
+  // Step 2.2: A/P routing guard + master matching
   // -------------------------------------------------------------------------
   if (extractedJson) {
+    const rerouted = reclassifyAssessmentItems(extractedJson);
+    extractedJson = rerouted.normalized;
+    if (rerouted.movedCount > 0) {
+      warnings.push(
+        `Reclassified ${rerouted.movedCount} assessment item(s) into plan entries`
+      );
+    }
+
     const { enriched, unconfirmedCount } = applyMasterMatching(extractedJson);
     extractedJson = enriched;
     if (unconfirmedCount > 0) {
@@ -281,7 +394,9 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     if (templateType) {
       resolvedTemplateType = templateType as TemplateType;
     } else {
-      const templateResult = selectTemplate(canonicalPreferredJson);
+      const templateResult = selectTemplate(canonicalPreferredJson, {
+        contextText: transcriptExpanded ?? transcriptRaw,
+      });
       resolvedTemplateType = templateResult.selectedType;
       if (templateResult.missingFields.length > 0) {
         warnings.push(`Missing fields for template: ${templateResult.missingFields.join(", ")}`);
