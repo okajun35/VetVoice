@@ -180,29 +180,19 @@ describe("Feature: vet-voice-medical-record, Property 3: Dictionary entry CRUD r
     expect(result2.expansions).toHaveLength(0);
   });
 
-  const KNOWN_ABBREVIATIONS = [
-    // 投与経路
-    "静注", "IV", "静脈内注射", "筋注", "IM", "皮下注", "SC", "経口", "PO", "腹腔内", "IP",
-    // 抗生物質
-    "アンピ", "ABPC", "ペニ", "PC", "セファ", "CEZ", "OTC", "エンロ",
-    // 診療行為
-    "直検", "妊鑑", "AI", "人授", "帝切", "さくてい",
-    // バイタル・症状
-    "BT", "HR", "RR", "食不", "ルーメン",
-  ];
-
-  function containsAbbreviation(s: string): boolean {
-    return KNOWN_ABBREVIATIONS.some(abbr => s.includes(abbr));
-  }
-
   it("expansion preserves surrounding context", () => {
     fc.assert(
       fc.property(
         fc.tuple(
-          fc.string().filter(s => !containsAbbreviation(s)),
-          fc.string().filter(s => !containsAbbreviation(s)),
+          fc.string(),
+          fc.string(),
         ),
         ([prefix, suffix]) => {
+          // Keep only cases where surrounding text is not expanded on its own.
+          // This makes the property robust to dictionary updates.
+          fc.pre(expand(prefix).expansions.length === 0);
+          fc.pre(expand(suffix).expansions.length === 0);
+
           const text = `${prefix}静注${suffix}`;
           const result = expand(text);
 

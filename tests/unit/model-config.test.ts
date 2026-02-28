@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe("model-config compatibility and validation", () => {
-  it("normalizes known Anthropic base model IDs to US inference profiles by default", () => {
+  it("normalizes known Anthropic/Nova base model IDs to US inference profiles by default", () => {
     const cases: Array<[string, string]> = [
       ["anthropic.claude-sonnet-4-6", "us.anthropic.claude-sonnet-4-6"],
       [
@@ -26,6 +26,10 @@ describe("model-config compatibility and validation", () => {
       [
         "anthropic.claude-3-5-haiku-20241022-v1:0",
         "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+      ],
+      [
+        "amazon.nova-premier-v1:0",
+        "us.amazon.nova-premier-v1:0",
       ],
     ];
 
@@ -86,6 +90,18 @@ describe("model-config compatibility and validation", () => {
         "anthropic.claude-3-5-haiku-20241022-v1:0"
       ).modelId
     ).toBe("global.anthropic.claude-3-5-haiku-20241022-v1:0");
+  });
+
+  it("uses NOVA_PREMIER_INFERENCE_PROFILE_ID when provided", () => {
+    process.env.NOVA_PREMIER_INFERENCE_PROFILE_ID = "global.amazon.nova-premier-v1:0";
+
+    const config = getModelConfig(
+      "extractor",
+      false,
+      "amazon.nova-premier-v1:0"
+    );
+
+    expect(config.modelId).toBe("global.amazon.nova-premier-v1:0");
   });
 
   it("throws for invalid override model ID format", () => {

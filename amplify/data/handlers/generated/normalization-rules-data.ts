@@ -10,14 +10,124 @@ export const NORMALIZATION_RULES_JSON = `{
       "flags": "gu"
     },
     {
-      "pattern": "(左右)\\\\s*[mMＭ][sSＳ]\\\\s*-?\\\\s*マイナス",
-      "replacement": "$1乳房炎スコア陰性",
+      "pattern": "地球(?=\\\\s*(?:が|は|内|口|角|トーン|[0-9０-９]))",
+      "replacement": "子宮",
       "flags": "gu"
     },
     {
-      "pattern": "25\\\\s*セ?ブドウ糖",
-      "replacement": "25%ブドウ糖",
+      "pattern": "ケトン州(?=\\\\s*(?:あり|発する|強い|陽性|臭))",
+      "replacement": "ケトン臭",
       "flags": "gu"
+    },
+    {
+      "pattern": "うち番号|内番号|打ち番号",
+      "replacement": "牛番号",
+      "flags": "gu"
+    },
+    {
+      "pattern": "南米(?=\\\\s*で)",
+      "replacement": "軟便",
+      "flags": "gu"
+    },
+    {
+      "pattern": "(?<!外子宮口)室内(?=\\\\s*(?:(?:は|も)?\\\\s*)?(?:右|左|異常なし|問題なし|正常|清除|清))",
+      "replacement": "膣内",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外資急行|外資休校",
+      "replacement": "外子宮口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外資球構成|外子球行|外子球孔|外資球孔|外子球",
+      "replacement": "外子宮口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外資球根|外子球根",
+      "replacement": "外子宮口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外資急構成所",
+      "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外子宮こう",
+      "replacement": "外子宮口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外子宮口(?:を|は)?成",
+      "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外子宮口上",
+      "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外光(?=\\\\s*見え(?:ず|ない))",
+      "replacement": "外口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外交(?=\\\\s*(?:ノーマル|正常|室内|膣内))",
+      "replacement": "外口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "室内性以上",
+      "replacement": "膣内正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "[ぞゾ]?質検査",
+      "replacement": "膣検査",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外子宮口(?:を|は)?清除",
+      "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "膣内(?:を|は)?清除",
+      "replacement": "膣内正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "頭検査",
+      "replacement": "膣検査",
+      "flags": "gu"
+    },
+    {
+      "pattern": "景観",
+      "replacement": "経観",
+      "flags": "gu"
+    },
+    {
+      "pattern": "\\\\bai\\\\b",
+      "replacement": "AI",
+      "flags": "giu"
+    },
+    {
+      "pattern": "\\\\bet\\\\b(?=\\\\s*(?:実施へ|中止|でも|予定))",
+      "replacement": "ET",
+      "flags": "giu"
+    },
+    {
+      "pattern": "\\\\bpg\\\\b",
+      "replacement": "PG",
+      "flags": "giu"
+    },
+    {
+      "pattern": "\\\\bvds\\\\b",
+      "replacement": "VDS",
+      "flags": "giu"
     }
   ],
   "drugQueryNormalizationRules": [

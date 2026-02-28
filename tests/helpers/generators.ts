@@ -39,6 +39,15 @@ export const extractedJsonArb = fc.record({
   }),
   s: fc.oneof(fc.string(), fc.constant(null)),
   o: fc.oneof(fc.string(), fc.constant(null)),
+  diagnostic_pattern: fc.option(
+    fc.constantFrom(
+      "metabolic" as const,
+      "infectious" as const,
+      "reproductive" as const,
+      "unknown" as const
+    ),
+    { nil: undefined }
+  ),
   a: fc.array(
     fc.record({
       name: fc.string({ minLength: 1 }),

@@ -82,7 +82,7 @@ const ENV_VAR_NAMES: Record<ComponentName, string> = {
   historySummary: "HISTORY_SUMMARY_MODEL_ID",
 };
 
-// Some Anthropic models in Bedrock must be invoked via inference profiles.
+// Some Bedrock models must be invoked via inference profiles in specific accounts/regions.
 // Normalize known shorthand/base model IDs to profile IDs for compatibility.
 function getModelAliasMap(): ModelAliasMap {
   return {
@@ -101,6 +101,9 @@ function getModelAliasMap(): ModelAliasMap {
     "anthropic.claude-3-5-haiku-20241022-v1:0":
       process.env.CLAUDE_3_5_HAIKU_INFERENCE_PROFILE_ID?.trim() ||
       "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    "amazon.nova-premier-v1:0":
+      process.env.NOVA_PREMIER_INFERENCE_PROFILE_ID?.trim() ||
+      "us.amazon.nova-premier-v1:0",
   };
 }
 

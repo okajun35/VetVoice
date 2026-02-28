@@ -8,6 +8,7 @@ export interface ExtractedJSON {
   vital: { temp_c: number | null };
   s: string | null;
   o: string | null;
+  diagnostic_pattern?: 'metabolic' | 'infectious' | 'reproductive' | 'unknown';
   a: Array<{
     name: string;
     canonical_name?: string;
