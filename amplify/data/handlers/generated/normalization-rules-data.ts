@@ -10,7 +10,7 @@ export const NORMALIZATION_RULES_JSON = `{
       "flags": "gu"
     },
     {
-      "pattern": "(?<!外子宮口)室内(?=\\\\s*(?:右|左|異常なし|問題なし|正常))",
+      "pattern": "(?<!外子宮口)室内(?=\\\\s*(?:(?:は|も)?\\\\s*)?(?:右|左|異常なし|問題なし|正常|清除|清))",
       "replacement": "膣内",
       "flags": "gu"
     },
@@ -20,7 +20,12 @@ export const NORMALIZATION_RULES_JSON = `{
       "flags": "gu"
     },
     {
-      "pattern": "外資球構成|外子球行|外子球孔|外子球",
+      "pattern": "外資球構成|外子球行|外子球孔|外資球孔|外子球",
+      "replacement": "外子宮口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外資球根|外子球根",
       "replacement": "外子宮口",
       "flags": "gu"
     },
@@ -45,8 +50,33 @@ export const NORMALIZATION_RULES_JSON = `{
       "flags": "gu"
     },
     {
-      "pattern": "外光(?=\\\\s*見えず)",
+      "pattern": "外光(?=\\\\s*見え(?:ず|ない))",
       "replacement": "外口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外交(?=\\\\s*(?:ノーマル|正常|室内|膣内))",
+      "replacement": "外口",
+      "flags": "gu"
+    },
+    {
+      "pattern": "室内性以上",
+      "replacement": "膣内正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "[ぞゾ]?質検査",
+      "replacement": "膣検査",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外子宮口(?:を|は)?清除",
+      "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "膣内(?:を|は)?清除",
+      "replacement": "膣内正常",
       "flags": "gu"
     },
     {
