@@ -18,6 +18,7 @@ import {
   parseCsvRows,
   parseModelListArg,
 } from "./compare-extractor-models.utils";
+import { CLINICAL_DISEASE_KEYWORDS } from "./compare-extractor-models.keywords";
 
 const DEFAULT_MODEL_IDS = [
   "anthropic.claude-haiku-4-5-20251001-v1:0",
@@ -159,7 +160,8 @@ async function main(): Promise<void> {
         );
         const contextAwareEvidence = countContextAwareEvidenceBackedFieldFill(
           encounterContext,
-          evidenceBacked
+          evidenceBacked,
+          transcriptExpanded
         );
         const classification =
           structuredGold.length > 0
@@ -375,25 +377,43 @@ function countContextAwareEvidenceBackedFieldFill(
     oBacked: boolean;
     aBacked: boolean;
     pBacked: boolean;
-  }
+  },
+  transcriptExpanded: string
 ): { filled: number; total: number } {
+  const hasDiseaseCue = hasClinicalDiseaseCue(transcriptExpanded);
+
   // Reproduction screening notes are often observation-only.
-  // For this context, evaluate evidence by O/A grounding and avoid penalizing missing temp/S/P.
+  // In this context, score O as required and A only when disease cues are present.
   if (encounterContext === "repro_screening_inferred") {
-    const checks = [evidenceBacked.oBacked, evidenceBacked.aBacked];
+    const checks = [evidenceBacked.oBacked];
+    if (hasDiseaseCue) checks.push(evidenceBacked.aBacked);
     return {
       filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
       total: checks.length,
     };
   }
 
-  const checks = [
-    evidenceBacked.tempBacked,
-    evidenceBacked.sBacked,
-    evidenceBacked.oBacked,
-    evidenceBacked.aBacked,
-    evidenceBacked.pBacked,
-  ];
+  // Treatment notes should be grounded by O and procedure utterance-aligned P.
+  if (encounterContext === "treatment_or_intervention") {
+    const checks = [evidenceBacked.oBacked, evidenceBacked.pBacked];
+    if (hasDiseaseCue) checks.push(evidenceBacked.aBacked);
+    return {
+      filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+      total: checks.length,
+    };
+  }
+
+  // Diagnostic assessment requires grounded O, and A only when disease cues are present.
+  if (encounterContext === "diagnostic_assessment") {
+    const checks = [evidenceBacked.oBacked];
+    if (hasDiseaseCue) checks.push(evidenceBacked.aBacked);
+    return {
+      filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+      total: checks.length,
+    };
+  }
+
+  const checks = [evidenceBacked.oBacked];
   return {
     filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
     total: checks.length,
@@ -472,7 +492,55 @@ function isNonEmptyAndGrounded(
 function isGroundedInTranscript(value: string, normalizedTranscript: string): boolean {
   const normalized = normalizeForEvidenceMatch(value);
   if (!normalized) return false;
-  return normalizedTranscript.includes(normalized);
+  if (normalizedTranscript.includes(normalized)) return true;
+  return hasSufficientBigramOverlap(normalized, normalizedTranscript, 0.6);
+}
+
+function hasClinicalDiseaseCue(text: string): boolean {
+  const normalizedText = normalizeForEvidenceMatch(text);
+  return CLINICAL_DISEASE_KEYWORDS.some((keyword) =>
+    normalizedText.includes(normalizeForEvidenceMatch(keyword))
+  );
+}
+
+function hasSufficientBigramOverlap(
+  candidate: string,
+  transcript: string,
+  threshold: number
+): boolean {
+  const candidateLoose = toLooseComparableText(candidate);
+  const transcriptLoose = toLooseComparableText(transcript);
+  if (candidateLoose.length < 6 || transcriptLoose.length < 6) {
+    return false;
+  }
+
+  const candidateBigrams = makeBigrams(candidateLoose);
+  if (candidateBigrams.size < 3) {
+    return false;
+  }
+  const transcriptBigrams = makeBigrams(transcriptLoose);
+  if (transcriptBigrams.size === 0) {
+    return false;
+  }
+
+  let matched = 0;
+  for (const gram of candidateBigrams) {
+    if (transcriptBigrams.has(gram)) matched += 1;
+  }
+  const overlap = matched / candidateBigrams.size;
+  return overlap >= threshold;
+}
+
+function toLooseComparableText(value: string): string {
+  return value.replace(/[\p{P}\p{S}\s]+/gu, "");
+}
+
+function makeBigrams(value: string): Set<string> {
+  const out = new Set<string>();
+  for (let index = 0; index < value.length - 1; index += 1) {
+    out.add(value.slice(index, index + 2));
+  }
+  return out;
 }
 
 function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAggregate[] {

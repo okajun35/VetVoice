@@ -74,7 +74,7 @@ interface LatestModelSummary extends WeeklyKpiModel {
   target_pass: boolean;
 }
 
-const HISTORY_SCHEMA_VERSION = "v2";
+const HISTORY_SCHEMA_VERSION = "v3";
 
 async function main(): Promise<void> {
   const options = parseCliOptions(process.argv.slice(2));
