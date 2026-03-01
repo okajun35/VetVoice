@@ -141,4 +141,36 @@ describe("compare-extractor-models utils", () => {
     expect(policy.pWithoutUtterance).toBe(false);
     expect(policy.aWithoutPAllowed).toBe(true);
   });
+
+  it("does not treat CIDR mention alone as procedure utterance", () => {
+    const policy = evaluateApPolicy(
+      "右なし左CL5、CIDR候補",
+      {
+        vital: { temp_c: null },
+        s: null,
+        o: "右なし左CL5",
+        diagnostic_pattern: "reproductive",
+        a: [{ name: "妊娠" }],
+        p: [],
+      }
+    );
+
+    expect(policy.procedureUttered).toBe(false);
+  });
+
+  it("treats CIDR with action verb as procedure utterance", () => {
+    const policy = evaluateApPolicy(
+      "右なし左CL5、CIDR挿入予定",
+      {
+        vital: { temp_c: null },
+        s: null,
+        o: "右なし左CL5",
+        diagnostic_pattern: "reproductive",
+        a: [{ name: "妊娠" }],
+        p: [],
+      }
+    );
+
+    expect(policy.procedureUttered).toBe(true);
+  });
 });

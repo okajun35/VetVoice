@@ -1,5 +1,13 @@
 import path from "node:path";
 import type { ExtractedJSON } from "../amplify/data/handlers/parser";
+import {
+  CLINICAL_DISEASE_KEYWORDS,
+  NON_DISEASE_STATE_NAMES,
+  PROCEDURE_ACTION_VERBS,
+  PROCEDURE_UTTERANCE_CONTEXT_TERMS,
+  PROCEDURE_UTTERANCE_STRONG_KEYWORDS,
+  REPRO_SCREENING_KEYWORDS,
+} from "./compare-extractor-models.keywords";
 
 export interface ComparisonCsvRow {
   lineNo: number;
@@ -19,50 +27,6 @@ export interface ComparisonCaseInput {
 
 const REQUIRED_HEADERS = ["gold_human_note"];
 const TRANSCRIPT_HEADERS = ["transcript_json_path", "transcript_text"];
-const REPRO_SCREENING_KEYWORDS = [
-  "外子宮口",
-  "子宮口",
-  "膣内",
-  "膣検査",
-  "cidr",
-  "cl",
-  "黄体",
-  "卵巣",
-  "人工授精",
-  "妊娠鑑定",
-  "ai",
-  "et",
-  "pg",
-];
-const PROCEDURE_UTTERANCE_KEYWORDS = [
-  "処置",
-  "投与",
-  "注射",
-  "点滴",
-  "実施",
-  "施行",
-  "挿入",
-  "手術",
-  "人工授精",
-  "妊娠鑑定",
-  "胚移植",
-  "cidr",
-  "ai",
-  "et",
-  "pg",
-  "uv+",
-];
-const CLINICAL_DISEASE_KEYWORDS = [
-  "ケトーシス",
-  "ケトン臭",
-  "乳房炎",
-  "肺炎",
-  "下痢",
-  "軟便",
-  "発熱",
-  "食欲不振",
-];
-const NON_DISEASE_STATE_NAMES = new Set(["妊娠"]);
 
 export type EncounterContext =
   | "repro_screening_inferred"
@@ -336,7 +300,16 @@ function normalizeForMatch(value: string): string {
 }
 
 function hasProcedureUtterance(normalizedTranscript: string): boolean {
-  return countKeywordHits(normalizedTranscript, PROCEDURE_UTTERANCE_KEYWORDS) > 0;
+  if (
+    countKeywordHits(normalizedTranscript, PROCEDURE_UTTERANCE_STRONG_KEYWORDS) >
+    0
+  ) {
+    return true;
+  }
+  const hasContextTerm =
+    countKeywordHits(normalizedTranscript, PROCEDURE_UTTERANCE_CONTEXT_TERMS) > 0;
+  const hasActionVerb = countKeywordHits(normalizedTranscript, PROCEDURE_ACTION_VERBS) > 0;
+  return hasContextTerm && hasActionVerb;
 }
 
 function countKeywordHits(normalizedText: string, keywords: string[]): number {
