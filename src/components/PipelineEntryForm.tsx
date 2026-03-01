@@ -430,8 +430,8 @@ export function PipelineEntryForm({
 
         {activeTab === 'PRODUCTION' && (
           <div>
-            <h3>本番モード（録音）</h3>
-            <p>マイクで録音し、S3アップロード後にパイプラインを実行します。</p>
+            <h3>DIAGNOSTIC_RECORDING</h3>
+            <p>INITIATE_VOCAL_CAPTURE_FOR_PIPELINE_PROCESSING</p>
             <VoiceRecorder
               cowId={effectiveCowId}
               onUploadComplete={handleProductionUploadComplete}
@@ -440,7 +440,7 @@ export function PipelineEntryForm({
                 onError?.(msg);
               }}
             />
-            {loading && <p className={styles.statusText}>パイプライン処理中...</p>}
+            {loading && <p className={styles.statusText}>PIPELINE_PROCESSING_ACTIVE...</p>}
           </div>
         )}
       </div>
@@ -448,22 +448,22 @@ export function PipelineEntryForm({
       {/* Error display */}
       {error && (
         <div role="alert" className={styles.errorBox}>
-          <strong>エラー:</strong> {error}
+          <strong>SYSTEM_ERROR:</strong> {error}
         </div>
       )}
 
       {/* Result display */}
       {result && (
         <div className={styles.resultSection}>
-          <h3>実行結果</h3>
-          <ResultField label="Visit ID" value={result.visitId} />
-          <ResultField label="Cow ID" value={result.cowId} />
-          <ResultField label="テンプレートタイプ" value={result.templateType} />
+          <h3>PIPELINE_OUTPUT</h3>
+          <ResultField label="VISIT_ID" value={result.visitId} />
+          <ResultField label="COW_ID" value={result.cowId} />
+          <ResultField label="TEMPLATE_TYPE" value={result.templateType} />
           {result.transcriptRaw != null && (
-            <ResultField label="文字起こし（raw）" value={result.transcriptRaw} />
+            <ResultField label="TRANSCRIPT_[RAW]" value={result.transcriptRaw} />
           )}
           {result.transcriptExpanded != null && (
-            <ResultField label="文字起こし（展開後）" value={result.transcriptExpanded} />
+            <ResultField label="TRANSCRIPT_[EXPANDED]" value={result.transcriptExpanded} />
           )}
           {result.extractedJson != null && (
             <div className={styles.resultField}>
@@ -475,19 +475,19 @@ export function PipelineEntryForm({
           )}
           {result.soapText != null && (
             <div className={styles.resultField}>
-              <strong>SOAPテキスト:</strong>
+              <strong>SOAP_OUTPUT:</strong>
               <pre className={styles.resultPreSoap}>{result.soapText}</pre>
             </div>
           )}
           {result.kyosaiText != null && (
             <div className={styles.resultField}>
-              <strong>家畜共済テキスト:</strong>
+              <strong>KYOSAI_OUTPUT:</strong>
               <pre className={styles.resultPreKyosai}>{result.kyosaiText}</pre>
             </div>
           )}
           {result.warnings && result.warnings.length > 0 && (
             <div className={styles.resultField}>
-              <strong>警告:</strong>
+              <strong>WARNINGS:</strong>
               <ul className={styles.warningList}>
                 {result.warnings.map((w, i) => (
                   <li key={i} className={styles.warningItem}>

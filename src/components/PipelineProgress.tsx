@@ -4,6 +4,8 @@
  * Requirements: 11.2
  */
 
+import styles from './PipelineProgress.module.css';
+
 export type PipelineStep =
   | 'transcribe'
   | 'expand'
@@ -12,11 +14,11 @@ export type PipelineStep =
   | 'generate';
 
 const STEP_LABELS: Record<PipelineStep, string> = {
-  transcribe: '文字起こし',
-  expand: '辞書展開',
-  extract: '構造化抽出',
-  match: 'マスタ照合',
-  generate: 'SOAP/共済生成',
+  transcribe: 'TRANSCRIBE',
+  expand: 'LEXICON_EXPAND',
+  extract: 'JSON_EXTRACT',
+  match: 'MASTER_MATCH',
+  generate: 'SOAP_GEN',
 };
 
 const STEPS: PipelineStep[] = ['transcribe', 'expand', 'extract', 'match', 'generate'];
@@ -42,83 +44,35 @@ function getStepState(
   return 'pending';
 }
 
-const STATE_COLORS: Record<StepState, string> = {
-  pending: '#9e9e9e',
-  active: '#1976d2',
-  completed: '#388e3c',
-  error: '#d32f2f',
-};
-
-const STATE_BG: Record<StepState, string> = {
-  pending: '#f5f5f5',
-  active: '#e3f2fd',
-  completed: '#e8f5e9',
-  error: '#ffebee',
-};
-
-const STATE_BORDER: Record<StepState, string> = {
-  pending: '#e0e0e0',
-  active: '#90caf9',
-  completed: '#a5d6a7',
-  error: '#ef9a9a',
-};
-
 function StepIcon({ state }: { state: StepState }) {
-  const size = 24;
-  const color = STATE_COLORS[state];
-
-  const baseStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: size,
-    height: size,
-    borderRadius: '50%',
-    flexShrink: 0,
-    boxSizing: 'border-box',
-  };
-
   if (state === 'completed') {
     return (
-      <span
-        aria-label="完了"
-        style={{ ...baseStyle, background: color, color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
-      >
-        ✓
+      <span style={{ color: 'var(--color-success)', fontWeight: 'bold' }}>
+        {'[OK]'}
       </span>
     );
   }
 
   if (state === 'error') {
     return (
-      <span
-        aria-label="エラー"
-        style={{ ...baseStyle, background: color, color: '#fff', fontSize: '14px', fontWeight: 'bold' }}
-      >
-        ✕
+      <span style={{ color: 'var(--color-danger)', fontWeight: 'bold' }}>
+        {'[!!]'}
       </span>
     );
   }
 
   if (state === 'active') {
     return (
-      <span
-        aria-label="処理中"
-        style={{
-          ...baseStyle,
-          border: `3px solid ${color}`,
-          borderTopColor: 'transparent',
-          animation: 'pipeline-spin 0.8s linear infinite',
-        }}
-      />
+      <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>
+        {'[>>]'}
+      </span>
     );
   }
 
   return (
-    <span
-      aria-label="未処理"
-      style={{ ...baseStyle, border: `2px solid ${color}` }}
-    />
+    <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 'bold' }}>
+      {'[__]'}
+    </span>
   );
 }
 
@@ -127,10 +81,10 @@ function getStatusLabel(
   errorStep: PipelineStep | undefined,
   completedSteps: PipelineStep[]
 ): string {
-  if (errorStep) return 'エラーが発生しました';
-  if (completedSteps.length === STEPS.length) return '処理完了';
-  if (isProcessing) return '処理中...';
-  return '待機中';
+  if (errorStep) return 'SYSTEM_FAILURE';
+  if (completedSteps.length === STEPS.length) return 'SEQUENCE_COMPLETE';
+  if (isProcessing) return 'PROCESSING_DATA';
+  return 'STANDBY';
 }
 
 export function PipelineProgress({
@@ -139,72 +93,48 @@ export function PipelineProgress({
   errorStep,
   isProcessing,
 }: PipelineProgressProps) {
-  return (
-    <div
-      role="status"
-      aria-label="パイプライン処理進捗"
-      style={{
-        padding: '1rem',
-        background: '#fff',
-        border: '1px solid #e0e0e0',
-        borderRadius: '8px',
-      }}
-    >
-      <style>{`
-        @keyframes pipeline-spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+  const overallStatus = getStatusLabel(isProcessing, errorStep, completedSteps);
 
-      <div
-        style={{
-          fontSize: '0.85rem',
-          fontWeight: 'bold',
-          color: '#555',
-          marginBottom: '0.75rem',
-        }}
-      >
-        {getStatusLabel(isProcessing, errorStep, completedSteps)}
+  return (
+    <div className={styles.container} role="status" aria-label="PIPELINE_PROGRESS">
+      <div className={styles.statusHeader}>
+        <span>PIPELINE_STATUS:</span>
+        <span className={styles.statusValue}>{overallStatus}</span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div className={styles.stepList}>
         {STEPS.map((step) => {
           const state = getStepState(step, currentStep, completedSteps, errorStep);
-          const color = STATE_COLORS[state];
+          const isActive = state === 'active';
 
           return (
             <div
               key={step}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.5rem 0.75rem',
-                background: STATE_BG[state],
-                border: `1px solid ${STATE_BORDER[state]}`,
-                borderRadius: '6px',
-                transition: 'background 0.2s, border-color 0.2s',
-              }}
+              className={`${styles.stepItem} ${state === 'active' ? styles.stepItemActive : ''
+                } ${state === 'completed' ? styles.stepItemCompleted : ''} ${state === 'error' ? styles.stepItemError : ''
+                }`}
             >
-              <StepIcon state={state} />
-              <span
-                style={{
-                  fontSize: '0.9rem',
-                  fontWeight: state === 'active' ? 'bold' : 'normal',
-                  color,
-                  flex: 1,
-                }}
-              >
+              <div className={styles.iconContainer}>
+                <StepIcon state={state} />
+              </div>
+              <span className={`${styles.stepLabel} ${isActive ? styles.stepLabelActive : ''
+                } ${state === 'completed' ? styles.stepLabelCompleted : ''}`}>
                 {STEP_LABELS[step]}
               </span>
+
               {state === 'active' && (
-                <span style={{ fontSize: '0.8rem', color: '#1976d2' }}>
-                  処理中
+                <span className={`${styles.stepStatus} ${styles.stepStatusActive}`}>
+                  BUSY
                 </span>
               )}
               {state === 'error' && (
-                <span style={{ fontSize: '0.8rem', color: '#d32f2f' }}>
-                  エラー
+                <span className={`${styles.stepStatus} ${styles.stepStatusError}`}>
+                  FAIL
+                </span>
+              )}
+              {state === 'completed' && (
+                <span className={styles.stepStatus} style={{ color: 'var(--color-success)' }}>
+                  DONE
                 </span>
               )}
             </div>

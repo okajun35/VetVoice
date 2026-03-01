@@ -41,8 +41,8 @@ const SEX_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  IN_PROGRESS: '進行中',
-  COMPLETED: '完了',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
 };
 
 export function VisitManager({ cowId, onBack }: VisitManagerProps) {
@@ -73,12 +73,12 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
         return;
       }
 
-      const sorted = [...(visitsResult.data ?? [])].sort(
-        (a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
-      );
-      setVisits(sorted);
+      const sorted = [...(visitsResult.data ?? [])]
+        .filter((v) => v && v.datetime) // Ignore null visits or visits without a datetime
+        .sort((a, b) => new Date(b.datetime!).getTime() - new Date(a.datetime!).getTime());
+      setVisits(sorted as VisitItem[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
+      setError(err instanceof Error ? err.message : 'DATA_RETRIEVAL_FAILED');
     } finally {
       setLoading(false);
     }
@@ -101,7 +101,7 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
   };
 
   if (loading) {
-    return <Spinner label="読み込み中..." />;
+    return <Spinner label="LOADING_DATA..." />;
   }
 
   if (view === 'visit_detail' && selectedVisitId) {
@@ -124,7 +124,7 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
           onClick={onBack}
           className={styles.backButton}
         >
-          ← 戻る
+          BACK
         </Button>
       )}
 
@@ -136,56 +136,56 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
 
       {cow && (
         <Card className={styles.cowCard}>
-          <h2 className={styles.sectionTitle}>牛情報</h2>
+          <h2 className={styles.sectionTitle}>SUBJECT_INFO</h2>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>個体識別番号:</span>
+            <span className={styles.infoLabel}>ID_CODE:</span>
             <span>{cow.cowId}</span>
           </div>
           {cow.earTagNo && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>耳標番号:</span>
+              <span className={styles.infoLabel}>EARTAG_NO:</span>
               <span>{cow.earTagNo}</span>
             </div>
           )}
           {cow.sex && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>性別:</span>
+              <span className={styles.infoLabel}>SEX_TYPE:</span>
               <span>{SEX_LABELS[cow.sex] ?? cow.sex}</span>
             </div>
           )}
           {cow.breed && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>品種:</span>
+              <span className={styles.infoLabel}>BREED:</span>
               <span>{cow.breed}</span>
             </div>
           )}
           {cow.birthDate && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>生年月日:</span>
+              <span className={styles.infoLabel}>BIRTH_DATE:</span>
               <span>{cow.birthDate}</span>
             </div>
           )}
           {cow.parity != null && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>産次:</span>
+              <span className={styles.infoLabel}>PARITY:</span>
               <span>{cow.parity}</span>
             </div>
           )}
           {cow.lastCalvingDate && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>最終分娩日:</span>
+              <span className={styles.infoLabel}>LAST_CALVING:</span>
               <span>{cow.lastCalvingDate}</span>
             </div>
           )}
           {cow.name && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>名前:</span>
+              <span className={styles.infoLabel}>NAME:</span>
               <span>{cow.name}</span>
             </div>
           )}
           {cow.farm && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>農場:</span>
+              <span className={styles.infoLabel}>FARM:</span>
               <span>{cow.farm}</span>
             </div>
           )}
@@ -195,18 +195,18 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
       {view === 'list' && (
         <div>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>診療履歴</h2>
+            <h2 className={styles.sectionTitle}>VISIT_HISTORY</h2>
             <Button
               type="button"
               variant="primary"
               onClick={() => setView('new_visit')}
             >
-              新規診療を開始
+              INITIALIZE_NEW_VISIT
             </Button>
           </div>
 
           {visits.length === 0 ? (
-            <p className={styles.emptyText}>診療履歴がありません</p>
+            <p className={styles.emptyText}>NO_VISIT_RECORDS_FOUND</p>
           ) : (
             <div>
               {visits.map((visit) => (
@@ -217,10 +217,10 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
                   className={styles.visitItem}
                 >
                   <div className={styles.visitItemDate}>
-                    {new Date(visit.datetime).toLocaleString('ja-JP')}
+                    {visit.datetime ? new Date(visit.datetime).toLocaleString('ja-JP') : 'TIMESTAMP_UNKNOWN'}
                   </div>
                   <div className={styles.visitItemMeta}>
-                    {visit.templateType && <span>テンプレート: {visit.templateType}</span>}
+                    {visit.templateType && <span>TEMPLATE: {visit.templateType}</span>}
                     {visit.status && (
                       <Badge variant={visit.status === 'COMPLETED' ? 'success' : 'warning'} size="sm">
                         {STATUS_LABELS[visit.status] ?? visit.status}
@@ -243,9 +243,9 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
               size="sm"
               onClick={() => setView('list')}
             >
-              ← 戻る
+              BACK
             </Button>
-            <h2 className={styles.sectionTitle}>新規診療</h2>
+            <h2 className={styles.sectionTitle}>NEW_VISIT_ENTRY</h2>
           </div>
           <PipelineEntryForm
             cowId={cowId}

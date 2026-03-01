@@ -51,7 +51,7 @@ export function CowRegistrationForm({
 
   const validateCowId = (value: string): boolean => {
     if (!/^\d{10}$/.test(value)) {
-      setCowIdError('個体識別番号は10桁の数字で入力してください（先頭0も可）');
+      setCowIdError('INVALID_ID_FORMAT_REQUIRE_10_DIGITS');
       return false;
     }
     return true;
@@ -62,9 +62,9 @@ export function CowRegistrationForm({
     setError(null);
 
     if (!validateCowId(form.cowId)) return;
-    if (!form.sex) { setError('性別を選択してください'); return; }
-    if (!form.breed.trim()) { setError('品種を入力してください'); return; }
-    if (!form.birthDate) { setError('生年月日を入力してください'); return; }
+    if (!form.sex) { setError('REQUIRED_FIELD_MISSING: SEX_TYPE'); return; }
+    if (!form.breed.trim()) { setError('REQUIRED_FIELD_MISSING: BREED'); return; }
+    if (!form.birthDate) { setError('REQUIRED_FIELD_MISSING: BIRTH_DATE'); return; }
 
     setLoading(true);
     try {
@@ -106,7 +106,7 @@ export function CowRegistrationForm({
 
       onRegistered(form.cowId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : isEditMode ? '更新中にエラーが発生しました' : '登録中にエラーが発生しました');
+      setError(err instanceof Error ? err.message : isEditMode ? 'UPDATE_OPERATION_FAILED' : 'REGISTRATION_OPERATION_FAILED');
     } finally {
       setLoading(false);
     }
@@ -114,16 +114,16 @@ export function CowRegistrationForm({
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>{isEditMode ? '牛の情報編集' : '牛の新規登録'}</h2>
+      <h2 className={styles.title}>{isEditMode ? 'ENTRY_EDIT' : 'ENTRY_REGISTRATION'}</h2>
       <form onSubmit={handleSubmit} noValidate className={styles.form}>
 
         <Input
           id="cowId"
-          label="個体識別番号 *"
+          label="ID_CODE (10-DIGIT) *"
           type="text"
           value={form.cowId}
           onChange={(e) => handleChange('cowId', e.target.value)}
-          placeholder="0000000000（10桁）"
+          placeholder="0000000000"
           maxLength={10}
           disabled={loading || isEditMode}
           readOnly={isEditMode}
@@ -132,7 +132,7 @@ export function CowRegistrationForm({
 
         <div className={styles.field}>
           <label htmlFor="sex" className={styles.selectLabel}>
-            性別 <span className={styles.required}>*</span>
+            SEX_TYPE <span className={styles.required}>*</span>
           </label>
           <select
             id="sex"
@@ -141,26 +141,26 @@ export function CowRegistrationForm({
             className={styles.select}
             disabled={loading}
           >
-            <option value="">選択してください</option>
-            <option value="FEMALE">雌</option>
-            <option value="MALE">雄</option>
-            <option value="CASTRATED">去勢</option>
+            <option value="">SELECT_ENTRY</option>
+            <option value="FEMALE">FEMALE</option>
+            <option value="MALE">MALE</option>
+            <option value="CASTRATED">CASTRATED</option>
           </select>
         </div>
 
         <Input
           id="breed"
-          label="品種 *"
+          label="BREED_SPECIES *"
           type="text"
           value={form.breed}
           onChange={(e) => handleChange('breed', e.target.value)}
-          placeholder="例: ホルスタイン"
+          placeholder="E.G. HOLSTEIN"
           disabled={loading}
         />
 
         <Input
           id="birthDate"
-          label="生年月日 *"
+          label="BIRTH_DATE *"
           type="date"
           value={form.birthDate}
           onChange={(e) => handleChange('birthDate', e.target.value)}
@@ -169,28 +169,28 @@ export function CowRegistrationForm({
 
         <Input
           id="earTagNo"
-          label="耳標番号"
+          label="EARTAG_NO"
           type="text"
           value={form.earTagNo}
           onChange={(e) => handleChange('earTagNo', e.target.value)}
-          placeholder="任意"
+          placeholder="OPTIONAL"
           disabled={loading}
         />
 
         <Input
           id="parity"
-          label="産次"
+          label="PARITY"
           type="number"
           min={0}
           value={form.parity}
           onChange={(e) => handleChange('parity', e.target.value)}
-          placeholder="任意"
+          placeholder="OPTIONAL"
           disabled={loading}
         />
 
         <Input
           id="lastCalvingDate"
-          label="最終分娩日"
+          label="LAST_CALVING_DATE"
           type="date"
           value={form.lastCalvingDate}
           onChange={(e) => handleChange('lastCalvingDate', e.target.value)}
@@ -199,21 +199,21 @@ export function CowRegistrationForm({
 
         <Input
           id="name"
-          label="名前"
+          label="NAME"
           type="text"
           value={form.name}
           onChange={(e) => handleChange('name', e.target.value)}
-          placeholder="任意"
+          placeholder="OPTIONAL"
           disabled={loading}
         />
 
         <Input
           id="farm"
-          label="農場"
+          label="FARM"
           type="text"
           value={form.farm}
           onChange={(e) => handleChange('farm', e.target.value)}
-          placeholder="任意"
+          placeholder="OPTIONAL"
           disabled={loading}
         />
 
@@ -230,7 +230,7 @@ export function CowRegistrationForm({
             loading={loading}
             fullWidth
           >
-            {isEditMode ? '更新する' : '牛を登録する'}
+            {isEditMode ? 'COMMIT_CHANGES' : 'REGISTER_ENTRY'}
           </Button>
           {onCancel && (
             <Button
@@ -239,7 +239,7 @@ export function CowRegistrationForm({
               onClick={onCancel}
               disabled={loading}
             >
-              キャンセル
+              CANCEL
             </Button>
           )}
         </div>

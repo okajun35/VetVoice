@@ -1,44 +1,98 @@
 /* App layout — CSS Modules */
 
+/* App layout — CSS Modules */
+
 .appMain {
-  padding: var(--spacing-4);
-  max-width: 720px;
+  position: relative;
+  min-height: 100vh;
+  padding: var(--spacing-6) var(--spacing-4);
+  max-width: 900px;
   margin: 0 auto;
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  font-family: var(--font-family-base);
+}
+
+.backgroundGrid {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: var(--texture-grid);
+  background-size: var(--texture-grid-size);
+  opacity: 0.1;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Header */
 
 .header {
+  position: relative;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-4);
+  align-items: flex-end;
+  margin-bottom: var(--spacing-8);
+  padding-bottom: var(--spacing-4);
+  border-bottom: 2px solid var(--color-border-strong);
   flex-wrap: wrap;
-  gap: var(--spacing-2);
+  gap: var(--spacing-4);
+  z-index: 1;
+}
+
+.headerBrand {
+  display: flex;
+  flex-direction: column;
 }
 
 .headerTitle {
   margin: 0;
-  font-size: var(--font-size-xl);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-3xl);
+  line-height: 0.9;
+  color: var(--color-primary);
+  letter-spacing: 0.05em;
+}
+
+.headerSubtitle {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  letter-spacing: 0.3em;
+  margin-top: var(--spacing-1);
 }
 
 .headerActions {
   display: flex;
-  gap: var(--spacing-2);
+  gap: var(--spacing-3);
   align-items: center;
 }
 
 /* Dev mode active state */
 
 .devModeActive {
-  background-color: var(--color-warning-subtle, #fef9c3);
-  color: var(--color-warning, #854d0e);
-  border-color: var(--color-warning, #854d0e);
+  background-color: var(--color-warning) !important;
+  color: var(--color-on-warning) !important;
+  border-color: var(--color-warning-active) !important;
 }
 
-/* User ID display */
+/* User Badge */
+
+.userBadge {
+  background-color: var(--color-surface-raised);
+  padding: var(--spacing-1) var(--spacing-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+}
 
 .userId {
-  font-size: var(--font-size-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+}
+
+.signOutButton {
+  font-family: var(--font-family-mono) !important;
+  letter-spacing: 0.1em;
 }

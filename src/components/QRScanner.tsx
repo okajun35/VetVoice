@@ -58,7 +58,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
     return () => {
       cancelled = true;
       if (isRunningRef.current && html5QrcodeRef.current) {
-        html5QrcodeRef.current.stop().catch(() => {});
+        html5QrcodeRef.current.stop().catch(() => { });
         isRunningRef.current = false;
       }
       html5QrcodeRef.current = null;
@@ -109,7 +109,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
             setScannerState('error');
           }
         },
-        () => {}
+        () => { }
       );
       isRunningRef.current = true;
     } catch {
@@ -128,7 +128,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
   const handleStop = async () => {
     const scanner = html5QrcodeRef.current;
     if (scanner && isRunningRef.current) {
-      await scanner.stop().catch(() => {});
+      await scanner.stop().catch(() => { });
       isRunningRef.current = false;
     }
     setScannerState('idle');
@@ -142,9 +142,9 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
 
   return (
     <div className={styles.scanner}>
-      <h2 className={styles.title}>QRコードをスキャン</h2>
+      <h2 className={styles.title}>QR_SCANNER</h2>
       <p className={styles.description}>
-        牛の耳標またはケージに貼付されたQRコードをカメラに向けてください。
+        POSITION_ID_TAG_OR_QR_CODE_WITHIN_VIEWPORT_FOR_DIAGNOSTIC_ENTRY
       </p>
 
       {/* Camera viewport — always in DOM so Html5Qrcode can bind to it */}
@@ -158,7 +158,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
         <div className={styles.controls}>
           {cameras.length > 1 && (
             <div className={styles.cameraSelect}>
-              <label htmlFor="camera-select">カメラ選択:</label>
+              <label htmlFor="camera-select">DEVICE_SELECT:</label>
               <select
                 id="camera-select"
                 value={selectedCameraId}
@@ -166,7 +166,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
               >
                 {cameras.map((cam) => (
                   <option key={cam.id} value={cam.id}>
-                    {cam.label || `カメラ ${cam.id}`}
+                    {cam.label?.toUpperCase() || `CAMERA_${cam.id}`}
                   </option>
                 ))}
               </select>
@@ -177,9 +177,10 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
             onClick={handleStart}
             disabled={!selectedCameraId}
             variant="primary"
-            size="lg"
+            size="xl"
+            fullWidth
           >
-            スキャン開始
+            INITIATE_SCAN
           </Button>
         </div>
       )}
@@ -190,9 +191,10 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
             type="button"
             onClick={handleStop}
             variant="secondary"
-            size="lg"
+            size="xl"
+            fullWidth
           >
-            スキャン停止
+            TERMINATE_SCAN
           </Button>
         </div>
       )}
@@ -201,9 +203,9 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
         <div className={styles.status} aria-live="polite">
           <Spinner size="lg" />
           <p>
-            牛情報を取得中...
+            FETCHING_DATABASE_RECORD...
             {scannedCowId && (
-              <span className={styles.cowId}> (ID: {scannedCowId})</span>
+              <span className={styles.cowId}> [ID: {scannedCowId}]</span>
             )}
           </p>
         </div>
@@ -212,15 +214,16 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
       {scannerState === 'error' && (
         <div className={styles.error} role="alert">
           <p className={styles.errorMessage}>
-            {errorMessage ?? 'エラーが発生しました。'}
+            {errorMessage?.toUpperCase() ?? 'SYSTEM_EXECUTION_FAILURE'}
           </p>
           <Button
             type="button"
             onClick={handleRetry}
             variant="primary"
             size="md"
+            fullWidth
           >
-            再スキャン
+            REBOOT_SCANNER
           </Button>
         </div>
       )}

@@ -1,29 +1,30 @@
-/* ========================================
-   CowRegistrationForm Component Styles
-   ======================================== */
-
 .container {
-  max-width: 480px;
+  max-width: 600px;
   margin: 0 auto;
-  padding: var(--spacing-4);
 }
 
 .title {
   margin-top: 0;
-  margin-bottom: var(--spacing-6);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-8);
+  font-family: var(--font-family-display);
+  font-size: var(--font-size-2xl);
+  color: var(--color-primary);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--color-primary);
+  padding-bottom: var(--spacing-2);
+  display: inline-block;
 }
-
-/* ========================================
-   Form Fields
-   ======================================== */
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-4);
+  gap: var(--spacing-6);
+  background-color: var(--color-surface);
+  padding: var(--spacing-6);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .field {
@@ -32,72 +33,78 @@
 }
 
 .required {
-  color: var(--color-danger);
+  color: var(--color-primary);
   margin-left: var(--spacing-1);
-}
-
-/* Select field - mirrors Input component design tokens */
-.select {
-  width: 100%;
-  padding: var(--spacing-3) var(--spacing-4);
-  font-family: var(--font-family-base);
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-normal);
-  color: var(--color-text-primary);
-  background-color: var(--color-surface);
-  border: 2px solid var(--color-border-input);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-fast);
-  min-height: var(--touch-target-min);
-  box-sizing: border-box;
-  appearance: auto;
-}
-
-.select:hover:not(:disabled) {
-  border-color: var(--color-border-strong);
-}
-
-.select:focus {
-  outline: var(--focus-ring-width) solid var(--color-focus-ring);
-  outline-offset: var(--focus-ring-offset);
-  border-color: var(--color-primary);
-}
-
-.select:disabled {
-  background-color: var(--color-disabled-bg);
-  color: var(--color-disabled-text);
-  border-color: var(--color-disabled-border);
-  cursor: not-allowed;
 }
 
 .selectLabel {
   display: block;
   margin-bottom: var(--spacing-2);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
-/* ========================================
-   Error Alert
-   ======================================== */
+.select {
+  width: 100%;
+  padding: var(--spacing-4);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+  min-height: var(--touch-target-min);
+  box-sizing: border-box;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23C6FF00' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-4) center;
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--color-primary);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background-color: var(--color-surface-raised);
+  box-shadow: 0 0 15px rgba(198, 255, 0, 0.1);
+}
+
+.select:disabled {
+  background-color: var(--color-surface-raised);
+  color: var(--color-text-tertiary);
+  border-color: var(--color-border-subtle);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 
 .errorAlert {
-  padding: var(--spacing-3) var(--spacing-4);
+  padding: var(--spacing-4);
   background: var(--color-danger-subtle);
-  border: 2px solid var(--color-danger-outline);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-danger);
+  border-left: 4px solid var(--color-danger);
   color: var(--color-danger);
-  white-space: pre-wrap;
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-sm);
+  letter-spacing: 0.02em;
 }
-
-/* ========================================
-   Actions
-   ======================================== */
 
 .actions {
   display: flex;
-  gap: var(--spacing-3);
-  margin-top: var(--spacing-2);
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-4);
+}
+
+@media (max-width: 480px) {
+  .actions {
+    flex-direction: column;
+  }
 }
