@@ -173,4 +173,21 @@ describe("compare-extractor-models utils", () => {
 
     expect(policy.procedureUttered).toBe(true);
   });
+
+  it("treats standalone AI shorthand as procedure utterance", () => {
+    const policy = evaluateApPolicy(
+      "右F20、左なし、V=0、AI",
+      {
+        vital: { temp_c: null },
+        s: null,
+        o: "右F20、左なし、V=0",
+        diagnostic_pattern: "reproductive",
+        a: [],
+        p: [{ name: "人工授精", type: "procedure" }],
+      }
+    );
+
+    expect(policy.procedureUttered).toBe(true);
+    expect(policy.pWithoutUtterance).toBe(false);
+  });
 });

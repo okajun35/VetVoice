@@ -306,6 +306,9 @@ function hasProcedureUtterance(normalizedTranscript: string): boolean {
   ) {
     return true;
   }
+  if (hasStandaloneProcedureAbbreviation(normalizedTranscript)) {
+    return true;
+  }
   const hasContextTerm =
     countKeywordHits(normalizedTranscript, PROCEDURE_UTTERANCE_CONTEXT_TERMS) > 0;
   const hasActionVerb = countKeywordHits(normalizedTranscript, PROCEDURE_ACTION_VERBS) > 0;
@@ -320,4 +323,9 @@ function countKeywordHits(normalizedText: string, keywords: string[]): number {
     }
   }
   return hits;
+}
+
+function hasStandaloneProcedureAbbreviation(normalizedTranscript: string): boolean {
+  // In reproduction notes, terminal shorthand like "...、AI" is often a direct procedure mention.
+  return /(^|[^a-z0-9])(ai|et|pg)([^a-z0-9]|$)/.test(normalizedTranscript);
 }

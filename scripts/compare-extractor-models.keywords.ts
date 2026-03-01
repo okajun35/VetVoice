@@ -24,6 +24,10 @@ export const PROCEDURE_UTTERANCE_STRONG_KEYWORDS = [
   "挿入",
   "手術",
   "胚移植",
+  "再検査",
+  "再鑑定",
+  "中止",
+  "様子見",
 ] as const;
 
 export const PROCEDURE_UTTERANCE_CONTEXT_TERMS = [
@@ -39,6 +43,8 @@ export const PROCEDURE_ACTION_VERBS = [
   "する",
   "した",
   "します",
+  "して",
+  "にして",
   "実施",
   "施行",
   "投与",
