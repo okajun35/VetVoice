@@ -244,6 +244,11 @@ case_id,transcript_json_path,transcript_text,gold_human_note,gold_diseases,gold_
 - `gold_human_note`: 人手の正解メモ（自由記述）
 - `gold_diseases` / `gold_procedures` / `gold_drugs`: `|` 区切り（任意）
   - これらを入れた場合のみ `missing_count` / `misclassified_count` を自動集計
+- 追加評価指標（A/P分離評価）:
+  - `encounter_context`: `repro_screening_inferred` / `diagnostic_assessment` / `treatment_or_intervention` / `general_observation`
+  - `p_without_utterance_count`: 発話根拠が薄い `p` 件数（低いほど良い）
+  - `a_without_p_allowed_count`: `a` あり `p` 空（処置未発話）として許容された件数
+  - `p_utterance_alignment_rate`: `p` が入ったケースで発話根拠に整合した割合
 
 ## デプロイ
 

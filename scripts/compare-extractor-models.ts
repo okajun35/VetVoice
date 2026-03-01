@@ -10,7 +10,10 @@ import { normalizePreExtractionTextByRules } from "../amplify/data/handlers/norm
 import type { EvalEntityType } from "../amplify/data/handlers/evaluation";
 import type { ExtractedJSON } from "../amplify/data/handlers/parser";
 import {
+  evaluateApPolicy,
   extractTranscriptTextFromJson,
+  inferEncounterContext,
+  type EncounterContext,
   normalizeComparisonCases,
   parseCsvRows,
   parseModelListArg,
@@ -54,6 +57,10 @@ interface ModelCaseResult {
   required_fields_total: number;
   missing_count: number | null;
   misclassified_count: number | null;
+  encounter_context: EncounterContext | null;
+  procedure_uttered: boolean | null;
+  p_without_utterance: boolean | null;
+  a_without_p_allowed: boolean | null;
   error?: string;
   extracted_json?: ExtractedJSON;
 }
@@ -76,6 +83,10 @@ interface ModelAggregate {
   success_count: number;
   schema_pass_rate: number;
   required_fields_fill_rate: number;
+  p_utterance_alignment_rate: number | null;
+  p_without_utterance_count: number;
+  a_without_p_allowed_count: number;
+  repro_screening_inferred_count: number;
   missing_count_total: number | null;
   misclassified_count_total: number | null;
   avg_latency_ms: number;
@@ -133,6 +144,8 @@ async function main(): Promise<void> {
         );
         const latencyMs = Date.now() - startedAt;
         const required = countRequiredFieldFill(extractedJson);
+        const apPolicy = evaluateApPolicy(transcriptExpanded, extractedJson);
+        const encounterContext = inferEncounterContext(transcriptExpanded, extractedJson);
         const classification =
           structuredGold.length > 0
             ? classifyAgainstStructuredGold(extractedJson, structuredGold)
@@ -148,6 +161,10 @@ async function main(): Promise<void> {
           required_fields_total: required.total,
           missing_count: classification?.missing ?? null,
           misclassified_count: classification?.misclassified ?? null,
+          encounter_context: encounterContext,
+          procedure_uttered: apPolicy.procedureUttered,
+          p_without_utterance: apPolicy.pWithoutUtterance,
+          a_without_p_allowed: apPolicy.aWithoutPAllowed,
           extracted_json: extractedJson,
         });
       } catch (error) {
@@ -163,6 +180,10 @@ async function main(): Promise<void> {
           required_fields_total: REQUIRED_FIELDS_TOTAL,
           missing_count: structuredGold.length > 0 ? structuredGold.length : null,
           misclassified_count: structuredGold.length > 0 ? 0 : null,
+          encounter_context: null,
+          procedure_uttered: null,
+          p_without_utterance: null,
+          a_without_p_allowed: null,
           error: message,
         });
       }
@@ -328,6 +349,11 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
     let requiredFilledTotal = 0;
     let requiredTotal = 0;
     let latencySum = 0;
+    let pBearingCount = 0;
+    let pAlignedCount = 0;
+    let pWithoutUtteranceCount = 0;
+    let aWithoutPAllowedCount = 0;
+    let reproScreeningInferredCount = 0;
 
     let missingTotal = 0;
     let misclassifiedTotal = 0;
@@ -344,6 +370,24 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       requiredFilledTotal += result.required_fields_filled;
       requiredTotal += result.required_fields_total;
       latencySum += result.latency_ms;
+      if (result.p_without_utterance !== null && result.procedure_uttered !== null) {
+        const hasP = (result.extracted_json?.p.length ?? 0) > 0;
+        if (hasP) {
+          pBearingCount += 1;
+          if (!result.p_without_utterance) {
+            pAlignedCount += 1;
+          }
+        }
+      }
+      if (result.p_without_utterance) {
+        pWithoutUtteranceCount += 1;
+      }
+      if (result.a_without_p_allowed) {
+        aWithoutPAllowedCount += 1;
+      }
+      if (result.encounter_context === "repro_screening_inferred") {
+        reproScreeningInferredCount += 1;
+      }
 
       if (result.missing_count !== null && result.misclassified_count !== null) {
         hasStructuredGold = true;
@@ -360,6 +404,11 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       success_count: successCount,
       schema_pass_rate: caseCount === 0 ? 0 : schemaPassCount / caseCount,
       required_fields_fill_rate: requiredTotal === 0 ? 0 : requiredFilledTotal / requiredTotal,
+      p_utterance_alignment_rate:
+        pBearingCount === 0 ? null : pAlignedCount / pBearingCount,
+      p_without_utterance_count: pWithoutUtteranceCount,
+      a_without_p_allowed_count: aWithoutPAllowedCount,
+      repro_screening_inferred_count: reproScreeningInferredCount,
       missing_count_total: hasStructuredGold ? missingTotal : null,
       misclassified_count_total: hasStructuredGold ? misclassifiedTotal : null,
       avg_latency_ms: caseCount === 0 ? 0 : latencySum / caseCount,
@@ -375,7 +424,9 @@ function toMarkdown(report: ComparisonReport): string {
           item.resolved_model_id
         )} | ${item.schema_pass_rate.toFixed(4)} | ${item.required_fields_fill_rate.toFixed(
           4
-        )} | ${item.missing_count_total ?? "-"} | ${item.misclassified_count_total ?? "-"} | ${item.avg_latency_ms.toFixed(1)} |`
+        )} | ${item.p_utterance_alignment_rate === null ? "-" : item.p_utterance_alignment_rate.toFixed(
+          4
+        )} | ${item.p_without_utterance_count} | ${item.a_without_p_allowed_count} | ${item.repro_screening_inferred_count} | ${item.missing_count_total ?? "-"} | ${item.misclassified_count_total ?? "-"} | ${item.avg_latency_ms.toFixed(1)} |`
     )
     .join("\n");
 
@@ -392,6 +443,10 @@ function toMarkdown(report: ComparisonReport): string {
             `  - success: ${result.success}`,
             `  - schema_pass: ${result.schema_pass}`,
             `  - required_fields_fill: ${result.required_fields_filled}/${result.required_fields_total}`,
+            `  - encounter_context: ${result.encounter_context ?? "-"}`,
+            `  - procedure_uttered: ${result.procedure_uttered ?? "-"}`,
+            `  - p_without_utterance: ${result.p_without_utterance ?? "-"}`,
+            `  - a_without_p_allowed: ${result.a_without_p_allowed ?? "-"}`,
             `  - missing_count: ${result.missing_count ?? "-"}`,
             `  - misclassified_count: ${result.misclassified_count ?? "-"}`,
             `  - latency_ms: ${result.latency_ms}`,
@@ -430,9 +485,9 @@ function toMarkdown(report: ComparisonReport): string {
     "",
     "## Aggregate Metrics",
     "",
-    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | missing_count_total | misclassified_count_total | avg_latency_ms |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
-    summaryRows || "| - | - | - | - | - | - | - |",
+    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | repro_screening_inferred_count | missing_count_total | misclassified_count_total | avg_latency_ms |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    summaryRows || "| - | - | - | - | - | - | - | - | - | - | - |",
     "",
     "## Per Case Output",
     "",

@@ -1,4 +1,5 @@
 import path from "node:path";
+import type { ExtractedJSON } from "../amplify/data/handlers/parser";
 
 export interface ComparisonCsvRow {
   lineNo: number;
@@ -18,6 +19,62 @@ export interface ComparisonCaseInput {
 
 const REQUIRED_HEADERS = ["gold_human_note"];
 const TRANSCRIPT_HEADERS = ["transcript_json_path", "transcript_text"];
+const REPRO_SCREENING_KEYWORDS = [
+  "外子宮口",
+  "子宮口",
+  "膣内",
+  "膣検査",
+  "cidr",
+  "cl",
+  "黄体",
+  "卵巣",
+  "人工授精",
+  "妊娠鑑定",
+  "ai",
+  "et",
+  "pg",
+];
+const PROCEDURE_UTTERANCE_KEYWORDS = [
+  "処置",
+  "投与",
+  "注射",
+  "点滴",
+  "実施",
+  "施行",
+  "挿入",
+  "手術",
+  "人工授精",
+  "妊娠鑑定",
+  "胚移植",
+  "cidr",
+  "ai",
+  "et",
+  "pg",
+  "uv+",
+];
+const CLINICAL_DISEASE_KEYWORDS = [
+  "ケトーシス",
+  "ケトン臭",
+  "乳房炎",
+  "肺炎",
+  "下痢",
+  "軟便",
+  "発熱",
+  "食欲不振",
+];
+const NON_DISEASE_STATE_NAMES = new Set(["妊娠"]);
+
+export type EncounterContext =
+  | "repro_screening_inferred"
+  | "diagnostic_assessment"
+  | "treatment_or_intervention"
+  | "general_observation";
+
+export interface ApPolicyResult {
+  procedureUttered: boolean;
+  pWithoutUtterance: boolean;
+  aWithoutPAllowed: boolean;
+}
 
 export function parseModelListArg(
   value: string | undefined,
@@ -162,6 +219,76 @@ export function extractTranscriptTextFromJson(rawJson: string): string {
   throw new Error("Transcript JSON does not include results.transcripts[].transcript.");
 }
 
+export function evaluateApPolicy(
+  transcriptExpanded: string,
+  extractedJson: ExtractedJSON
+): ApPolicyResult {
+  const normalizedTranscript = normalizeForMatch(transcriptExpanded);
+  const procedureUttered = hasProcedureUtterance(normalizedTranscript);
+  const hasP = extractedJson.p.length > 0;
+  const pNameMentioned = hasP
+    ? extractedJson.p.some((item) => {
+        const names = [item.name, item.canonical_name].filter(
+          (value): value is string => typeof value === "string" && value.trim().length > 0
+        );
+        return names.some((name) => normalizedTranscript.includes(normalizeForMatch(name)));
+      })
+    : false;
+
+  const pWithoutUtterance = hasP && !procedureUttered && !pNameMentioned;
+  const aWithoutPAllowed = extractedJson.a.length > 0 && !hasP && !procedureUttered;
+  return { procedureUttered, pWithoutUtterance, aWithoutPAllowed };
+}
+
+export function inferEncounterContext(
+  transcriptExpanded: string,
+  extractedJson: ExtractedJSON
+): EncounterContext {
+  const normalizedTranscript = normalizeForMatch(transcriptExpanded);
+  const combinedText = normalizeForMatch(
+    [
+      transcriptExpanded,
+      extractedJson.s ?? "",
+      extractedJson.o ?? "",
+      ...extractedJson.a.map((item) => item.name),
+      ...extractedJson.p.map((item) => item.name),
+    ].join(" ")
+  );
+
+  const { procedureUttered } = evaluateApPolicy(transcriptExpanded, extractedJson);
+  const hasTreatmentSignal = procedureUttered || extractedJson.p.length > 0;
+  if (hasTreatmentSignal) return "treatment_or_intervention";
+
+  const hasReproSignal =
+    extractedJson.diagnostic_pattern === "reproductive" ||
+    countKeywordHits(combinedText, REPRO_SCREENING_KEYWORDS) >= 2;
+
+  const hasClinicalDiseaseA = extractedJson.a.some((item) => {
+    const normalizedName = normalizeForMatch(item.name);
+    return !NON_DISEASE_STATE_NAMES.has(normalizedName);
+  });
+  const hasClinicalDiseaseText = countKeywordHits(combinedText, CLINICAL_DISEASE_KEYWORDS) > 0;
+  const hasClinicalDiseaseSignal = hasClinicalDiseaseA || hasClinicalDiseaseText;
+
+  if (hasReproSignal && !hasClinicalDiseaseSignal) {
+    return "repro_screening_inferred";
+  }
+
+  if (
+    hasClinicalDiseaseSignal ||
+    extractedJson.a.length > 0 ||
+    (typeof extractedJson.s === "string" && extractedJson.s.trim().length > 0) ||
+    (typeof extractedJson.o === "string" && extractedJson.o.trim().length > 0)
+  ) {
+    return "diagnostic_assessment";
+  }
+
+  if (normalizedTranscript.trim().length > 0) {
+    return "diagnostic_assessment";
+  }
+  return "general_observation";
+}
+
 function parseLabelList(value: string | undefined): string[] {
   if (!value || value.trim().length === 0) {
     return [];
@@ -202,4 +329,22 @@ function splitCsvLine(line: string): string[] {
 
   out.push(current);
   return out;
+}
+
+function normalizeForMatch(value: string): string {
+  return value.normalize("NFKC").toLowerCase();
+}
+
+function hasProcedureUtterance(normalizedTranscript: string): boolean {
+  return countKeywordHits(normalizedTranscript, PROCEDURE_UTTERANCE_KEYWORDS) > 0;
+}
+
+function countKeywordHits(normalizedText: string, keywords: string[]): number {
+  let hits = 0;
+  for (const keyword of keywords) {
+    if (normalizedText.includes(normalizeForMatch(keyword))) {
+      hits += 1;
+    }
+  }
+  return hits;
 }

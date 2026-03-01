@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  evaluateApPolicy,
   extractTranscriptTextFromJson,
+  inferEncounterContext,
   normalizeComparisonCases,
   parseCsvRows,
   parseModelListArg,
@@ -86,5 +88,57 @@ describe("compare-extractor-models utils", () => {
         })
       )
     ).toThrow("Transcript JSON does not include results.transcripts[].transcript.");
+  });
+
+  it("infers repro_screening_inferred when reproduction context exists with no treatment signal", () => {
+    const context = inferEncounterContext(
+      "妊娠中で外子宮口見えず、膣内異常なし",
+      {
+        vital: { temp_c: null },
+        s: null,
+        o: "妊娠中、外子宮口見えず、膣内異常なし",
+        diagnostic_pattern: "reproductive",
+        a: [{ name: "妊娠" }],
+        p: [],
+      }
+    );
+
+    expect(context).toBe("repro_screening_inferred");
+  });
+
+  it("flags p_without_utterance when p is populated without procedure signal", () => {
+    const policy = evaluateApPolicy(
+      "食欲不振、ケトン臭あり",
+      {
+        vital: { temp_c: null },
+        s: "食欲不振",
+        o: "ケトン臭あり",
+        diagnostic_pattern: "metabolic",
+        a: [{ name: "ケトーシス" }],
+        p: [{ name: "CIDR", type: "procedure" }],
+      }
+    );
+
+    expect(policy.procedureUttered).toBe(false);
+    expect(policy.pWithoutUtterance).toBe(true);
+    expect(policy.aWithoutPAllowed).toBe(false);
+  });
+
+  it("treats a-present/p-empty as allowed when no procedure utterance exists", () => {
+    const policy = evaluateApPolicy(
+      "食欲不振、ケトン臭あり",
+      {
+        vital: { temp_c: null },
+        s: "食欲不振",
+        o: "ケトン臭あり",
+        diagnostic_pattern: "metabolic",
+        a: [{ name: "ケトーシス" }],
+        p: [],
+      }
+    );
+
+    expect(policy.procedureUttered).toBe(false);
+    expect(policy.pWithoutUtterance).toBe(false);
+    expect(policy.aWithoutPAllowed).toBe(true);
   });
 });
