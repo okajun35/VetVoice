@@ -79,6 +79,40 @@ vi.mock('../../src/components/VoiceRecorder', () => ({
   ),
 }));
 
+// Mock VisitManager / VisitEditor to verify dev navigation wiring
+vi.mock('../../src/components/VisitManager', () => ({
+  VisitManager: ({
+    cowId,
+    onBack,
+  }: {
+    cowId: string;
+    onBack?: () => void;
+  }) => (
+    <div data-testid="visit-manager-mock">
+      <p>VisitManagerMock:{cowId}</p>
+      <button onClick={onBack}>BackToEntry</button>
+    </div>
+  ),
+}));
+
+vi.mock('../../src/components/VisitEditor', () => ({
+  VisitEditor: ({
+    visitId,
+    onBack,
+    onSaved,
+  }: {
+    visitId: string;
+    onBack?: () => void;
+    onSaved?: () => void;
+  }) => (
+    <div data-testid="visit-editor-mock">
+      <p>VisitEditorMock:{visitId}</p>
+      <button onClick={onBack}>BackToEntry</button>
+      <button onClick={onSaved}>Saved</button>
+    </div>
+  ),
+}));
+
 // ---------------------------------------------------------------------------
 // Test Suite
 // ---------------------------------------------------------------------------
@@ -802,7 +836,7 @@ describe('DevEntryPoints component', () => {
       render(<DevEntryPoints />);
       
       // Verify cowId input field is present and has the correct value
-      const cowIdInput = screen.getByLabelText(/牛ID/i) as HTMLInputElement;
+      const cowIdInput = screen.getByLabelText(/Cow ID/i) as HTMLInputElement;
       expect(cowIdInput).toBeInTheDocument();
       expect(cowIdInput.value).toBe('test-cow-001');
     });
@@ -847,6 +881,41 @@ describe('DevEntryPoints component', () => {
       // Verify result is displayed
       expect(await screen.findByText('PIPELINE_OUTPUT')).toBeInTheDocument();
       expect(screen.getByText('visit-123')).toBeInTheDocument();
+    });
+
+    it('opens VisitEditor from latest pipeline result button', async () => {
+      const user = userEvent.setup();
+      mockRunPipeline.mockResolvedValue({
+        data: {
+          visitId: 'visit-from-run-001',
+          cowId: 'test-cow-001',
+        },
+        errors: null,
+      });
+
+      render(<DevEntryPoints />);
+
+      const runButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      await user.type(textarea, 'テスト診療文');
+      await user.click(runButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '最新実行結果を編集' })).toBeEnabled();
+      });
+
+      await user.click(screen.getByRole('button', { name: '最新実行結果を編集' }));
+      expect(await screen.findByTestId('visit-editor-mock')).toBeInTheDocument();
+      expect(screen.getByText('VisitEditorMock:visit-from-run-001')).toBeInTheDocument();
+    });
+
+    it('opens VisitManager from cowId button', async () => {
+      const user = userEvent.setup();
+      render(<DevEntryPoints />);
+
+      await user.click(screen.getByRole('button', { name: 'Visit一覧を開く' }));
+      expect(await screen.findByTestId('visit-manager-mock')).toBeInTheDocument();
+      expect(screen.getByText('VisitManagerMock:test-cow-001')).toBeInTheDocument();
     });
   });
 });
