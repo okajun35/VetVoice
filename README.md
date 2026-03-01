@@ -250,6 +250,24 @@ case_id,transcript_json_path,transcript_text,gold_human_note,gold_diseases,gold_
   - `a_without_p_allowed_count`: `a` あり `p` 空（処置未発話）として許容された件数
   - `p_utterance_alignment_rate`: `p` が入ったケースで発話根拠に整合した割合
 
+### 週次KPI運用（主指標: evidence_backed_fill_rate）
+
+週次では `required_fields_fill_rate` ではなく、根拠付き充足率 `evidence_backed_fill_rate` を主KPIとして扱います。
+
+```bash
+# 1) モデル比較を実行
+npm run eval:extractor:compare -- tmp/model-comparison-sample.csv tmp/model-compare
+
+# 2) 週次KPIを更新（履歴追記 + 最新サマリ生成）
+npm run eval:extractor:kpi -- tmp/model-compare/comparison.latest.json tmp/model-compare --target 0.5
+```
+
+- 出力:
+  - `tmp/model-compare/kpi.weekly.history.v1.json`
+  - `tmp/model-compare/kpi.weekly.latest.md`
+- `--target-model <modelId>` を付けると特定モデルだけの達成判定にできます
+- `--fail-on-below-target` を付けると目標未達時に非0終了（CI連携向け）
+
 ## デプロイ
 
 ```bash

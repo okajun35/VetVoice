@@ -231,7 +231,9 @@ async function main(): Promise<void> {
   console.log(`Dataset: ${options.datasetPath}`);
   for (const aggregate of report.aggregates) {
     console.log(
-      `${aggregate.requested_model_id}: schema_pass_rate=${aggregate.schema_pass_rate.toFixed(
+      `${aggregate.requested_model_id}: evidence_backed_fill_rate=${aggregate.evidence_backed_fill_rate.toFixed(
+        4
+      )}, schema_pass_rate=${aggregate.schema_pass_rate.toFixed(
         4
       )}, required_fields_fill_rate=${aggregate.required_fields_fill_rate.toFixed(
         4

@@ -14,6 +14,7 @@
     "generate-assets": "tsx scripts/generate-asset-modules.ts",
     "eval": "tsx scripts/evaluate-pipeline.ts",
     "eval:extractor:compare": "tsx scripts/compare-extractor-models.ts",
+    "eval:extractor:kpi": "tsx scripts/extractor-kpi-weekly.ts",
     "transcribe:vocab:update": "./scripts/transcribe-vocab-update.sh",
     "transcribe:vocab:status": "./scripts/transcribe-vocab-status.sh"
   },
