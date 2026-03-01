@@ -5,6 +5,7 @@
  */
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
+import { getCurrentUser } from 'aws-amplify/auth';
 import type { Schema } from '../../amplify/data/resource';
 import { Button } from './ui/Button/Button';
 import { Input } from './ui/Input/Input';
@@ -49,15 +50,79 @@ interface VisitData {
   datetime: string;
   status?: string | null;
   templateType?: string | null;
+  extractorModelId?: string | null;
+  soapModelId?: string | null;
+  kyosaiModelId?: string | null;
   transcriptRaw?: string | null;
   extractedJson?: unknown;
   soapText?: string | null;
   kyosaiText?: string | null;
 }
 
+interface JsonPatchOperation {
+  op: 'add' | 'remove' | 'replace';
+  path: string;
+  value?: unknown;
+}
+
+function escapeJsonPointerToken(token: string): string {
+  return token.replace(/~/g, '~0').replace(/\//g, '~1');
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function buildJsonPatch(
+  before: unknown,
+  after: unknown,
+  path = ''
+): JsonPatchOperation[] {
+  if (Object.is(before, after)) {
+    return [];
+  }
+
+  if (Array.isArray(before) && Array.isArray(after)) {
+    const beforeText = JSON.stringify(before);
+    const afterText = JSON.stringify(after);
+    return beforeText === afterText ? [] : [{ op: 'replace', path: path || '/', value: after }];
+  }
+
+  if (isPlainObject(before) && isPlainObject(after)) {
+    const operations: JsonPatchOperation[] = [];
+    const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+    for (const key of keys) {
+      const childPath = `${path}/${escapeJsonPointerToken(key)}`;
+      if (!(key in after)) {
+        operations.push({ op: 'remove', path: childPath });
+        continue;
+      }
+      if (!(key in before)) {
+        operations.push({ op: 'add', path: childPath, value: after[key] });
+        continue;
+      }
+      operations.push(...buildJsonPatch(before[key], after[key], childPath));
+    }
+    return operations;
+  }
+
+  return [{ op: 'replace', path: path || '/', value: after }];
+}
+
+async function resolveEditorId(): Promise<string> {
+  try {
+    const user = await getCurrentUser();
+    return user.userId || user.username || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
   const [visit, setVisit] = useState<VisitData | null>(null);
   const [extractedJson, setExtractedJson] = useState<ExtractedJSON | null>(null);
+  const [draftExtractedJson, setDraftExtractedJson] = useState<ExtractedJSON | null>(null);
+  const [editStartedAt, setEditStartedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,7 +144,10 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
               typeof data.extractedJson === 'string'
                 ? JSON.parse(data.extractedJson)
                 : data.extractedJson;
-            setExtractedJson(parsed as ExtractedJSON);
+            const extracted = parsed as ExtractedJSON;
+            setExtractedJson(extracted);
+            setDraftExtractedJson(extracted);
+            setEditStartedAt(Date.now());
           } catch {
             setError('ExtractedJSONの解析に失敗しました');
           }
@@ -94,18 +162,45 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
   }, [visitId]);
 
   const handleSave = async () => {
-    if (!visit || !extractedJson) return;
+    if (!visit || !extractedJson || !draftExtractedJson) return;
     setSaving(true);
     setError(null);
     try {
-      const { errors } = await client.models.Visit.update({
+      const { errors: visitErrors } = await client.models.Visit.update({
         visitId,
         extractedJson: JSON.stringify(extractedJson),
       });
-      if (errors && errors.length > 0) {
-        setError(errors.map((e) => e.message).join('\n'));
+      if (visitErrors && visitErrors.length > 0) {
+        setError(visitErrors.map((e) => e.message).join('\n'));
         return;
       }
+
+      const editedAt = new Date().toISOString();
+      const editorId = await resolveEditorId();
+      const duration =
+        editStartedAt == null ? null : Math.max(0, Math.round((Date.now() - editStartedAt) / 1000));
+      const diffJsonPatch = buildJsonPatch(draftExtractedJson, extractedJson);
+
+      const { errors: editErrors } = await client.models.VisitEdit.create({
+        editId: crypto.randomUUID(),
+        visitId: visit.visitId,
+        caseId: visit.visitId,
+        cowId: visit.cowId,
+        modelId: visit.extractorModelId ?? 'unknown',
+        editorId,
+        editedAt,
+        editDurationSec: duration,
+        llmDraftJson: draftExtractedJson,
+        humanCorrectedJson: extractedJson,
+        diffJsonPatch,
+      });
+      if (editErrors && editErrors.length > 0) {
+        setError(`診療記録は保存済みですが修正履歴の保存に失敗しました。\n${editErrors.map((e) => e.message).join('\n')}`);
+        return;
+      }
+
+      setDraftExtractedJson(extractedJson);
+      setEditStartedAt(Date.now());
       onSaved?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存中にエラーが発生しました');

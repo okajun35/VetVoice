@@ -30,6 +30,10 @@ import { selectTemplate } from "./handlers/template-selector";
 import { generateSOAP } from "./handlers/soap-generator";
 import { generateKyosai } from "./handlers/kyosai-generator";
 import type { TemplateType } from "./handlers/template-selector";
+import {
+  getModelConfig,
+  type ComponentName,
+} from "./handlers/model-config";
 
 // ---------------------------------------------------------------------------
 // AWS client singletons (reused across warm Lambda invocations)
@@ -51,6 +55,17 @@ const CIDR_PATTERN = /(?:^|[^a-z0-9])cidr(?:[^a-z0-9]|$)/i;
 
 function normalizeRoutingText(text: string): string {
   return text.normalize("NFKC").trim().toLowerCase();
+}
+
+function resolveModelIdForAudit(
+  component: ComponentName,
+  overrideModelId?: string
+): string {
+  try {
+    return getModelConfig(component, false, overrideModelId).modelId;
+  } catch {
+    return overrideModelId?.trim() || "unknown";
+  }
 }
 
 function addPlanItemIfMissing(
@@ -242,6 +257,15 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   const visitId = crypto.randomUUID();
   const datetime = new Date().toISOString();
   const warnings: string[] = [];
+  const extractorModelIdOverride =
+    typeof extractorModelId === "string" ? extractorModelId : undefined;
+  const soapModelIdOverride =
+    typeof soapModelId === "string" ? soapModelId : undefined;
+  const kyosaiModelIdOverride =
+    typeof kyosaiModelId === "string" ? kyosaiModelId : undefined;
+  const extractorModelIdResolved = resolveModelIdForAudit("extractor", extractorModelIdOverride);
+  const soapModelIdResolved = resolveModelIdForAudit("soapGenerator", soapModelIdOverride);
+  const kyosaiModelIdResolved = resolveModelIdForAudit("kyosaiGenerator", kyosaiModelIdOverride);
 
   let transcriptRaw: string | null = null;
   let transcriptExpanded: string | null = null;
@@ -336,7 +360,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           {
             expanded_text: transcriptExpanded ?? workingText,
             template_type: templateType ?? undefined,
-            model_id_override: extractorModelId ?? undefined,
+            model_id_override: extractorModelIdOverride,
             strict_errors: true,
           },
           bedrockClient
@@ -411,7 +435,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           template_type: resolvedTemplateType,
           cow_id: cowId,
           visit_datetime: datetime,
-          model_id_override: soapModelId ?? undefined,
+          model_id_override: soapModelIdOverride,
         },
         bedrockClient
       );
@@ -432,7 +456,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           template_type: resolvedTemplateType,
           cow_id: cowId,
           visit_datetime: datetime,
-          model_id_override: kyosaiModelId ?? undefined,
+          model_id_override: kyosaiModelIdOverride,
         },
         bedrockClient
       );
@@ -471,6 +495,9 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
             ...(transcriptRaw != null && { transcriptRaw }),
             ...(transcriptExpanded != null && { transcriptExpanded }),
             ...(extractedJson != null && { extractedJson: stringify(extractedJson) }),
+            extractorModelId: extractorModelIdResolved,
+            soapModelId: soapModelIdResolved,
+            kyosaiModelId: kyosaiModelIdResolved,
             ...(soapText != null && { soapText }),
             ...(kyosaiText != null && { kyosaiText }),
             templateType: resolvedTemplateType,

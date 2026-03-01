@@ -50,6 +50,9 @@ const schema = a.schema({
     transcriptRaw: a.string(),
     transcriptExpanded: a.string(),
     extractedJson: a.json(),
+    extractorModelId: a.string(),
+    soapModelId: a.string(),
+    kyosaiModelId: a.string(),
     soapText: a.string(),
     kyosaiText: a.string(),
     templateType: a.string(),       // 要件16: テンプレートタイプ
@@ -58,6 +61,26 @@ const schema = a.schema({
     .identifier(["visitId"])
     .secondaryIndexes((index) => [
       index("cowId").sortKeys(["datetime"]).queryField("listVisitsByCow"),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
+
+  VisitEdit: a.model({
+    editId: a.string().required(),
+    visitId: a.string().required(),
+    caseId: a.string().required(),
+    cowId: a.string().required(),
+    modelId: a.string().required(),
+    editorId: a.string().required(),
+    editedAt: a.datetime().required(),
+    editDurationSec: a.integer(),
+    llmDraftJson: a.json().required(),
+    humanCorrectedJson: a.json().required(),
+    diffJsonPatch: a.json().required(),
+  })
+    .identifier(["editId"])
+    .secondaryIndexes((index) => [
+      index("visitId").sortKeys(["editedAt"]).queryField("listVisitEditsByVisit"),
+      index("editorId").sortKeys(["editedAt"]).queryField("listVisitEditsByEditor"),
     ])
     .authorization((allow) => [allow.authenticated()]),
 
