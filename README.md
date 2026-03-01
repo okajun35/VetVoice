@@ -268,6 +268,26 @@ npm run eval:extractor:kpi -- tmp/model-compare/comparison.latest.json tmp/model
 - `--target-model <modelId>` を付けると特定モデルだけの達成判定にできます
 - `--fail-on-below-target` を付けると目標未達時に非0終了（CI連携向け）
 
+## SOAPモデル比較（Nova Lite vs GLM など）
+
+ExtractorはHaiku 4.5固定で1回だけ実行し、同一ExtractedJSONを各SOAPモデルへ渡して比較します。
+
+```bash
+# 1) 40件向け入力テンプレ作成（既存比較CSVから先頭40件を抽出）
+npm run eval:soap:template -- tmp/model-comparison-sample.csv tmp/soap-model-comparison-sample.40.csv --limit 40
+
+# 2) SOAP比較（例: Nova Lite vs GLM 4.7）
+npm run eval:soap:compare -- tmp/soap-model-comparison-sample.40.csv tmp/soap-model-compare --models amazon.nova-lite-v1:0,zai.glm-4.7
+```
+
+- 入力CSVヘッダ:
+  - `case_id,transcript_json_path,transcript_text,gold_human_note,template_type,note`
+- `template_type` は空欄推奨（自動選択）
+- 出力:
+  - `tmp/soap-model-compare/soap-comparison.latest.json`
+  - `tmp/soap-model-compare/soap-comparison.latest.md`
+  - `tmp/soap-model-compare/soap-scoring.template.csv`（人手採点用）
+
 ## デプロイ
 
 ```bash
