@@ -4,6 +4,11 @@ import process from "node:process";
 
 const DEFAULT_COMPARISON_JSON_PATH = "tmp/model-compare/comparison.latest.json";
 const DEFAULT_WEEKLY_TARGET = 0.5;
+const DEFAULT_WEEKLY_PRIMARY_METRIC = "evidence_backed_fill_rate_context_aware";
+
+type KpiMetric =
+  | "evidence_backed_fill_rate"
+  | "evidence_backed_fill_rate_context_aware";
 
 interface CliOptions {
   comparisonJsonPath: string;
@@ -11,6 +16,7 @@ interface CliOptions {
   historyPath?: string;
   target: number;
   targetModelId?: string;
+  metric: KpiMetric;
   failOnBelowTarget: boolean;
 }
 
@@ -21,6 +27,7 @@ interface ComparisonAggregate {
   schema_pass_rate: number;
   required_fields_fill_rate: number;
   evidence_backed_fill_rate: number;
+  evidence_backed_fill_rate_context_aware?: number;
   p_utterance_alignment_rate: number | null;
   p_without_utterance_count: number;
   a_without_p_allowed_count: number;
@@ -40,6 +47,7 @@ interface WeeklyKpiModel {
   schema_pass_rate: number;
   required_fields_fill_rate: number;
   evidence_backed_fill_rate: number;
+  evidence_backed_fill_rate_context_aware: number;
   p_utterance_alignment_rate: number | null;
   p_without_utterance_count: number;
   a_without_p_allowed_count: number;
@@ -55,32 +63,34 @@ interface WeeklyKpiRun {
 }
 
 interface WeeklyKpiHistory {
-  primary_metric: "evidence_backed_fill_rate";
+  primary_metric: KpiMetric;
   target: number;
   runs: WeeklyKpiRun[];
 }
 
 interface LatestModelSummary extends WeeklyKpiModel {
+  metric_value: number;
   delta_from_previous: number | null;
   target_pass: boolean;
 }
 
-const HISTORY_SCHEMA_VERSION = "v1";
+const HISTORY_SCHEMA_VERSION = "v2";
 
 async function main(): Promise<void> {
   const options = parseCliOptions(process.argv.slice(2));
-  const report = await loadComparisonReport(options.comparisonJsonPath);
+  const report = await loadComparisonReport(options.comparisonJsonPath, options.metric);
   const outputDir = options.outputDir;
   const historyPath =
     options.historyPath ?? path.join(outputDir, `kpi.weekly.history.${HISTORY_SCHEMA_VERSION}.json`);
   const markdownPath = path.join(outputDir, "kpi.weekly.latest.md");
 
   const nextRun = toWeeklyRun(report);
-  const history = await loadWeeklyHistory(historyPath, options.target);
+  const history = await loadWeeklyHistory(historyPath, options.target, options.metric);
+  history.primary_metric = options.metric;
   history.target = options.target;
   history.runs.push(nextRun);
 
-  const latestSummary = buildLatestModelSummary(history);
+  const latestSummary = buildLatestModelSummary(history, options.metric);
   await mkdir(outputDir, { recursive: true });
   await writeFile(historyPath, `${JSON.stringify(history, null, 2)}\n`, "utf8");
   await writeFile(markdownPath, buildMarkdown(history, latestSummary, options), "utf8");
@@ -93,7 +103,7 @@ async function main(): Promise<void> {
     const deltaLabel =
       item.delta_from_previous === null ? "-" : formatSigned(item.delta_from_previous, 4);
     console.log(
-      `${item.requested_model_id}: evidence_backed_fill_rate=${item.evidence_backed_fill_rate.toFixed(
+      `${item.requested_model_id}: ${options.metric}=${item.metric_value.toFixed(
         4
       )}, delta=${deltaLabel}, target_pass=${item.target_pass}`
     );
@@ -110,7 +120,9 @@ async function main(): Promise<void> {
       ? `target_model=${options.targetModelId}`
       : "all models";
     throw new Error(
-      `Weekly KPI target failed (${targetLabel}, threshold=${options.target.toFixed(4)}): ${failed
+      `Weekly KPI target failed (${targetLabel}, metric=${options.metric}, threshold=${options.target.toFixed(
+        4
+      )}): ${failed
         .map((item) => item.requested_model_id)
         .join(", ")}`
     );
@@ -122,6 +134,7 @@ function parseCliOptions(argv: string[]): CliOptions {
   let target = DEFAULT_WEEKLY_TARGET;
   let historyPath: string | undefined;
   let targetModelId: string | undefined;
+  let metric: KpiMetric = DEFAULT_WEEKLY_PRIMARY_METRIC;
   let failOnBelowTarget = false;
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -157,6 +170,15 @@ function parseCliOptions(argv: string[]): CliOptions {
       failOnBelowTarget = true;
       continue;
     }
+    if (arg === "--metric") {
+      metric = parseMetric(argv[index + 1]);
+      index += 1;
+      continue;
+    }
+    if (arg.startsWith("--metric=")) {
+      metric = parseMetric(arg.slice("--metric=".length));
+      continue;
+    }
     positional.push(arg);
   }
 
@@ -168,8 +190,24 @@ function parseCliOptions(argv: string[]): CliOptions {
     historyPath,
     target,
     targetModelId,
+    metric,
     failOnBelowTarget,
   };
+}
+
+function parseMetric(value: string | undefined): KpiMetric {
+  if (!value) {
+    throw new Error("Missing value for --metric");
+  }
+  if (
+    value === "evidence_backed_fill_rate" ||
+    value === "evidence_backed_fill_rate_context_aware"
+  ) {
+    return value;
+  }
+  throw new Error(
+    `Invalid --metric value: "${value}". Use evidence_backed_fill_rate or evidence_backed_fill_rate_context_aware.`
+  );
 }
 
 function parseTarget(value: string | undefined): number {
@@ -183,7 +221,10 @@ function parseTarget(value: string | undefined): number {
   return parsed;
 }
 
-async function loadComparisonReport(filePath: string): Promise<ComparisonReport> {
+async function loadComparisonReport(
+  filePath: string,
+  metric: KpiMetric
+): Promise<ComparisonReport> {
   const raw = await readFile(filePath, "utf8");
   const parsed = JSON.parse(raw) as Partial<ComparisonReport>;
 
@@ -197,6 +238,16 @@ async function loadComparisonReport(filePath: string): Promise<ComparisonReport>
   if (!hasMetric) {
     throw new Error(
       `comparison JSON does not include evidence_backed_fill_rate. Re-run compare script first: ${filePath}`
+    );
+  }
+  if (
+    metric === "evidence_backed_fill_rate_context_aware" &&
+    !parsed.aggregates.every(
+      (item) => typeof item?.evidence_backed_fill_rate_context_aware === "number"
+    )
+  ) {
+    throw new Error(
+      `comparison JSON does not include evidence_backed_fill_rate_context_aware. Re-run compare script first: ${filePath}`
     );
   }
 
@@ -215,6 +266,8 @@ function toWeeklyRun(report: ComparisonReport): WeeklyKpiRun {
     schema_pass_rate: item.schema_pass_rate,
     required_fields_fill_rate: item.required_fields_fill_rate,
     evidence_backed_fill_rate: item.evidence_backed_fill_rate,
+    evidence_backed_fill_rate_context_aware:
+      item.evidence_backed_fill_rate_context_aware ?? item.evidence_backed_fill_rate,
     p_utterance_alignment_rate: item.p_utterance_alignment_rate,
     p_without_utterance_count: item.p_without_utterance_count,
     a_without_p_allowed_count: item.a_without_p_allowed_count,
@@ -230,22 +283,26 @@ function toWeeklyRun(report: ComparisonReport): WeeklyKpiRun {
   };
 }
 
-async function loadWeeklyHistory(filePath: string, target: number): Promise<WeeklyKpiHistory> {
+async function loadWeeklyHistory(
+  filePath: string,
+  target: number,
+  metric: KpiMetric
+): Promise<WeeklyKpiHistory> {
   try {
     const raw = await readFile(filePath, "utf8");
     const parsed = JSON.parse(raw) as Partial<WeeklyKpiHistory>;
-    if (!parsed || parsed.primary_metric !== "evidence_backed_fill_rate" || !Array.isArray(parsed.runs)) {
+    if (!parsed || !isMetric(parsed.primary_metric) || !Array.isArray(parsed.runs)) {
       throw new Error("invalid history format");
     }
     return {
-      primary_metric: "evidence_backed_fill_rate",
+      primary_metric: parsed.primary_metric,
       target: typeof parsed.target === "number" ? parsed.target : target,
       runs: parsed.runs as WeeklyKpiRun[],
     };
   } catch (error) {
     if (isNoEntryError(error)) {
       return {
-        primary_metric: "evidence_backed_fill_rate",
+        primary_metric: metric,
         target,
         runs: [],
       };
@@ -263,7 +320,23 @@ function isNoEntryError(error: unknown): boolean {
   );
 }
 
-function buildLatestModelSummary(history: WeeklyKpiHistory): LatestModelSummary[] {
+function isMetric(value: unknown): value is KpiMetric {
+  return (
+    value === "evidence_backed_fill_rate" ||
+    value === "evidence_backed_fill_rate_context_aware"
+  );
+}
+
+function metricValue(model: WeeklyKpiModel, metric: KpiMetric): number {
+  return metric === "evidence_backed_fill_rate"
+    ? model.evidence_backed_fill_rate
+    : model.evidence_backed_fill_rate_context_aware;
+}
+
+function buildLatestModelSummary(
+  history: WeeklyKpiHistory,
+  metric: KpiMetric
+): LatestModelSummary[] {
   const latestRun = history.runs[history.runs.length - 1];
   if (!latestRun) return [];
 
@@ -273,14 +346,15 @@ function buildLatestModelSummary(history: WeeklyKpiHistory): LatestModelSummary[
       const delta =
         previous === null
           ? null
-          : model.evidence_backed_fill_rate - previous.evidence_backed_fill_rate;
+          : metricValue(model, metric) - metricValue(previous, metric);
       return {
         ...model,
+        metric_value: metricValue(model, metric),
         delta_from_previous: delta,
-        target_pass: model.evidence_backed_fill_rate >= history.target,
+        target_pass: metricValue(model, metric) >= history.target,
       };
     })
-    .sort((left, right) => right.evidence_backed_fill_rate - left.evidence_backed_fill_rate);
+    .sort((left, right) => right.metric_value - left.metric_value);
 }
 
 function findPreviousModel(runs: WeeklyKpiRun[], modelId: string): WeeklyKpiModel | null {
@@ -308,7 +382,11 @@ function buildMarkdown(
       const targetLabel = item.target_pass ? "PASS" : "FAIL";
       return `| ${escapeCell(item.requested_model_id)} | ${escapeCell(
         item.resolved_model_id
-      )} | ${item.evidence_backed_fill_rate.toFixed(4)} | ${deltaLabel} | ${targetLabel} | ${item.schema_pass_rate.toFixed(
+      )} | ${item.metric_value.toFixed(4)} | ${deltaLabel} | ${targetLabel} | ${item.evidence_backed_fill_rate.toFixed(
+        4
+      )} | ${item.evidence_backed_fill_rate_context_aware.toFixed(
+        4
+      )} | ${item.schema_pass_rate.toFixed(
         4
       )} | ${item.required_fields_fill_rate.toFixed(
         4
@@ -331,7 +409,7 @@ function buildMarkdown(
   return [
     "# Extractor Weekly KPI",
     "",
-    `- primary_metric: ${history.primary_metric}`,
+    `- primary_metric: ${options.metric}`,
     `- target_threshold: ${history.target.toFixed(4)}`,
     `- target_scope: ${targetScope}`,
     `- target_status: ${targetStatus}`,
@@ -342,14 +420,14 @@ function buildMarkdown(
     `- history_runs: ${history.runs.length}`,
     "",
     "運用メモ:",
-    "- 週次KPIの主指標は `evidence_backed_fill_rate`。",
+    "- 週次KPIの主指標は `--metric` で選択（推奨: `evidence_backed_fill_rate_context_aware`）。",
     "- `required_fields_fill_rate` は補助指標（埋まりやすさ確認）として保持。",
     "",
     "## Latest Model KPI",
     "",
-    "| model_id(requested) | model_id(resolved) | evidence_backed_fill_rate | delta_from_previous | target_status | schema_pass_rate | required_fields_fill_rate | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | avg_latency_ms |",
-    "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
-    rows || "| - | - | - | - | - | - | - | - | - | - | - |",
+    "| model_id(requested) | model_id(resolved) | selected_metric_value | delta_from_previous | target_status | evidence_backed_fill_rate | evidence_backed_fill_rate_context_aware | schema_pass_rate | required_fields_fill_rate | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | avg_latency_ms |",
+    "| --- | --- | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    rows || "| - | - | - | - | - | - | - | - | - | - | - | - | - |",
     "",
   ].join("\n");
 }

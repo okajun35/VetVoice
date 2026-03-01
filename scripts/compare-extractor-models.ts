@@ -57,6 +57,8 @@ interface ModelCaseResult {
   required_fields_total: number;
   evidence_backed_fields_filled: number;
   evidence_backed_fields_total: number;
+  evidence_backed_context_fields_filled: number;
+  evidence_backed_context_fields_total: number;
   missing_count: number | null;
   misclassified_count: number | null;
   encounter_context: EncounterContext | null;
@@ -86,6 +88,7 @@ interface ModelAggregate {
   schema_pass_rate: number;
   required_fields_fill_rate: number;
   evidence_backed_fill_rate: number;
+  evidence_backed_fill_rate_context_aware: number;
   p_utterance_alignment_rate: number | null;
   p_without_utterance_count: number;
   a_without_p_allowed_count: number;
@@ -148,12 +151,16 @@ async function main(): Promise<void> {
         const latencyMs = Date.now() - startedAt;
         const apPolicy = evaluateApPolicy(transcriptExpanded, extractedJson);
         const required = countRequiredFieldFill(extractedJson);
+        const encounterContext = inferEncounterContext(transcriptExpanded, extractedJson);
         const evidenceBacked = countEvidenceBackedFieldFill(
           extractedJson,
           transcriptExpanded,
           apPolicy
         );
-        const encounterContext = inferEncounterContext(transcriptExpanded, extractedJson);
+        const contextAwareEvidence = countContextAwareEvidenceBackedFieldFill(
+          encounterContext,
+          evidenceBacked
+        );
         const classification =
           structuredGold.length > 0
             ? classifyAgainstStructuredGold(extractedJson, structuredGold)
@@ -169,6 +176,8 @@ async function main(): Promise<void> {
           required_fields_total: required.total,
           evidence_backed_fields_filled: evidenceBacked.filled,
           evidence_backed_fields_total: evidenceBacked.total,
+          evidence_backed_context_fields_filled: contextAwareEvidence.filled,
+          evidence_backed_context_fields_total: contextAwareEvidence.total,
           missing_count: classification?.missing ?? null,
           misclassified_count: classification?.misclassified ?? null,
           encounter_context: encounterContext,
@@ -190,6 +199,8 @@ async function main(): Promise<void> {
           required_fields_total: REQUIRED_FIELDS_TOTAL,
           evidence_backed_fields_filled: 0,
           evidence_backed_fields_total: REQUIRED_FIELDS_TOTAL,
+          evidence_backed_context_fields_filled: 0,
+          evidence_backed_context_fields_total: REQUIRED_FIELDS_TOTAL,
           missing_count: structuredGold.length > 0 ? structuredGold.length : null,
           misclassified_count: structuredGold.length > 0 ? 0 : null,
           encounter_context: null,
@@ -232,6 +243,8 @@ async function main(): Promise<void> {
   for (const aggregate of report.aggregates) {
     console.log(
       `${aggregate.requested_model_id}: evidence_backed_fill_rate=${aggregate.evidence_backed_fill_rate.toFixed(
+        4
+      )}, evidence_backed_fill_rate_context_aware=${aggregate.evidence_backed_fill_rate_context_aware.toFixed(
         4
       )}, schema_pass_rate=${aggregate.schema_pass_rate.toFixed(
         4
@@ -313,7 +326,15 @@ function countEvidenceBackedFieldFill(
     pWithoutUtterance: boolean;
     aWithoutPAllowed: boolean;
   }
-): { filled: number; total: number } {
+): {
+  filled: number;
+  total: number;
+  tempBacked: boolean;
+  sBacked: boolean;
+  oBacked: boolean;
+  aBacked: boolean;
+  pBacked: boolean;
+} {
   const normalizedTranscript = normalizeForEvidenceMatch(transcriptExpanded);
 
   const tempBacked =
@@ -335,7 +356,48 @@ function countEvidenceBackedFieldFill(
 
   const checks = [tempBacked, sBacked, oBacked, aBacked, pBacked];
   const filled = checks.reduce((count, ok) => count + (ok ? 1 : 0), 0);
-  return { filled, total: checks.length };
+  return {
+    filled,
+    total: checks.length,
+    tempBacked,
+    sBacked,
+    oBacked,
+    aBacked,
+    pBacked,
+  };
+}
+
+function countContextAwareEvidenceBackedFieldFill(
+  encounterContext: EncounterContext,
+  evidenceBacked: {
+    tempBacked: boolean;
+    sBacked: boolean;
+    oBacked: boolean;
+    aBacked: boolean;
+    pBacked: boolean;
+  }
+): { filled: number; total: number } {
+  // Reproduction screening notes are often observation-only.
+  // For this context, evaluate evidence by O/A grounding and avoid penalizing missing temp/S/P.
+  if (encounterContext === "repro_screening_inferred") {
+    const checks = [evidenceBacked.oBacked, evidenceBacked.aBacked];
+    return {
+      filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+      total: checks.length,
+    };
+  }
+
+  const checks = [
+    evidenceBacked.tempBacked,
+    evidenceBacked.sBacked,
+    evidenceBacked.oBacked,
+    evidenceBacked.aBacked,
+    evidenceBacked.pBacked,
+  ];
+  return {
+    filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+    total: checks.length,
+  };
 }
 
 function classifyAgainstStructuredGold(
@@ -421,6 +483,8 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
     let requiredTotal = 0;
     let evidenceFilledTotal = 0;
     let evidenceTotal = 0;
+    let evidenceContextAwareFilledTotal = 0;
+    let evidenceContextAwareTotal = 0;
     let latencySum = 0;
     let pBearingCount = 0;
     let pAlignedCount = 0;
@@ -444,6 +508,8 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       requiredTotal += result.required_fields_total;
       evidenceFilledTotal += result.evidence_backed_fields_filled;
       evidenceTotal += result.evidence_backed_fields_total;
+      evidenceContextAwareFilledTotal += result.evidence_backed_context_fields_filled;
+      evidenceContextAwareTotal += result.evidence_backed_context_fields_total;
       latencySum += result.latency_ms;
       if (result.p_without_utterance !== null && result.procedure_uttered !== null) {
         const hasP = (result.extracted_json?.p.length ?? 0) > 0;
@@ -481,6 +547,10 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       required_fields_fill_rate: requiredTotal === 0 ? 0 : requiredFilledTotal / requiredTotal,
       evidence_backed_fill_rate:
         evidenceTotal === 0 ? 0 : evidenceFilledTotal / evidenceTotal,
+      evidence_backed_fill_rate_context_aware:
+        evidenceContextAwareTotal === 0
+          ? 0
+          : evidenceContextAwareFilledTotal / evidenceContextAwareTotal,
       p_utterance_alignment_rate:
         pBearingCount === 0 ? null : pAlignedCount / pBearingCount,
       p_without_utterance_count: pWithoutUtteranceCount,
@@ -503,6 +573,8 @@ function toMarkdown(report: ComparisonReport): string {
           4
         )} | ${item.evidence_backed_fill_rate.toFixed(
           4
+        )} | ${item.evidence_backed_fill_rate_context_aware.toFixed(
+          4
         )} | ${item.p_utterance_alignment_rate === null ? "-" : item.p_utterance_alignment_rate.toFixed(
           4
         )} | ${item.p_without_utterance_count} | ${item.a_without_p_allowed_count} | ${item.repro_screening_inferred_count} | ${item.missing_count_total ?? "-"} | ${item.misclassified_count_total ?? "-"} | ${item.avg_latency_ms.toFixed(1)} |`
@@ -523,6 +595,7 @@ function toMarkdown(report: ComparisonReport): string {
             `  - schema_pass: ${result.schema_pass}`,
             `  - required_fields_fill: ${result.required_fields_filled}/${result.required_fields_total}`,
             `  - evidence_backed_fill: ${result.evidence_backed_fields_filled}/${result.evidence_backed_fields_total}`,
+            `  - evidence_backed_fill_context_aware: ${result.evidence_backed_context_fields_filled}/${result.evidence_backed_context_fields_total}`,
             `  - encounter_context: ${result.encounter_context ?? "-"}`,
             `  - procedure_uttered: ${result.procedure_uttered ?? "-"}`,
             `  - p_without_utterance: ${result.p_without_utterance ?? "-"}`,
@@ -565,9 +638,9 @@ function toMarkdown(report: ComparisonReport): string {
     "",
     "## Aggregate Metrics",
     "",
-    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | evidence_backed_fill_rate | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | repro_screening_inferred_count | missing_count_total | misclassified_count_total | avg_latency_ms |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
-    summaryRows || "| - | - | - | - | - | - | - | - | - | - | - | - |",
+    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | evidence_backed_fill_rate | evidence_backed_fill_rate_context_aware | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | repro_screening_inferred_count | missing_count_total | misclassified_count_total | avg_latency_ms |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    summaryRows || "| - | - | - | - | - | - | - | - | - | - | - | - | - |",
     "",
     "## Per Case Output",
     "",
