@@ -563,7 +563,7 @@ describe('PipelineEntryForm component', () => {
       // Switch to production tab
       const productionTab = screen.getByRole('tab', { name: '本番（録音）' });
       await user.click(productionTab);
-      expect(screen.getByText('本番モード（録音）')).toBeInTheDocument();
+      expect(screen.getByText('DIAGNOSTIC_RECORDING')).toBeInTheDocument();
     });
 
     it('clears error when switching tabs', async () => {
@@ -617,7 +617,7 @@ describe('PipelineEntryForm component', () => {
 
       // Wait for result to be displayed
       await waitFor(() => {
-        expect(screen.getByText('実行結果')).toBeInTheDocument();
+        expect(screen.getByText('PIPELINE_OUTPUT')).toBeInTheDocument();
       });
 
       // Check all result fields are displayed
@@ -660,7 +660,7 @@ describe('PipelineEntryForm component', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText('実行結果')).toBeInTheDocument();
+        expect(screen.getByText('PIPELINE_OUTPUT')).toBeInTheDocument();
       });
 
       // Should display non-null fields
@@ -762,11 +762,11 @@ describe('PipelineEntryForm component', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
-        expect(screen.getByText('実行結果')).toBeInTheDocument();
+        expect(screen.getByText('PIPELINE_OUTPUT')).toBeInTheDocument();
       });
 
       // Should not display warnings section for empty array
-      expect(screen.queryByText('警告:')).not.toBeInTheDocument();
+      expect(screen.queryByText('WARNINGS:')).not.toBeInTheDocument();
     });
   });
 });
@@ -845,7 +845,7 @@ describe('DevEntryPoints component', () => {
       });
 
       // Verify result is displayed
-      expect(await screen.findByText('実行結果')).toBeInTheDocument();
+      expect(await screen.findByText('PIPELINE_OUTPUT')).toBeInTheDocument();
       expect(screen.getByText('visit-123')).toBeInTheDocument();
     });
   });
