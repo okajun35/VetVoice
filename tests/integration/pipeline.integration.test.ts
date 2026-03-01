@@ -480,6 +480,29 @@ describe("runPipeline integration", () => {
       expect(putArg._input.TableName).toBe("Visit-test");
       expect(putArg._input.Item.cowId).toBe("0123456789");
       expect(putArg._input.Item.status).toBe("COMPLETED");
+      expect(putArg._input.Item.extractorModelId).toContain("claude-haiku-4-5");
+      expect(putArg._input.Item.soapModelId).toBe("amazon.nova-lite-v1:0");
+      expect(putArg._input.Item.kyosaiModelId).toBe("amazon.nova-lite-v1:0");
+    });
+
+    it("persists resolved model IDs when overrides are provided", async () => {
+      bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
+
+      await handler(
+        makeEvent({
+          entryPoint: "TEXT_INPUT",
+          transcriptText: "テスト",
+          extractorModelId: "anthropic.claude-sonnet-4-6",
+          soapModelId: "amazon.nova-pro-v1:0",
+          kyosaiModelId: "us.amazon.nova-premier-v1:0",
+        }),
+        MOCK_CONTEXT
+      );
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.extractorModelId).toBe("us.anthropic.claude-sonnet-4-6");
+      expect(putArg._input.Item.soapModelId).toBe("amazon.nova-pro-v1:0");
+      expect(putArg._input.Item.kyosaiModelId).toBe("us.amazon.nova-premier-v1:0");
     });
 
     it("uses ConditionExpression to prevent overwriting existing records", async () => {
