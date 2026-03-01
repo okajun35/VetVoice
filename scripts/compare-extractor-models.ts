@@ -55,6 +55,8 @@ interface ModelCaseResult {
   schema_pass: boolean;
   required_fields_filled: number;
   required_fields_total: number;
+  evidence_backed_fields_filled: number;
+  evidence_backed_fields_total: number;
   missing_count: number | null;
   misclassified_count: number | null;
   encounter_context: EncounterContext | null;
@@ -83,6 +85,7 @@ interface ModelAggregate {
   success_count: number;
   schema_pass_rate: number;
   required_fields_fill_rate: number;
+  evidence_backed_fill_rate: number;
   p_utterance_alignment_rate: number | null;
   p_without_utterance_count: number;
   a_without_p_allowed_count: number;
@@ -143,8 +146,13 @@ async function main(): Promise<void> {
           bedrockClient
         );
         const latencyMs = Date.now() - startedAt;
-        const required = countRequiredFieldFill(extractedJson);
         const apPolicy = evaluateApPolicy(transcriptExpanded, extractedJson);
+        const required = countRequiredFieldFill(extractedJson);
+        const evidenceBacked = countEvidenceBackedFieldFill(
+          extractedJson,
+          transcriptExpanded,
+          apPolicy
+        );
         const encounterContext = inferEncounterContext(transcriptExpanded, extractedJson);
         const classification =
           structuredGold.length > 0
@@ -159,6 +167,8 @@ async function main(): Promise<void> {
           schema_pass: true,
           required_fields_filled: required.filled,
           required_fields_total: required.total,
+          evidence_backed_fields_filled: evidenceBacked.filled,
+          evidence_backed_fields_total: evidenceBacked.total,
           missing_count: classification?.missing ?? null,
           misclassified_count: classification?.misclassified ?? null,
           encounter_context: encounterContext,
@@ -178,6 +188,8 @@ async function main(): Promise<void> {
           schema_pass: false,
           required_fields_filled: 0,
           required_fields_total: REQUIRED_FIELDS_TOTAL,
+          evidence_backed_fields_filled: 0,
+          evidence_backed_fields_total: REQUIRED_FIELDS_TOTAL,
           missing_count: structuredGold.length > 0 ? structuredGold.length : null,
           misclassified_count: structuredGold.length > 0 ? 0 : null,
           encounter_context: null,
@@ -291,6 +303,39 @@ function countRequiredFieldFill(extractedJson: ExtractedJSON): { filled: number;
   return { filled, total: checks.length };
 }
 
+function countEvidenceBackedFieldFill(
+  extractedJson: ExtractedJSON,
+  transcriptExpanded: string,
+  apPolicy: {
+    procedureUttered: boolean;
+    pWithoutUtterance: boolean;
+    aWithoutPAllowed: boolean;
+  }
+): { filled: number; total: number } {
+  const normalizedTranscript = normalizeForEvidenceMatch(transcriptExpanded);
+
+  const tempBacked =
+    extractedJson.vital.temp_c !== null &&
+    /(?:体温|temp|temps?)\s*(?:は|:|=)?\s*-?\d{2}(?:\.\d+)?/iu.test(
+      normalizedTranscript
+    );
+
+  const sBacked = isNonEmptyAndGrounded(extractedJson.s, normalizedTranscript);
+  const oBacked = isNonEmptyAndGrounded(extractedJson.o, normalizedTranscript);
+
+  const aBacked =
+    extractedJson.a.length > 0 &&
+    extractedJson.a.some((item) =>
+      isGroundedInTranscript(item.canonical_name ?? item.name, normalizedTranscript)
+    );
+  const pBacked =
+    extractedJson.p.length > 0 && apPolicy.procedureUttered && !apPolicy.pWithoutUtterance;
+
+  const checks = [tempBacked, sBacked, oBacked, aBacked, pBacked];
+  const filled = checks.reduce((count, ok) => count + (ok ? 1 : 0), 0);
+  return { filled, total: checks.length };
+}
+
 function classifyAgainstStructuredGold(
   extractedJson: ExtractedJSON,
   gold: CaseStructuredGoldItem[]
@@ -342,12 +387,38 @@ function normalizeEntityName(value: string): string {
   return value.normalize("NFKC").trim().toLowerCase();
 }
 
+function normalizeForEvidenceMatch(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isNonEmptyAndGrounded(
+  value: string | null,
+  normalizedTranscript: string
+): boolean {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return false;
+  }
+  return isGroundedInTranscript(value, normalizedTranscript);
+}
+
+function isGroundedInTranscript(value: string, normalizedTranscript: string): boolean {
+  const normalized = normalizeForEvidenceMatch(value);
+  if (!normalized) return false;
+  return normalizedTranscript.includes(normalized);
+}
+
 function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAggregate[] {
   return models.map((model) => {
     let successCount = 0;
     let schemaPassCount = 0;
     let requiredFilledTotal = 0;
     let requiredTotal = 0;
+    let evidenceFilledTotal = 0;
+    let evidenceTotal = 0;
     let latencySum = 0;
     let pBearingCount = 0;
     let pAlignedCount = 0;
@@ -369,6 +440,8 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       if (result.schema_pass) schemaPassCount += 1;
       requiredFilledTotal += result.required_fields_filled;
       requiredTotal += result.required_fields_total;
+      evidenceFilledTotal += result.evidence_backed_fields_filled;
+      evidenceTotal += result.evidence_backed_fields_total;
       latencySum += result.latency_ms;
       if (result.p_without_utterance !== null && result.procedure_uttered !== null) {
         const hasP = (result.extracted_json?.p.length ?? 0) > 0;
@@ -404,6 +477,8 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       success_count: successCount,
       schema_pass_rate: caseCount === 0 ? 0 : schemaPassCount / caseCount,
       required_fields_fill_rate: requiredTotal === 0 ? 0 : requiredFilledTotal / requiredTotal,
+      evidence_backed_fill_rate:
+        evidenceTotal === 0 ? 0 : evidenceFilledTotal / evidenceTotal,
       p_utterance_alignment_rate:
         pBearingCount === 0 ? null : pAlignedCount / pBearingCount,
       p_without_utterance_count: pWithoutUtteranceCount,
@@ -424,6 +499,8 @@ function toMarkdown(report: ComparisonReport): string {
           item.resolved_model_id
         )} | ${item.schema_pass_rate.toFixed(4)} | ${item.required_fields_fill_rate.toFixed(
           4
+        )} | ${item.evidence_backed_fill_rate.toFixed(
+          4
         )} | ${item.p_utterance_alignment_rate === null ? "-" : item.p_utterance_alignment_rate.toFixed(
           4
         )} | ${item.p_without_utterance_count} | ${item.a_without_p_allowed_count} | ${item.repro_screening_inferred_count} | ${item.missing_count_total ?? "-"} | ${item.misclassified_count_total ?? "-"} | ${item.avg_latency_ms.toFixed(1)} |`
@@ -443,6 +520,7 @@ function toMarkdown(report: ComparisonReport): string {
             `  - success: ${result.success}`,
             `  - schema_pass: ${result.schema_pass}`,
             `  - required_fields_fill: ${result.required_fields_filled}/${result.required_fields_total}`,
+            `  - evidence_backed_fill: ${result.evidence_backed_fields_filled}/${result.evidence_backed_fields_total}`,
             `  - encounter_context: ${result.encounter_context ?? "-"}`,
             `  - procedure_uttered: ${result.procedure_uttered ?? "-"}`,
             `  - p_without_utterance: ${result.p_without_utterance ?? "-"}`,
@@ -485,9 +563,9 @@ function toMarkdown(report: ComparisonReport): string {
     "",
     "## Aggregate Metrics",
     "",
-    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | repro_screening_inferred_count | missing_count_total | misclassified_count_total | avg_latency_ms |",
+    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | evidence_backed_fill_rate | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | repro_screening_inferred_count | missing_count_total | misclassified_count_total | avg_latency_ms |",
     "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
-    summaryRows || "| - | - | - | - | - | - | - | - | - | - | - |",
+    summaryRows || "| - | - | - | - | - | - | - | - | - | - | - | - |",
     "",
     "## Per Case Output",
     "",
