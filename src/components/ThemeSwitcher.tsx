@@ -15,14 +15,14 @@ export function ThemeSwitcher() {
 
   return (
     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-      <span style={{ marginRight: '0.5rem' }}>テーマ:</span>
+      <span style={{ marginRight: '0.5rem' }}>THEME:</span>
       <Button
         variant={theme === 'light' ? 'primary' : 'ghost'}
         size="sm"
         onClick={() => handleThemeChange('light')}
         aria-pressed={theme === 'light'}
       >
-        ライト
+        LIGHT
       </Button>
       <Button
         variant={theme === 'dark' ? 'primary' : 'ghost'}
@@ -30,7 +30,7 @@ export function ThemeSwitcher() {
         onClick={() => handleThemeChange('dark')}
         aria-pressed={theme === 'dark'}
       >
-        ダーク
+        DARK
       </Button>
       <Button
         variant={theme === 'auto' ? 'primary' : 'ghost'}
@@ -38,7 +38,7 @@ export function ThemeSwitcher() {
         onClick={() => handleThemeChange('auto')}
         aria-pressed={theme === 'auto'}
       >
-        自動
+        AUTO
       </Button>
     </div>
   );

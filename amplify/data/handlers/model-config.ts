@@ -169,10 +169,3 @@ export function getModelConfig(
   }
   return { ...base, modelId: normalizedDefault };
 }
-
-/**
- * Confidence threshold for master matching.
- * Candidates below this score are marked as Unconfirmed.
- * Centralized here for use across components.
- */
-export const CONFIDENCE_THRESHOLD = 0.6;

@@ -1,0 +1,95 @@
+/* ========================================
+   Textarea Component Styles
+   ======================================== */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--spacing-2);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+}
+
+.textarea {
+  width: 100%;
+  padding: var(--spacing-3) var(--spacing-4);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+
+  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+
+  border: 2px solid var(--color-border-input);
+  border-radius: var(--radius-md);
+
+  transition: all var(--transition-fast);
+
+  resize: vertical;
+
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.textarea:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+.textarea:focus {
+  outline: var(--focus-ring-width) solid var(--color-focus-ring);
+  outline-offset: var(--focus-ring-offset);
+  border-color: var(--color-primary);
+}
+
+.textarea--error {
+  border-color: var(--color-danger-outline);
+}
+
+.textarea--error:focus {
+  outline-color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.textarea:disabled {
+  background-color: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+  border-color: var(--color-disabled-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.helper {
+  display: block;
+  margin-top: var(--spacing-2);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.error {
+  display: block;
+  margin-top: var(--spacing-2);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-danger);
+  font-weight: var(--font-weight-medium);
+}

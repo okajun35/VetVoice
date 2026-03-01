@@ -1,0 +1,41 @@
+/* ========================================
+   Alert Component Styles
+   ======================================== */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-normal);
+
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+
+.alert--error {
+  background-color: var(--color-danger-subtle);
+  color: var(--color-danger);
+  border-color: var(--color-danger-outline);
+}
+
+.alert--warning {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning);
+  border-color: var(--color-warning-outline);
+}
+
+.alert--success {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
+  border-color: var(--color-success-outline);
+}
+
+.alert--info {
+  background-color: var(--color-info-subtle);
+  color: var(--color-info);
+  border-color: var(--color-info-outline);
+}

@@ -73,13 +73,13 @@ export function CowDetailView({
     <div className={styles.container}>
       <div className={styles.header}>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={onBack}
         >
-          ← 戻る
+          BACK
         </Button>
-        <h2 className={styles.title}>牛の詳細</h2>
+        <h2 className={styles.title}>COW_DETAILS</h2>
       </div>
 
       {error && (
@@ -110,39 +110,39 @@ export function CowDetailView({
         <>
           <Card className={styles.detailsCard}>
             <div className={styles.row}>
-              <span className={styles.label}>個体識別番号</span>
+              <span className={styles.label}>ID_CODE</span>
               <span className={styles.value}>{cow.cowId}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>耳標番号</span>
+              <span className={styles.label}>EARTAG_NO</span>
               <span className={styles.value}>{cow.earTagNo ?? '—'}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>性別</span>
+              <span className={styles.label}>SEX_TYPE</span>
               <span className={styles.value}>{cow.sex ? (SEX_LABELS[cow.sex] ?? cow.sex) : '—'}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>品種</span>
+              <span className={styles.label}>BREED</span>
               <span className={styles.value}>{cow.breed ?? '—'}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>生年月日</span>
+              <span className={styles.label}>BIRTH_DATE</span>
               <span className={styles.value}>{cow.birthDate ?? '—'}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>産次</span>
+              <span className={styles.label}>PARITY</span>
               <span className={styles.value}>{cow.parity != null ? String(cow.parity) : '—'}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>最終分娩日</span>
+              <span className={styles.label}>LAST_CALVING</span>
               <span className={styles.value}>{cow.lastCalvingDate ?? '—'}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>名前</span>
+              <span className={styles.label}>NAME</span>
               <span className={styles.value}>{cow.name ?? '—'}</span>
             </div>
             <div className={styles.row}>
-              <span className={styles.label}>農場名</span>
+              <span className={styles.label}>FARM_NAME</span>
               <span className={styles.value}>{cow.farm ?? '—'}</span>
             </div>
           </Card>
@@ -150,11 +150,11 @@ export function CowDetailView({
           <div className={styles.actions}>
             <Button
               variant="primary"
-              size="md"
+              size="xl"
               fullWidth
               onClick={() => onStartVisit(cow.cowId)}
             >
-              診療開始
+              START_VISIT
             </Button>
             <div className={styles.actionRow}>
               <Button
@@ -163,15 +163,15 @@ export function CowDetailView({
                 onClick={onEdit}
                 style={{ flex: 1 }}
               >
-                編集
+                EDIT_ENTRY
               </Button>
               <Button
-                variant="ghost"
+                variant="secondary"
                 size="md"
                 onClick={onGenerateQR}
                 style={{ flex: 1 }}
               >
-                QRコード生成
+                GENERATE_QR
               </Button>
             </div>
           </div>

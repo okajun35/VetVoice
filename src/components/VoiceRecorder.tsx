@@ -69,8 +69,8 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus'
       : MediaRecorder.isTypeSupported('audio/webm')
-      ? 'audio/webm'
-      : '';
+        ? 'audio/webm'
+        : '';
 
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     mediaRecorderRef.current = recorder;
@@ -144,26 +144,27 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     <div className={styles.container}>
       {state === 'recording' && (
         <div className={styles.indicator}>
-          <span className={styles.dot} aria-hidden="true" />
-          <span>録音中 — {formatTime(elapsed)}</span>
+          <div className={styles.dot} aria-hidden="true" />
+          <span className={styles.indicatorLabel}>Recording In Progress</span>
+          <span className={styles.timer}>{formatTime(elapsed)}</span>
         </div>
       )}
 
       {state === 'uploading' && (
         <div className={styles.status}>
-          <Spinner size="sm" label="アップロード中..." />
+          <Spinner size="sm" label="DATA UPLOAD INITIATED..." />
         </div>
       )}
 
       {state === 'done' && (
-        <div className={`${styles.status} ${styles['status--done']}`}>
-          アップロード完了
+        <div className={`${styles.status} ${styles.statusDone}`}>
+          UPLOAD SEQUENCE COMPLETE
         </div>
       )}
 
       {state === 'error' && errorMessage && (
         <div className={styles.error} role="alert">
-          {errorMessage}
+          CRITICAL ERROR: {errorMessage.toUpperCase()}
         </div>
       )}
 
@@ -171,7 +172,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
         {(state === 'idle' || state === 'done' || state === 'error') && (
           <Button
             variant="primary"
-            size="lg"
+            size="xl"
             onClick={state === 'idle' ? startRecording : reset}
             fullWidth
           >
@@ -182,7 +183,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
         {state === 'recording' && (
           <Button
             variant="danger"
-            size="lg"
+            size="xl"
             onClick={stopRecording}
             fullWidth
           >

@@ -43,7 +43,7 @@ export function CowListScreen({ onNavigateToVisit, onBack }: CowListScreenProps)
       }
       setCows((data ?? []) as CowData[]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '牛一覧の取得中にエラーが発生しました');
+      setError(err instanceof Error ? err.message : 'REGISTRY_RETRIEVAL_FAILED');
     } finally {
       setLoading(false);
     }
@@ -113,15 +113,15 @@ export function CowListScreen({ onNavigateToVisit, onBack }: CowListScreenProps)
           size="sm"
           onClick={onBack}
         >
-          ← 戻る
+          BACK
         </Button>
-        <h2 className={styles.title}>牛一覧</h2>
+        <h2 className={styles.title}>COW_REGISTRY</h2>
         <Button
           variant="primary"
           size="sm"
           onClick={() => setView('register')}
         >
-          新規登録
+          NEW_ENTRY
         </Button>
       </div>
 
@@ -130,14 +130,14 @@ export function CowListScreen({ onNavigateToVisit, onBack }: CowListScreenProps)
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        placeholder="個体識別番号・名前・品種・農場で検索"
+        placeholder="FILTER_BY_ID_NAME_BREED_OR_FARM..."
         className={styles.searchInput}
       />
 
       {/* Loading state */}
       {loading && (
         <div className={styles.loading}>
-          読み込み中...
+          FETCHING_DATABASE...
         </div>
       )}
 
@@ -151,7 +151,7 @@ export function CowListScreen({ onNavigateToVisit, onBack }: CowListScreenProps)
               size="sm"
               onClick={fetchCows}
             >
-              再取得
+              RETRY_FETCH
             </Button>
           </div>
         </div>
@@ -160,14 +160,14 @@ export function CowListScreen({ onNavigateToVisit, onBack }: CowListScreenProps)
       {/* Empty list state */}
       {!loading && !error && cows.length === 0 && (
         <div className={styles.emptyState}>
-          登録済みの牛がありません
+          NO_ENTRIES_FOUND_IN_REGISTRY
         </div>
       )}
 
       {/* No filter results */}
       {!loading && !error && cows.length > 0 && filteredCows.length === 0 && (
         <div className={styles.noResults}>
-          該当する牛が見つかりません
+          NO_MATCHING_DATA_FOR_QUERY
         </div>
       )}
 
