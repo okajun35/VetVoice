@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { getCurrentUser } from 'aws-amplify/auth';
+import { getUrl } from 'aws-amplify/storage';
 import type { Schema } from '../../amplify/data/resource';
 import { Button } from './ui/Button/Button';
 import { Input } from './ui/Input/Input';
@@ -53,6 +54,7 @@ interface VisitData {
   extractorModelId?: string | null;
   soapModelId?: string | null;
   kyosaiModelId?: string | null;
+  audioKey?: string | null;
   transcriptRaw?: string | null;
   extractedJson?: unknown;
   soapText?: string | null;
@@ -125,6 +127,8 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
   const [editStartedAt, setEditStartedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -160,6 +164,25 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
     };
     fetchVisit();
   }, [visitId]);
+
+  useEffect(() => {
+    const resolveAudioUrl = async () => {
+      if (!visit?.audioKey) {
+        setAudioUrl(null);
+        setAudioError(null);
+        return;
+      }
+      try {
+        const signed = await getUrl({ path: visit.audioKey });
+        setAudioUrl(signed.url.toString());
+        setAudioError(null);
+      } catch {
+        setAudioUrl(null);
+        setAudioError('音声URLの取得に失敗しました');
+      }
+    };
+    void resolveAudioUrl();
+  }, [visit?.audioKey]);
 
   const handleSave = async () => {
     if (!visit || !extractedJson || !draftExtractedJson) return;
@@ -282,6 +305,16 @@ export function VisitEditor({ visitId, onBack, onSaved }: VisitEditorProps) {
       {visit.transcriptRaw && (
         <Card className={styles.section}>
           <h3 className={styles.sectionTitle}>文字起こし</h3>
+          {visit.audioKey && (
+            <div className={styles.audioSection}>
+              <div className={styles.audioMeta}>audioKey: {visit.audioKey}</div>
+              {audioUrl ? (
+                <audio controls src={audioUrl} className={styles.audioPlayer} />
+              ) : (
+                <div className={styles.audioMeta}>{audioError ?? '音声URLを準備中...'}</div>
+              )}
+            </div>
+          )}
           <pre className={styles.transcript}>{visit.transcriptRaw}</pre>
         </Card>
       )}

@@ -63,6 +63,7 @@ export function DevEntryPoints() {
       <PipelineEntryForm
         cowId={cowId}
         mode="dev"
+        showCowIdInput={false}
         onPipelineComplete={(result: PipelineResult) => {
           if (result.visitId) {
             setLatestVisitId(result.visitId);

@@ -505,6 +505,22 @@ describe("runPipeline integration", () => {
       expect(putArg._input.Item.kyosaiModelId).toBe("us.amazon.nova-premier-v1:0");
     });
 
+    it("persists audioKey when provided", async () => {
+      bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
+
+      await handler(
+        makeEvent({
+          entryPoint: "TEXT_INPUT",
+          transcriptText: "テスト",
+          audioKey: "audio/test-cow-001/sample-001.webm",
+        }),
+        MOCK_CONTEXT
+      );
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.audioKey).toBe("audio/test-cow-001/sample-001.webm");
+    });
+
     it("uses ConditionExpression to prevent overwriting existing records", async () => {
       bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
 

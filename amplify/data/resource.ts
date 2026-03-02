@@ -47,6 +47,7 @@ const schema = a.schema({
     cowId: a.string().required(),
     datetime: a.datetime().required(),
     status: a.enum(["IN_PROGRESS", "COMPLETED"]),
+    audioKey: a.string(),
     transcriptRaw: a.string(),
     transcriptExpanded: a.string(),
     extractedJson: a.json(),
@@ -88,6 +89,7 @@ const schema = a.schema({
   PipelineOutput: a.customType({
     visitId: a.string().required(),
     cowId: a.string().required(),
+    audioKey: a.string(),
     transcriptRaw: a.string(),
     transcriptExpanded: a.string(),
     extractedJson: a.json(),

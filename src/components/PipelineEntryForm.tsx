@@ -5,7 +5,7 @@
  * Supports dev mode (all 4 tabs + editable cowId) and
  * production mode (PRODUCTION + TEXT_INPUT tabs, cowId from props).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { uploadData } from 'aws-amplify/storage';
 import type { Schema } from '../../amplify/data/resource';
@@ -27,6 +27,7 @@ const client = generateClient<Schema>();
 export interface PipelineResult {
   visitId: string;
   cowId: string;
+  audioKey?: string | null;
   transcriptRaw?: string | null;
   transcriptExpanded?: string | null;
   extractedJson?: unknown;
@@ -41,6 +42,7 @@ export type { FormMode, TabMode } from './pipelineEntryForm.constants';
 export interface PipelineEntryFormProps {
   cowId: string;
   mode: FormMode;
+  showCowIdInput?: boolean;
   onPipelineComplete?: (result: PipelineResult) => void;
   onError?: (errorMessage: string) => void;
 }
@@ -97,6 +99,7 @@ const KYOSAI_MODEL_OPTIONS = [
 export function PipelineEntryForm({
   cowId,
   mode,
+  showCowIdInput = mode === 'dev',
   onPipelineComplete,
   onError,
 }: PipelineEntryFormProps) {
@@ -115,6 +118,10 @@ export function PipelineEntryForm({
   const [extractorModelId, setExtractorModelId] = useState('');
   const [soapModelId, setSoapModelId] = useState('');
   const [kyosaiModelId, setKyosaiModelId] = useState('');
+
+  useEffect(() => {
+    setEffectiveCowId(cowId);
+  }, [cowId]);
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -272,7 +279,7 @@ export function PipelineEntryForm({
   return (
     <div className="pipeline-entry-form">
       {/* cowId input: dev mode only */}
-      {mode === 'dev' && (
+      {mode === 'dev' && showCowIdInput && (
         <div className={styles.cowIdRow}>
           <label htmlFor="pipeline-cow-id">牛ID (cowId):</label>
           <input

@@ -492,6 +492,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
             cowId,
             datetime,
             status: "COMPLETED",
+            ...(audioKey != null && { audioKey }),
             ...(transcriptRaw != null && { transcriptRaw }),
             ...(transcriptExpanded != null && { transcriptExpanded }),
             ...(extractedJson != null && { extractedJson: stringify(extractedJson) }),
@@ -520,6 +521,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   return {
     visitId,
     cowId,
+    audioKey: audioKey ?? null,
     transcriptRaw: transcriptRaw ?? null,
     transcriptExpanded: transcriptExpanded ?? null,
     extractedJson: extractedJson ?? null,

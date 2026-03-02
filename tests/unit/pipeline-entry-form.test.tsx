@@ -839,6 +839,8 @@ describe('DevEntryPoints component', () => {
       const cowIdInput = screen.getByLabelText(/Cow ID/i) as HTMLInputElement;
       expect(cowIdInput).toBeInTheDocument();
       expect(cowIdInput.value).toBe('test-cow-001');
+      // Inner PipelineEntryForm cowId input is hidden in DevEntryPoints to avoid double source of truth
+      expect(screen.queryByLabelText(/牛ID \(cowId\)/i)).not.toBeInTheDocument();
     });
 
     it('preserves the heading text', () => {
@@ -916,6 +918,34 @@ describe('DevEntryPoints component', () => {
       await user.click(screen.getByRole('button', { name: 'Visit一覧を開く' }));
       expect(await screen.findByTestId('visit-manager-mock')).toBeInTheDocument();
       expect(screen.getByText('VisitManagerMock:test-cow-001')).toBeInTheDocument();
+    });
+
+    it('uses outer cowId for runPipeline execution', async () => {
+      const user = userEvent.setup();
+      mockRunPipeline.mockResolvedValue({
+        data: {
+          visitId: 'visit-cow-sync-001',
+          cowId: 'cow-from-outer-input',
+        },
+        errors: null,
+      });
+
+      render(<DevEntryPoints />);
+      const outerCowIdInput = screen.getByLabelText(/Cow ID/i);
+      await user.clear(outerCowIdInput);
+      await user.type(outerCowIdInput, 'cow-from-outer-input');
+
+      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      await user.type(textarea, '同期確認');
+      await user.click(screen.getByRole('button', { name: /パイプライン実行/i }));
+
+      await waitFor(() => {
+        expect(mockRunPipeline).toHaveBeenCalledWith({
+          entryPoint: 'TEXT_INPUT',
+          cowId: 'cow-from-outer-input',
+          transcriptText: '同期確認',
+        });
+      });
     });
   });
 });

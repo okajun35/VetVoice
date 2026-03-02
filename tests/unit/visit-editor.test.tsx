@@ -26,6 +26,10 @@ vi.mock('aws-amplify/auth', () => ({
   getCurrentUser: vi.fn(),
 }));
 
+vi.mock('aws-amplify/storage', () => ({
+  getUrl: vi.fn(),
+}));
+
 const { __mockClient: mockClient } = (await import('aws-amplify/data')) as unknown as {
   __mockClient: {
     models: {
@@ -42,6 +46,10 @@ const { __mockClient: mockClient } = (await import('aws-amplify/data')) as unkno
 
 const { getCurrentUser: mockGetCurrentUser } = (await import('aws-amplify/auth')) as unknown as {
   getCurrentUser: ReturnType<typeof vi.fn>;
+};
+
+const { getUrl: mockGetUrl } = (await import('aws-amplify/storage')) as unknown as {
+  getUrl: ReturnType<typeof vi.fn>;
 };
 
 function buildVisitRecord(overrides: Record<string, unknown> = {}) {
@@ -69,6 +77,7 @@ describe('VisitEditor', () => {
     mockClient.models.Visit.update.mockResolvedValue({ errors: null });
     mockClient.models.VisitEdit.create.mockResolvedValue({ errors: null });
     mockGetCurrentUser.mockResolvedValue({ userId: 'editor-001', username: 'editor-001' });
+    mockGetUrl.mockResolvedValue({ url: new URL('https://example.com/audio') });
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('edit-uuid-001');
   });
 

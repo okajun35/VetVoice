@@ -47,6 +47,21 @@
   font-family: var(--font-family-mono);
 }
 
+.audioSection {
+  margin-bottom: var(--spacing-3);
+}
+
+.audioMeta {
+  margin-bottom: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.audioPlayer {
+  width: 100%;
+}
+
 .formField {
   margin-bottom: var(--spacing-4);
 }
