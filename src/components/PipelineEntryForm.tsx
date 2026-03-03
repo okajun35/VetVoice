@@ -120,7 +120,7 @@ function formatExtractedJsonForDisplay(value: unknown): ExtractedJsonDisplay {
     try {
       current = JSON.parse(trimmed);
     } catch {
-      return { text: current, isRawFallback: true };
+      return { text: String(current), isRawFallback: true };
     }
   }
 
