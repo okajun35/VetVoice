@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { Amplify } from 'aws-amplify';
-import App from './App';
 // Design system CSS (imported in order: reset → global → design-system)
 import './styles/reset.css';
 import './styles/global.css';
@@ -17,8 +16,14 @@ const outputs =
 
 Amplify.configure(outputs);
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+import('./App')
+  .then(({ default: App }) => {
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  })
+  .catch((err) => {
+    console.error('Failed to load App module', err);
+  });

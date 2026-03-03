@@ -10,11 +10,15 @@ import { normalizePreExtractionTextByRules } from "../amplify/data/handlers/norm
 import type { EvalEntityType } from "../amplify/data/handlers/evaluation";
 import type { ExtractedJSON } from "../amplify/data/handlers/parser";
 import {
+  evaluateApPolicy,
   extractTranscriptTextFromJson,
+  inferEncounterContext,
+  type EncounterContext,
   normalizeComparisonCases,
   parseCsvRows,
   parseModelListArg,
 } from "./compare-extractor-models.utils";
+import { CLINICAL_DISEASE_KEYWORDS } from "./compare-extractor-models.keywords";
 
 const DEFAULT_MODEL_IDS = [
   "anthropic.claude-haiku-4-5-20251001-v1:0",
@@ -52,8 +56,16 @@ interface ModelCaseResult {
   schema_pass: boolean;
   required_fields_filled: number;
   required_fields_total: number;
+  evidence_backed_fields_filled: number;
+  evidence_backed_fields_total: number;
+  evidence_backed_context_fields_filled: number;
+  evidence_backed_context_fields_total: number;
   missing_count: number | null;
   misclassified_count: number | null;
+  encounter_context: EncounterContext | null;
+  procedure_uttered: boolean | null;
+  p_without_utterance: boolean | null;
+  a_without_p_allowed: boolean | null;
   error?: string;
   extracted_json?: ExtractedJSON;
 }
@@ -76,6 +88,12 @@ interface ModelAggregate {
   success_count: number;
   schema_pass_rate: number;
   required_fields_fill_rate: number;
+  evidence_backed_fill_rate: number;
+  evidence_backed_fill_rate_context_aware: number;
+  p_utterance_alignment_rate: number | null;
+  p_without_utterance_count: number;
+  a_without_p_allowed_count: number;
+  repro_screening_inferred_count: number;
   missing_count_total: number | null;
   misclassified_count_total: number | null;
   avg_latency_ms: number;
@@ -132,7 +150,19 @@ async function main(): Promise<void> {
           bedrockClient
         );
         const latencyMs = Date.now() - startedAt;
+        const apPolicy = evaluateApPolicy(transcriptExpanded, extractedJson);
         const required = countRequiredFieldFill(extractedJson);
+        const encounterContext = inferEncounterContext(transcriptExpanded, extractedJson);
+        const evidenceBacked = countEvidenceBackedFieldFill(
+          extractedJson,
+          transcriptExpanded,
+          apPolicy
+        );
+        const contextAwareEvidence = countContextAwareEvidenceBackedFieldFill(
+          encounterContext,
+          evidenceBacked,
+          transcriptExpanded
+        );
         const classification =
           structuredGold.length > 0
             ? classifyAgainstStructuredGold(extractedJson, structuredGold)
@@ -146,8 +176,16 @@ async function main(): Promise<void> {
           schema_pass: true,
           required_fields_filled: required.filled,
           required_fields_total: required.total,
+          evidence_backed_fields_filled: evidenceBacked.filled,
+          evidence_backed_fields_total: evidenceBacked.total,
+          evidence_backed_context_fields_filled: contextAwareEvidence.filled,
+          evidence_backed_context_fields_total: contextAwareEvidence.total,
           missing_count: classification?.missing ?? null,
           misclassified_count: classification?.misclassified ?? null,
+          encounter_context: encounterContext,
+          procedure_uttered: apPolicy.procedureUttered,
+          p_without_utterance: apPolicy.pWithoutUtterance,
+          a_without_p_allowed: apPolicy.aWithoutPAllowed,
           extracted_json: extractedJson,
         });
       } catch (error) {
@@ -161,8 +199,16 @@ async function main(): Promise<void> {
           schema_pass: false,
           required_fields_filled: 0,
           required_fields_total: REQUIRED_FIELDS_TOTAL,
+          evidence_backed_fields_filled: 0,
+          evidence_backed_fields_total: REQUIRED_FIELDS_TOTAL,
+          evidence_backed_context_fields_filled: 0,
+          evidence_backed_context_fields_total: REQUIRED_FIELDS_TOTAL,
           missing_count: structuredGold.length > 0 ? structuredGold.length : null,
           misclassified_count: structuredGold.length > 0 ? 0 : null,
+          encounter_context: null,
+          procedure_uttered: null,
+          p_without_utterance: null,
+          a_without_p_allowed: null,
           error: message,
         });
       }
@@ -198,7 +244,11 @@ async function main(): Promise<void> {
   console.log(`Dataset: ${options.datasetPath}`);
   for (const aggregate of report.aggregates) {
     console.log(
-      `${aggregate.requested_model_id}: schema_pass_rate=${aggregate.schema_pass_rate.toFixed(
+      `${aggregate.requested_model_id}: evidence_backed_fill_rate=${aggregate.evidence_backed_fill_rate.toFixed(
+        4
+      )}, evidence_backed_fill_rate_context_aware=${aggregate.evidence_backed_fill_rate_context_aware.toFixed(
+        4
+      )}, schema_pass_rate=${aggregate.schema_pass_rate.toFixed(
         4
       )}, required_fields_fill_rate=${aggregate.required_fields_fill_rate.toFixed(
         4
@@ -270,6 +320,106 @@ function countRequiredFieldFill(extractedJson: ExtractedJSON): { filled: number;
   return { filled, total: checks.length };
 }
 
+function countEvidenceBackedFieldFill(
+  extractedJson: ExtractedJSON,
+  transcriptExpanded: string,
+  apPolicy: {
+    procedureUttered: boolean;
+    pWithoutUtterance: boolean;
+    aWithoutPAllowed: boolean;
+  }
+): {
+  filled: number;
+  total: number;
+  tempBacked: boolean;
+  sBacked: boolean;
+  oBacked: boolean;
+  aBacked: boolean;
+  pBacked: boolean;
+} {
+  const normalizedTranscript = normalizeForEvidenceMatch(transcriptExpanded);
+
+  const tempBacked =
+    extractedJson.vital.temp_c !== null &&
+    /(?:体温|temp|temps?)\s*(?:は|:|=)?\s*-?\d{2}(?:\.\d+)?/iu.test(
+      normalizedTranscript
+    );
+
+  const sBacked = isNonEmptyAndGrounded(extractedJson.s, normalizedTranscript);
+  const oBacked = isNonEmptyAndGrounded(extractedJson.o, normalizedTranscript);
+
+  const aBacked =
+    extractedJson.a.length > 0 &&
+    extractedJson.a.some((item) =>
+      isGroundedInTranscript(item.canonical_name ?? item.name, normalizedTranscript)
+    );
+  const pBacked =
+    extractedJson.p.length > 0 && apPolicy.procedureUttered && !apPolicy.pWithoutUtterance;
+
+  const checks = [tempBacked, sBacked, oBacked, aBacked, pBacked];
+  const filled = checks.reduce((count, ok) => count + (ok ? 1 : 0), 0);
+  return {
+    filled,
+    total: checks.length,
+    tempBacked,
+    sBacked,
+    oBacked,
+    aBacked,
+    pBacked,
+  };
+}
+
+function countContextAwareEvidenceBackedFieldFill(
+  encounterContext: EncounterContext,
+  evidenceBacked: {
+    tempBacked: boolean;
+    sBacked: boolean;
+    oBacked: boolean;
+    aBacked: boolean;
+    pBacked: boolean;
+  },
+  transcriptExpanded: string
+): { filled: number; total: number } {
+  const hasDiseaseCue = hasClinicalDiseaseCue(transcriptExpanded);
+
+  // Reproduction screening notes are often observation-only.
+  // In this context, score O as required and A only when disease cues are present.
+  if (encounterContext === "repro_screening_inferred") {
+    const checks = [evidenceBacked.oBacked];
+    if (hasDiseaseCue) checks.push(evidenceBacked.aBacked);
+    return {
+      filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+      total: checks.length,
+    };
+  }
+
+  // Treatment notes should be grounded by O and procedure utterance-aligned P.
+  if (encounterContext === "treatment_or_intervention") {
+    const checks = [evidenceBacked.oBacked, evidenceBacked.pBacked];
+    if (hasDiseaseCue) checks.push(evidenceBacked.aBacked);
+    return {
+      filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+      total: checks.length,
+    };
+  }
+
+  // Diagnostic assessment requires grounded O, and A only when disease cues are present.
+  if (encounterContext === "diagnostic_assessment") {
+    const checks = [evidenceBacked.oBacked];
+    if (hasDiseaseCue) checks.push(evidenceBacked.aBacked);
+    return {
+      filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+      total: checks.length,
+    };
+  }
+
+  const checks = [evidenceBacked.oBacked];
+  return {
+    filled: checks.reduce((count, ok) => count + (ok ? 1 : 0), 0),
+    total: checks.length,
+  };
+}
+
 function classifyAgainstStructuredGold(
   extractedJson: ExtractedJSON,
   gold: CaseStructuredGoldItem[]
@@ -321,13 +471,94 @@ function normalizeEntityName(value: string): string {
   return value.normalize("NFKC").trim().toLowerCase();
 }
 
+function normalizeForEvidenceMatch(value: string): string {
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isNonEmptyAndGrounded(
+  value: string | null,
+  normalizedTranscript: string
+): boolean {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return false;
+  }
+  return isGroundedInTranscript(value, normalizedTranscript);
+}
+
+function isGroundedInTranscript(value: string, normalizedTranscript: string): boolean {
+  const normalized = normalizeForEvidenceMatch(value);
+  if (!normalized) return false;
+  if (normalizedTranscript.includes(normalized)) return true;
+  return hasSufficientBigramOverlap(normalized, normalizedTranscript, 0.6);
+}
+
+function hasClinicalDiseaseCue(text: string): boolean {
+  const normalizedText = normalizeForEvidenceMatch(text);
+  return CLINICAL_DISEASE_KEYWORDS.some((keyword) =>
+    normalizedText.includes(normalizeForEvidenceMatch(keyword))
+  );
+}
+
+function hasSufficientBigramOverlap(
+  candidate: string,
+  transcript: string,
+  threshold: number
+): boolean {
+  const candidateLoose = toLooseComparableText(candidate);
+  const transcriptLoose = toLooseComparableText(transcript);
+  if (candidateLoose.length < 6 || transcriptLoose.length < 6) {
+    return false;
+  }
+
+  const candidateBigrams = makeBigrams(candidateLoose);
+  if (candidateBigrams.size < 3) {
+    return false;
+  }
+  const transcriptBigrams = makeBigrams(transcriptLoose);
+  if (transcriptBigrams.size === 0) {
+    return false;
+  }
+
+  let matched = 0;
+  for (const gram of candidateBigrams) {
+    if (transcriptBigrams.has(gram)) matched += 1;
+  }
+  const overlap = matched / candidateBigrams.size;
+  return overlap >= threshold;
+}
+
+function toLooseComparableText(value: string): string {
+  return value.replace(/[\p{P}\p{S}\s]+/gu, "");
+}
+
+function makeBigrams(value: string): Set<string> {
+  const out = new Set<string>();
+  for (let index = 0; index < value.length - 1; index += 1) {
+    out.add(value.slice(index, index + 2));
+  }
+  return out;
+}
+
 function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAggregate[] {
   return models.map((model) => {
     let successCount = 0;
     let schemaPassCount = 0;
     let requiredFilledTotal = 0;
     let requiredTotal = 0;
+    let evidenceFilledTotal = 0;
+    let evidenceTotal = 0;
+    let evidenceContextAwareFilledTotal = 0;
+    let evidenceContextAwareTotal = 0;
     let latencySum = 0;
+    let pBearingCount = 0;
+    let pAlignedCount = 0;
+    let pWithoutUtteranceCount = 0;
+    let aWithoutPAllowedCount = 0;
+    let reproScreeningInferredCount = 0;
 
     let missingTotal = 0;
     let misclassifiedTotal = 0;
@@ -343,7 +574,29 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       if (result.schema_pass) schemaPassCount += 1;
       requiredFilledTotal += result.required_fields_filled;
       requiredTotal += result.required_fields_total;
+      evidenceFilledTotal += result.evidence_backed_fields_filled;
+      evidenceTotal += result.evidence_backed_fields_total;
+      evidenceContextAwareFilledTotal += result.evidence_backed_context_fields_filled;
+      evidenceContextAwareTotal += result.evidence_backed_context_fields_total;
       latencySum += result.latency_ms;
+      if (result.p_without_utterance !== null && result.procedure_uttered !== null) {
+        const hasP = (result.extracted_json?.p.length ?? 0) > 0;
+        if (hasP) {
+          pBearingCount += 1;
+          if (!result.p_without_utterance) {
+            pAlignedCount += 1;
+          }
+        }
+      }
+      if (result.p_without_utterance) {
+        pWithoutUtteranceCount += 1;
+      }
+      if (result.a_without_p_allowed) {
+        aWithoutPAllowedCount += 1;
+      }
+      if (result.encounter_context === "repro_screening_inferred") {
+        reproScreeningInferredCount += 1;
+      }
 
       if (result.missing_count !== null && result.misclassified_count !== null) {
         hasStructuredGold = true;
@@ -360,6 +613,17 @@ function buildAggregates(models: RequestedModel[], cases: CaseResult[]): ModelAg
       success_count: successCount,
       schema_pass_rate: caseCount === 0 ? 0 : schemaPassCount / caseCount,
       required_fields_fill_rate: requiredTotal === 0 ? 0 : requiredFilledTotal / requiredTotal,
+      evidence_backed_fill_rate:
+        evidenceTotal === 0 ? 0 : evidenceFilledTotal / evidenceTotal,
+      evidence_backed_fill_rate_context_aware:
+        evidenceContextAwareTotal === 0
+          ? 0
+          : evidenceContextAwareFilledTotal / evidenceContextAwareTotal,
+      p_utterance_alignment_rate:
+        pBearingCount === 0 ? null : pAlignedCount / pBearingCount,
+      p_without_utterance_count: pWithoutUtteranceCount,
+      a_without_p_allowed_count: aWithoutPAllowedCount,
+      repro_screening_inferred_count: reproScreeningInferredCount,
       missing_count_total: hasStructuredGold ? missingTotal : null,
       misclassified_count_total: hasStructuredGold ? misclassifiedTotal : null,
       avg_latency_ms: caseCount === 0 ? 0 : latencySum / caseCount,
@@ -375,7 +639,13 @@ function toMarkdown(report: ComparisonReport): string {
           item.resolved_model_id
         )} | ${item.schema_pass_rate.toFixed(4)} | ${item.required_fields_fill_rate.toFixed(
           4
-        )} | ${item.missing_count_total ?? "-"} | ${item.misclassified_count_total ?? "-"} | ${item.avg_latency_ms.toFixed(1)} |`
+        )} | ${item.evidence_backed_fill_rate.toFixed(
+          4
+        )} | ${item.evidence_backed_fill_rate_context_aware.toFixed(
+          4
+        )} | ${item.p_utterance_alignment_rate === null ? "-" : item.p_utterance_alignment_rate.toFixed(
+          4
+        )} | ${item.p_without_utterance_count} | ${item.a_without_p_allowed_count} | ${item.repro_screening_inferred_count} | ${item.missing_count_total ?? "-"} | ${item.misclassified_count_total ?? "-"} | ${item.avg_latency_ms.toFixed(1)} |`
     )
     .join("\n");
 
@@ -392,6 +662,12 @@ function toMarkdown(report: ComparisonReport): string {
             `  - success: ${result.success}`,
             `  - schema_pass: ${result.schema_pass}`,
             `  - required_fields_fill: ${result.required_fields_filled}/${result.required_fields_total}`,
+            `  - evidence_backed_fill: ${result.evidence_backed_fields_filled}/${result.evidence_backed_fields_total}`,
+            `  - evidence_backed_fill_context_aware: ${result.evidence_backed_context_fields_filled}/${result.evidence_backed_context_fields_total}`,
+            `  - encounter_context: ${result.encounter_context ?? "-"}`,
+            `  - procedure_uttered: ${result.procedure_uttered ?? "-"}`,
+            `  - p_without_utterance: ${result.p_without_utterance ?? "-"}`,
+            `  - a_without_p_allowed: ${result.a_without_p_allowed ?? "-"}`,
             `  - missing_count: ${result.missing_count ?? "-"}`,
             `  - misclassified_count: ${result.misclassified_count ?? "-"}`,
             `  - latency_ms: ${result.latency_ms}`,
@@ -430,9 +706,9 @@ function toMarkdown(report: ComparisonReport): string {
     "",
     "## Aggregate Metrics",
     "",
-    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | missing_count_total | misclassified_count_total | avg_latency_ms |",
-    "| --- | --- | ---: | ---: | ---: | ---: | ---: |",
-    summaryRows || "| - | - | - | - | - | - | - |",
+    "| model_id(requested) | model_id(resolved) | schema_pass_rate | required_fields_fill_rate | evidence_backed_fill_rate | evidence_backed_fill_rate_context_aware | p_utterance_alignment_rate | p_without_utterance_count | a_without_p_allowed_count | repro_screening_inferred_count | missing_count_total | misclassified_count_total | avg_latency_ms |",
+    "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    summaryRows || "| - | - | - | - | - | - | - | - | - | - | - | - | - |",
     "",
     "## Per Case Output",
     "",

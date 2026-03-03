@@ -161,54 +161,54 @@ describe('CowRegistrationForm mode logic', () => {
   });
 
   describe('title text derivation', () => {
-    it('returns "牛の情報編集" in edit mode', () => {
+    it('returns "Edit Cow Profile" in edit mode', () => {
       const isEditMode = true;
-      const title = isEditMode ? '牛の情報編集' : '牛の新規登録';
-      expect(title).toBe('牛の情報編集');
+      const title = isEditMode ? 'Edit Cow Profile' : 'Register New Cow';
+      expect(title).toBe('Edit Cow Profile');
     });
 
-    it('returns "牛の新規登録" in create mode', () => {
+    it('returns "Register New Cow" in create mode', () => {
       const isEditMode = false;
-      const title = isEditMode ? '牛の情報編集' : '牛の新規登録';
-      expect(title).toBe('牛の新規登録');
+      const title = isEditMode ? 'Edit Cow Profile' : 'Register New Cow';
+      expect(title).toBe('Register New Cow');
     });
   });
 
   describe('submit button text derivation', () => {
-    it('returns "更新する" in edit mode (not loading)', () => {
+    it('returns "Save Changes" in edit mode (not loading)', () => {
       const isEditMode = true;
       const loading = false;
       const text = isEditMode
-        ? (loading ? '更新中...' : '更新する')
-        : (loading ? '登録中...' : '牛を登録する');
-      expect(text).toBe('更新する');
+        ? (loading ? 'Saving...' : 'Save Changes')
+        : (loading ? 'Registering...' : 'Register Cow');
+      expect(text).toBe('Save Changes');
     });
 
-    it('returns "更新中..." in edit mode while loading', () => {
+    it('returns "Saving..." in edit mode while loading', () => {
       const isEditMode = true;
       const loading = true;
       const text = isEditMode
-        ? (loading ? '更新中...' : '更新する')
-        : (loading ? '登録中...' : '牛を登録する');
-      expect(text).toBe('更新中...');
+        ? (loading ? 'Saving...' : 'Save Changes')
+        : (loading ? 'Registering...' : 'Register Cow');
+      expect(text).toBe('Saving...');
     });
 
-    it('returns "牛を登録する" in create mode (not loading)', () => {
+    it('returns "Register Cow" in create mode (not loading)', () => {
       const isEditMode = false;
       const loading = false;
       const text = isEditMode
-        ? (loading ? '更新中...' : '更新する')
-        : (loading ? '登録中...' : '牛を登録する');
-      expect(text).toBe('牛を登録する');
+        ? (loading ? 'Saving...' : 'Save Changes')
+        : (loading ? 'Registering...' : 'Register Cow');
+      expect(text).toBe('Register Cow');
     });
 
-    it('returns "登録中..." in create mode while loading', () => {
+    it('returns "Registering..." in create mode while loading', () => {
       const isEditMode = false;
       const loading = true;
       const text = isEditMode
-        ? (loading ? '更新中...' : '更新する')
-        : (loading ? '登録中...' : '牛を登録する');
-      expect(text).toBe('登録中...');
+        ? (loading ? 'Saving...' : 'Save Changes')
+        : (loading ? 'Registering...' : 'Register Cow');
+      expect(text).toBe('Registering...');
     });
   });
 

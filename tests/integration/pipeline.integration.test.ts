@@ -446,6 +446,76 @@ describe("runPipeline integration", () => {
       // as fallback for expansion/extraction but does not set transcriptRaw
       expect(result.extractedJson).toBeTruthy();
     });
+
+    it("starts transcription asynchronously and returns IN_PROGRESS when audioKey is provided", async () => {
+      transcribeMockSend.mockResolvedValue({});
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "PRODUCTION",
+          audioKey: "audio/test-cow-001/sample-001.webm",
+        }),
+        MOCK_CONTEXT
+      );
+
+      expect(result.status).toBe("IN_PROGRESS");
+      expect(result.transcribeJobName).toContain("vetvoice-");
+      expect(result.extractedJson).toBeNull();
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("Transcription started asynchronously"),
+        ])
+      );
+      expect(bedrockMockSend).not.toHaveBeenCalled();
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.status).toBe("IN_PROGRESS");
+      expect(putArg._input.Item.createdAt).toBeTruthy();
+      expect(putArg._input.Item.updatedAt).toBeTruthy();
+    });
+
+    it("continues asynchronous transcription and completes pipeline when transcript is ready", async () => {
+      const transcriptJson = {
+        results: {
+          transcripts: [{ transcript: "体温39.5度、食欲不振" }],
+          items: [{ type: "pronunciation", alternatives: [{ confidence: "0.98", content: "体温" }] }],
+        },
+      };
+      transcribeMockSend.mockResolvedValue({
+        TranscriptionJob: {
+          TranscriptionJobStatus: "COMPLETED",
+          Transcript: {
+            TranscriptFileUri: "s3://vetvoice-test-bucket/transcripts/job-001.json",
+          },
+        },
+      });
+      s3MockSend.mockResolvedValue({
+        Body: {
+          transformToString: vi.fn().mockResolvedValue(JSON.stringify(transcriptJson)),
+        },
+      });
+      bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "PRODUCTION",
+          audioKey: "audio/test-cow-001/sample-001.webm",
+          visitId: "visit-async-001",
+          transcribeJobName: "job-001",
+        }),
+        MOCK_CONTEXT
+      );
+
+      expect(result.status).toBe("COMPLETED");
+      expect(result.visitId).toBe("visit-async-001");
+      expect(result.transcriptRaw).toBe("体温39.5度、食欲不振");
+      expect(result.extractedJson).toBeTruthy();
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.status).toBe("COMPLETED");
+      // visitId was explicitly provided, so update path should not use create-only condition.
+      expect(putArg._input.ConditionExpression).toBeUndefined();
+    });
   });
 
   describe("AUDIO_FILE entry point", () => {
@@ -480,6 +550,47 @@ describe("runPipeline integration", () => {
       expect(putArg._input.TableName).toBe("Visit-test");
       expect(putArg._input.Item.cowId).toBe("0123456789");
       expect(putArg._input.Item.status).toBe("COMPLETED");
+      expect(putArg._input.Item.createdAt).toBeTruthy();
+      expect(putArg._input.Item.updatedAt).toBeTruthy();
+      expect(putArg._input.Item.extractorModelId).toContain("claude-haiku-4-5");
+      expect(putArg._input.Item.soapModelId).toBe("amazon.nova-lite-v1:0");
+      expect(putArg._input.Item.kyosaiModelId).toBe("amazon.nova-lite-v1:0");
+    });
+
+    it("persists resolved model IDs when overrides are provided", async () => {
+      bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
+
+      await handler(
+        makeEvent({
+          entryPoint: "TEXT_INPUT",
+          transcriptText: "テスト",
+          extractorModelId: "anthropic.claude-sonnet-4-6",
+          soapModelId: "amazon.nova-pro-v1:0",
+          kyosaiModelId: "us.amazon.nova-premier-v1:0",
+        }),
+        MOCK_CONTEXT
+      );
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.extractorModelId).toBe("us.anthropic.claude-sonnet-4-6");
+      expect(putArg._input.Item.soapModelId).toBe("amazon.nova-pro-v1:0");
+      expect(putArg._input.Item.kyosaiModelId).toBe("us.amazon.nova-premier-v1:0");
+    });
+
+    it("persists audioKey when provided", async () => {
+      bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
+
+      await handler(
+        makeEvent({
+          entryPoint: "TEXT_INPUT",
+          transcriptText: "テスト",
+          audioKey: "audio/test-cow-001/sample-001.webm",
+        }),
+        MOCK_CONTEXT
+      );
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.audioKey).toBe("audio/test-cow-001/sample-001.webm");
     });
 
     it("uses ConditionExpression to prevent overwriting existing records", async () => {
@@ -487,6 +598,22 @@ describe("runPipeline integration", () => {
 
       await handler(
         makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "テスト" }),
+        MOCK_CONTEXT
+      );
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.ConditionExpression).toBe("attribute_not_exists(visitId)");
+    });
+
+    it("treats whitespace visitId as missing and keeps create-only ConditionExpression", async () => {
+      bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
+
+      await handler(
+        makeEvent({
+          entryPoint: "TEXT_INPUT",
+          transcriptText: "テスト",
+          visitId: "   ",
+        }),
         MOCK_CONTEXT
       );
 

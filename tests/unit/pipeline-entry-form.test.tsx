@@ -34,9 +34,12 @@ vi.mock('aws-amplify/data', () => {
 // Mock aws-amplify/storage
 vi.mock('aws-amplify/storage', () => {
   const mockUploadData = vi.fn();
+  const mockGetUrl = vi.fn();
   return {
     uploadData: mockUploadData,
+    getUrl: mockGetUrl,
     __mockUploadData: mockUploadData,
+    __mockGetUrl: mockGetUrl,
   };
 });
 
@@ -50,6 +53,12 @@ const { __mockUploadData: mockUploadData } = await import(
   'aws-amplify/storage'
 ) as unknown as {
   __mockUploadData: ReturnType<typeof vi.fn>;
+  __mockGetUrl: ReturnType<typeof vi.fn>;
+};
+const { __mockGetUrl: mockGetUrl } = await import(
+  'aws-amplify/storage'
+) as unknown as {
+  __mockGetUrl: ReturnType<typeof vi.fn>;
 };
 
 // Mock VoiceRecorder component
@@ -79,6 +88,40 @@ vi.mock('../../src/components/VoiceRecorder', () => ({
   ),
 }));
 
+// Mock VisitManager / VisitEditor to verify dev navigation wiring
+vi.mock('../../src/components/VisitManager', () => ({
+  VisitManager: ({
+    cowId,
+    onBack,
+  }: {
+    cowId: string;
+    onBack?: () => void;
+  }) => (
+    <div data-testid="visit-manager-mock">
+      <p>VisitManagerMock:{cowId}</p>
+      <button onClick={onBack}>BackToEntry</button>
+    </div>
+  ),
+}));
+
+vi.mock('../../src/components/VisitEditor', () => ({
+  VisitEditor: ({
+    visitId,
+    onBack,
+    onSaved,
+  }: {
+    visitId: string;
+    onBack?: () => void;
+    onSaved?: () => void;
+  }) => (
+    <div data-testid="visit-editor-mock">
+      <p>VisitEditorMock:{visitId}</p>
+      <button onClick={onBack}>BackToEntry</button>
+      <button onClick={onSaved}>Saved</button>
+    </div>
+  ),
+}));
+
 // ---------------------------------------------------------------------------
 // Test Suite
 // ---------------------------------------------------------------------------
@@ -86,6 +129,10 @@ vi.mock('../../src/components/VoiceRecorder', () => ({
 describe('PipelineEntryForm component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetUrl.mockResolvedValue({
+      url: new URL('https://example.com/test-audio.webm'),
+      expiresAt: new Date(Date.now() + 60_000),
+    });
   });
 
   afterEach(() => {
@@ -99,7 +146,7 @@ describe('PipelineEntryForm component', () => {
     it('displays cowId input field in dev mode', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
       
-      const cowIdInput = screen.getByLabelText(/牛ID/i);
+      const cowIdInput = screen.getByLabelText(/Cow ID/i);
       expect(cowIdInput).toBeInTheDocument();
       expect(cowIdInput).toHaveValue('test-cow-001');
     });
@@ -107,33 +154,33 @@ describe('PipelineEntryForm component', () => {
     it('hides cowId input field in production mode', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="production" />);
       
-      const cowIdInput = screen.queryByLabelText(/牛ID/i);
+      const cowIdInput = screen.queryByLabelText(/Cow ID/i);
       expect(cowIdInput).not.toBeInTheDocument();
     });
 
     it('displays all 4 tabs in dev mode', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
       
-      expect(screen.getByRole('tab', { name: 'テキスト入力' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: '音声ファイル' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'JSON入力' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: '本番（録音）' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Text Input' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Audio File' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'JSON Input' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Production (Recording)' })).toBeInTheDocument();
     });
 
     it('displays only 2 tabs in production mode', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="production" />);
       
-      expect(screen.getByRole('tab', { name: '本番（録音）' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'テキスト入力' })).toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: '音声ファイル' })).not.toBeInTheDocument();
-      expect(screen.queryByRole('tab', { name: 'JSON入力' })).not.toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Production (Recording)' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Text Input' })).toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: 'Audio File' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('tab', { name: 'JSON Input' })).not.toBeInTheDocument();
     });
 
     it('allows editing cowId in dev mode', async () => {
       const user = userEvent.setup();
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
       
-      const cowIdInput = screen.getByLabelText(/牛ID/i) as HTMLInputElement;
+      const cowIdInput = screen.getByLabelText(/Cow ID/i) as HTMLInputElement;
       await user.clear(cowIdInput);
       await user.type(cowIdInput, 'new-cow-123');
       
@@ -173,10 +220,10 @@ describe('PipelineEntryForm component', () => {
       );
 
       // Enter text and submit
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       await waitFor(() => {
@@ -204,10 +251,10 @@ describe('PipelineEntryForm component', () => {
         />
       );
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       await waitFor(() => {
@@ -229,10 +276,10 @@ describe('PipelineEntryForm component', () => {
         />
       );
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       await waitFor(() => {
@@ -254,10 +301,10 @@ describe('PipelineEntryForm component', () => {
 
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       
       // Should not throw
       await expect(user.click(submitButton)).resolves.not.toThrow();
@@ -272,11 +319,11 @@ describe('PipelineEntryForm component', () => {
       const user = userEvent.setup();
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        '診療テキストを入力してください。'
+        'Please enter clinical notes text.'
       );
       expect(mockRunPipeline).not.toHaveBeenCalled();
     });
@@ -285,14 +332,14 @@ describe('PipelineEntryForm component', () => {
       const user = userEvent.setup();
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '   \n\t  ');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        '診療テキストを入力してください。'
+        'Please enter clinical notes text.'
       );
       expect(mockRunPipeline).not.toHaveBeenCalled();
     });
@@ -302,11 +349,11 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to audio file tab
-      const audioTab = screen.getByRole('tab', { name: '音声ファイル' });
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
       await user.click(audioTab);
 
       // Button should be disabled when no file is selected
-      const submitButton = screen.getByRole('button', { name: /アップロード＆実行/i });
+      const submitButton = screen.getByRole('button', { name: /Upload and Run/i });
       expect(submitButton).toBeDisabled();
       
       // No validation error should appear since button is disabled
@@ -318,14 +365,14 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to JSON input tab
-      const jsonTab = screen.getByRole('tab', { name: 'JSON入力' });
+      const jsonTab = screen.getByRole('tab', { name: 'JSON Input' });
       await user.click(jsonTab);
 
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        'ExtractedJSONを入力してください。'
+        'Please enter ExtractedJSON.'
       );
       expect(mockRunPipeline).not.toHaveBeenCalled();
     });
@@ -335,18 +382,18 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to JSON input tab
-      const jsonTab = screen.getByRole('tab', { name: 'JSON入力' });
+      const jsonTab = screen.getByRole('tab', { name: 'JSON Input' });
       await user.click(jsonTab);
 
       const textarea = screen.getByPlaceholderText(/{ "vital"/i);
       await user.click(textarea);
       await user.paste('{ invalid json }');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        'JSONの形式が正しくありません。'
+        'Invalid JSON format.'
       );
       expect(mockRunPipeline).not.toHaveBeenCalled();
     });
@@ -361,7 +408,7 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to production tab
-      const productionTab = screen.getByRole('tab', { name: '本番（録音）' });
+      const productionTab = screen.getByRole('tab', { name: 'Production (Recording)' });
       await user.click(productionTab);
 
       expect(screen.getByTestId('voice-recorder')).toBeInTheDocument();
@@ -441,15 +488,15 @@ describe('PipelineEntryForm component', () => {
 
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       // Button should be disabled during execution
       expect(submitButton).toBeDisabled();
-      expect(submitButton).toHaveTextContent('処理中...');
+      expect(submitButton).toHaveTextContent('Processing...');
 
       // Resolve the promise
       resolvePromise!({ data: { visitId: 'test', cowId: 'test' }, errors: null });
@@ -457,7 +504,7 @@ describe('PipelineEntryForm component', () => {
       // Button should be enabled after execution
       await waitFor(() => {
         expect(submitButton).not.toBeDisabled();
-        expect(submitButton).toHaveTextContent('パイプライン実行');
+        expect(submitButton).toHaveTextContent('Run Pipeline');
       });
     });
 
@@ -466,10 +513,10 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to audio file tab
-      const audioTab = screen.getByRole('tab', { name: '音声ファイル' });
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
       await user.click(audioTab);
 
-      const submitButton = screen.getByRole('button', { name: /アップロード＆実行/i });
+      const submitButton = screen.getByRole('button', { name: /Upload and Run/i });
       expect(submitButton).toBeDisabled();
     });
   });
@@ -497,7 +544,7 @@ describe('PipelineEntryForm component', () => {
       const { container } = render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to audio file tab
-      const audioTab = screen.getByRole('tab', { name: '音声ファイル' });
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
       await user.click(audioTab);
 
       // Create a mock file
@@ -505,18 +552,19 @@ describe('PipelineEntryForm component', () => {
       const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
       await user.upload(fileInput, file);
 
-      const submitButton = screen.getByRole('button', { name: /アップロード＆実行/i });
+      const submitButton = screen.getByRole('button', { name: /Upload and Run/i });
       await user.click(submitButton);
 
-      // Should show uploading status
-      expect(await screen.findByText('アップロード中...')).toBeInTheDocument();
+      // Should show uploading status (label + animated dots)
+      const uploadStatus = await screen.findByRole('status');
+      expect(uploadStatus).toHaveTextContent('Uploading...');
 
       // Resolve upload
       resolveUpload!(undefined);
 
-      // Should show pipeline execution status
+      // Should proceed to pipeline execution after upload completes
       await waitFor(() => {
-        expect(screen.getByText('アップロード完了。パイプライン実行中...')).toBeInTheDocument();
+        expect(mockRunPipeline).toHaveBeenCalled();
       });
     });
 
@@ -525,7 +573,7 @@ describe('PipelineEntryForm component', () => {
       const { container } = render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to audio file tab
-      const audioTab = screen.getByRole('tab', { name: '音声ファイル' });
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
       await user.click(audioTab);
 
       // Create a mock file with known size
@@ -534,7 +582,7 @@ describe('PipelineEntryForm component', () => {
       await user.upload(fileInput, file);
 
       // Should display file name and size
-      expect(screen.getByText(/選択中: test-audio\.wav/i)).toBeInTheDocument();
+      expect(screen.getByText(/Selected: test-audio\.wav/i)).toBeInTheDocument();
       expect(screen.getByText(/2\.0 KB/i)).toBeInTheDocument();
     });
   });
@@ -548,20 +596,20 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Default tab should be TEXT_INPUT
-      expect(screen.getByText('テキスト入力モード')).toBeInTheDocument();
+      expect(screen.getByText('Text Input Mode')).toBeInTheDocument();
 
       // Switch to audio file tab
-      const audioTab = screen.getByRole('tab', { name: '音声ファイル' });
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
       await user.click(audioTab);
-      expect(screen.getByText('音声ファイルモード')).toBeInTheDocument();
+      expect(screen.getByText('Audio File Mode')).toBeInTheDocument();
 
       // Switch to JSON input tab
-      const jsonTab = screen.getByRole('tab', { name: 'JSON入力' });
+      const jsonTab = screen.getByRole('tab', { name: 'JSON Input' });
       await user.click(jsonTab);
-      expect(screen.getByText('JSON入力モード')).toBeInTheDocument();
+      expect(screen.getByText('JSON Input Mode')).toBeInTheDocument();
 
       // Switch to production tab
-      const productionTab = screen.getByRole('tab', { name: '本番（録音）' });
+      const productionTab = screen.getByRole('tab', { name: 'Production (Recording)' });
       await user.click(productionTab);
       expect(screen.getByText('DIAGNOSTIC_RECORDING')).toBeInTheDocument();
     });
@@ -571,12 +619,12 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Trigger validation error
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
       expect(await screen.findByRole('alert')).toBeInTheDocument();
 
       // Switch tab
-      const audioTab = screen.getByRole('tab', { name: '音声ファイル' });
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
       await user.click(audioTab);
 
       // Error should be cleared
@@ -609,10 +657,10 @@ describe('PipelineEntryForm component', () => {
 
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       // Wait for result to be displayed
@@ -653,10 +701,10 @@ describe('PipelineEntryForm component', () => {
 
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       await waitFor(() => {
@@ -670,7 +718,45 @@ describe('PipelineEntryForm component', () => {
       // Should not display null fields
       expect(screen.queryByText(/文字起こし.*raw/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/ExtractedJSON/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/家畜共済テキスト/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Kyosai Text/i)).not.toBeInTheDocument();
+    });
+
+    it('renders ExtractedJSON in pretty format from encoded JSON string', async () => {
+      const user = userEvent.setup();
+      const encodedExtractedJson = JSON.stringify({
+        vital: { temp_c: 39.5 },
+        s: 'Reduced appetite',
+        o: 'No severe abnormality',
+        a: [],
+        p: [],
+      });
+      const mockResult: PipelineResult = {
+        visitId: 'visit-encoded-json',
+        cowId: 'test-cow-001',
+        extractedJson: encodedExtractedJson,
+      };
+
+      mockRunPipeline.mockResolvedValue({
+        data: mockResult,
+        errors: null,
+      });
+
+      render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
+
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
+      await user.type(textarea, '整形表示確認');
+      await user.click(screen.getByRole('button', { name: /Run Pipeline/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('PIPELINE_OUTPUT')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('EXTRACTED_JSON:')).toBeInTheDocument();
+      expect(screen.getByText(/"temp_c": 39.5/)).toBeInTheDocument();
+      expect(
+        screen.queryByText('Raw value shown because structured JSON formatting failed.')
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
     });
   });
 
@@ -690,14 +776,14 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Switch to JSON input tab
-      const jsonTab = screen.getByRole('tab', { name: 'JSON入力' });
+      const jsonTab = screen.getByRole('tab', { name: 'JSON Input' });
       await user.click(jsonTab);
 
       const textarea = screen.getByPlaceholderText(/{ "vital"/i);
       await user.click(textarea);
       await user.paste(JSON.stringify(validJson));
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       await waitFor(() => {
@@ -720,15 +806,15 @@ describe('PipelineEntryForm component', () => {
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
       // Edit cowId
-      const cowIdInput = screen.getByLabelText(/牛ID/i);
+      const cowIdInput = screen.getByLabelText(/Cow ID/i);
       await user.clear(cowIdInput);
       await user.type(cowIdInput, 'new-cow-123');
 
       // Submit text input
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       await waitFor(() => {
@@ -755,10 +841,10 @@ describe('PipelineEntryForm component', () => {
 
       render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
 
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       await waitFor(() => {
@@ -792,26 +878,28 @@ describe('DevEntryPoints component', () => {
       render(<DevEntryPoints />);
       
       // Verify dev mode by checking all 4 tabs are present
-      expect(screen.getByRole('tab', { name: 'テキスト入力' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: '音声ファイル' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: 'JSON入力' })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: '本番（録音）' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Text Input' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Audio File' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'JSON Input' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Production (Recording)' })).toBeInTheDocument();
     });
 
     it('passes cowId=test-cow-001 to PipelineEntryForm', () => {
       render(<DevEntryPoints />);
       
       // Verify cowId input field is present and has the correct value
-      const cowIdInput = screen.getByLabelText(/牛ID/i) as HTMLInputElement;
+      const cowIdInput = screen.getByLabelText(/Cow ID/i) as HTMLInputElement;
       expect(cowIdInput).toBeInTheDocument();
       expect(cowIdInput.value).toBe('test-cow-001');
+      // Inner PipelineEntryForm cowId input is hidden in DevEntryPoints to avoid double source of truth
+      expect(screen.queryByLabelText(/Cow ID \(cowId\)/i)).not.toBeInTheDocument();
     });
 
     it('preserves the heading text', () => {
       render(<DevEntryPoints />);
       
       // Verify the heading is present
-      expect(screen.getByRole('heading', { name: '開発用エントリポイント' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Development Entry Points' })).toBeInTheDocument();
     });
 
     it('maintains the same functionality as before refactoring', async () => {
@@ -829,10 +917,10 @@ describe('DevEntryPoints component', () => {
       render(<DevEntryPoints />);
 
       // Enter text and submit
-      const textarea = screen.getByPlaceholderText(/例: 体温/i);
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
       await user.type(textarea, '体温39.5度');
       
-      const submitButton = screen.getByRole('button', { name: /パイプライン実行/i });
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
       await user.click(submitButton);
 
       // Verify pipeline was called correctly
@@ -847,6 +935,74 @@ describe('DevEntryPoints component', () => {
       // Verify result is displayed
       expect(await screen.findByText('PIPELINE_OUTPUT')).toBeInTheDocument();
       expect(screen.getByText('visit-123')).toBeInTheDocument();
+    });
+
+    it('shows latest-result edit control only after pipeline output appears', async () => {
+      const user = userEvent.setup();
+      mockRunPipeline.mockResolvedValue({
+        data: {
+          visitId: 'visit-from-run-001',
+          cowId: 'test-cow-001',
+        },
+        errors: null,
+      });
+
+      render(<DevEntryPoints />);
+
+      expect(
+        screen.queryByRole('button', { name: 'Edit Latest Result' })
+      ).not.toBeInTheDocument();
+
+      const runButton = screen.getByRole('button', { name: /Run Pipeline/i });
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
+      await user.type(textarea, 'テスト診療文');
+      await user.click(runButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('PIPELINE_OUTPUT')).toBeInTheDocument();
+      });
+      const editButton = screen.getByRole('button', { name: 'Edit Latest Result' });
+
+      await user.click(editButton);
+      expect(await screen.findByTestId('visit-editor-mock')).toBeInTheDocument();
+      expect(screen.getByText('VisitEditorMock:visit-from-run-001')).toBeInTheDocument();
+    });
+
+    it('opens VisitManager from cowId button', async () => {
+      const user = userEvent.setup();
+      render(<DevEntryPoints />);
+
+      await user.click(screen.getByRole('button', { name: 'Open Visit List' }));
+      expect(await screen.findByTestId('visit-manager-mock')).toBeInTheDocument();
+      expect(screen.getByText('VisitManagerMock:test-cow-001')).toBeInTheDocument();
+    });
+
+    it('uses outer cowId for runPipeline execution', async () => {
+      const user = userEvent.setup();
+      mockRunPipeline.mockResolvedValue({
+        data: {
+          visitId: 'visit-cow-sync-001',
+          cowId: 'cow-from-outer-input',
+        },
+        errors: null,
+      });
+
+      render(<DevEntryPoints />);
+      const outerCowIdInput = screen.getByLabelText(/Cow ID/i);
+      await user.clear(outerCowIdInput);
+      await user.type(outerCowIdInput, 'cow-from-outer-input');
+
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
+      await user.type(textarea, '同期確認');
+      await user.click(screen.getByRole('button', { name: /Run Pipeline/i }));
+
+      await waitFor(() => {
+        expect(mockRunPipeline).toHaveBeenCalledWith({
+          entryPoint: 'TEXT_INPUT',
+          cowId: 'cow-from-outer-input',
+          transcriptText: '同期確認',
+        });
+      });
     });
   });
 });

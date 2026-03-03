@@ -5,9 +5,9 @@
  * Supports dev mode (all 4 tabs + editable cowId) and
  * production mode (PRODUCTION + TEXT_INPUT tabs, cowId from props).
  */
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import { uploadData } from 'aws-amplify/storage';
+import { getUrl, uploadData } from 'aws-amplify/storage';
 import type { Schema } from '../../amplify/data/resource';
 import { VoiceRecorder } from './VoiceRecorder';
 import {
@@ -27,6 +27,9 @@ const client = generateClient<Schema>();
 export interface PipelineResult {
   visitId: string;
   cowId: string;
+  status?: 'IN_PROGRESS' | 'COMPLETED';
+  audioKey?: string | null;
+  transcribeJobName?: string | null;
   transcriptRaw?: string | null;
   transcriptExpanded?: string | null;
   extractedJson?: unknown;
@@ -36,11 +39,18 @@ export interface PipelineResult {
   warnings?: (string | null)[] | null;
 }
 
+interface AudioPreview {
+  url: string;
+  source: 'local' | 's3';
+  label: string;
+}
+
 export type { FormMode, TabMode } from './pipelineEntryForm.constants';
 
 export interface PipelineEntryFormProps {
   cowId: string;
   mode: FormMode;
+  showCowIdInput?: boolean;
   onPipelineComplete?: (result: PipelineResult) => void;
   onError?: (errorMessage: string) => void;
 }
@@ -55,11 +65,11 @@ const EXTRACTOR_MODEL_OPTIONS = [
   { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
   { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
   { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
-  { value: 'anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (20250514)' },
-  { value: 'anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-  { value: 'anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5' },
-  { value: 'anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet' },
-  { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
+  { value: 'us.anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (US Profile)' },
+  { value: 'us.anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (US Profile)' },
+  { value: 'us.anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5 (US Profile)' },
+  { value: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet (US Profile)' },
+  { value: 'us.anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku (US Profile)' },
 ];
 
 const SOAP_MODEL_OPTIONS = [
@@ -68,11 +78,11 @@ const SOAP_MODEL_OPTIONS = [
   { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
   { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
   { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
-  { value: 'anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (20250514)' },
-  { value: 'anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-  { value: 'anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5' },
-  { value: 'anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet' },
-  { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
+  { value: 'us.anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (US Profile)' },
+  { value: 'us.anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (US Profile)' },
+  { value: 'us.anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5 (US Profile)' },
+  { value: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet (US Profile)' },
+  { value: 'us.anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku (US Profile)' },
 ];
 
 const KYOSAI_MODEL_OPTIONS = [
@@ -81,12 +91,58 @@ const KYOSAI_MODEL_OPTIONS = [
   { value: 'amazon.nova-pro-v1:0', label: 'Amazon Nova Pro' },
   { value: 'amazon.nova-lite-v1:0', label: 'Amazon Nova Lite' },
   { value: 'amazon.nova-micro-v1:0', label: 'Amazon Nova Micro' },
-  { value: 'anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (20250514)' },
-  { value: 'anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-  { value: 'anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5' },
-  { value: 'anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet' },
-  { value: 'anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku' },
+  { value: 'us.anthropic.claude-sonnet-4-20250514-v1:0', label: 'Claude Sonnet 4 (US Profile)' },
+  { value: 'us.anthropic.claude-sonnet-4-6', label: 'Claude Sonnet 4.6 (US Profile)' },
+  { value: 'us.anthropic.claude-haiku-4-5-20251001-v1:0', label: 'Claude Haiku 4.5 (US Profile)' },
+  { value: 'us.anthropic.claude-3-7-sonnet-20250219-v1:0', label: 'Claude 3.7 Sonnet (US Profile)' },
+  { value: 'us.anthropic.claude-3-5-haiku-20241022-v1:0', label: 'Claude 3.5 Haiku (US Profile)' },
 ];
+
+const AUDIO_PIPELINE_POLL_INTERVAL_MS = 5000;
+const AUDIO_PIPELINE_MAX_POLLS = 72;
+const TRANSCRIPTION_WAITING_LABEL = 'Waiting for transcription';
+const TRANSCRIPTION_STARTING_LABEL = 'Starting transcription job';
+const AUDIO_UPLOADING_LABEL = 'Uploading';
+
+interface ExtractedJsonDisplay {
+  text: string;
+  isRawFallback: boolean;
+}
+
+function formatExtractedJsonForDisplay(value: unknown): ExtractedJsonDisplay {
+  let current: unknown = value;
+
+  // Handle both object payloads and double-encoded JSON strings.
+  for (let depth = 0; depth < 2; depth++) {
+    if (typeof current !== 'string') break;
+    const trimmed = current.trim();
+    if (!trimmed) return { text: '', isRawFallback: true };
+    try {
+      current = JSON.parse(trimmed);
+    } catch {
+      return { text: String(current), isRawFallback: true };
+    }
+  }
+
+  try {
+    return { text: JSON.stringify(current, null, 2), isRawFallback: false };
+  } catch {
+    return { text: String(current), isRawFallback: true };
+  }
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    return false;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Inline style constants removed - replaced by CSS Modules in PipelineEntryForm.module.css
 
@@ -97,6 +153,7 @@ const KYOSAI_MODEL_OPTIONS = [
 export function PipelineEntryForm({
   cowId,
   mode,
+  showCowIdInput = mode === 'dev',
   onPipelineComplete,
   onError,
 }: PipelineEntryFormProps) {
@@ -111,10 +168,94 @@ export function PipelineEntryForm({
   const [transcriptText, setTranscriptText] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [audioPreview, setAudioPreview] = useState<AudioPreview | null>(null);
+  const [audioPreviewError, setAudioPreviewError] = useState<string | null>(null);
   const [jsonText, setJsonText] = useState('');
   const [extractorModelId, setExtractorModelId] = useState('');
   const [soapModelId, setSoapModelId] = useState('');
   const [kyosaiModelId, setKyosaiModelId] = useState('');
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
+  const localPreviewUrlRef = useRef<string | null>(null);
+  const audioFileInputRef = useRef<HTMLInputElement | null>(null);
+  const isMountedRef = useRef(true);
+  const pollingRunIdRef = useRef(0);
+
+  useEffect(() => {
+    setEffectiveCowId(cowId);
+  }, [cowId]);
+
+  const releaseLocalPreviewUrl = useCallback(() => {
+    if (
+      localPreviewUrlRef.current &&
+      typeof URL !== 'undefined' &&
+      typeof URL.revokeObjectURL === 'function'
+    ) {
+      URL.revokeObjectURL(localPreviewUrlRef.current);
+    }
+    localPreviewUrlRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      releaseLocalPreviewUrl();
+    };
+  }, [releaseLocalPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      // Invalidate any active polling loop on unmount.
+      pollingRunIdRef.current += 1;
+    };
+  }, []);
+
+  const setLocalAudioPreview = (file: File | null) => {
+    if (!file) {
+      releaseLocalPreviewUrl();
+      setAudioPreview((prev) => (prev?.source === 'local' ? null : prev));
+      return;
+    }
+    if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+      setAudioPreviewError('Your browser does not support audio preview.');
+      return;
+    }
+
+    releaseLocalPreviewUrl();
+    const localUrl = URL.createObjectURL(file);
+    localPreviewUrlRef.current = localUrl;
+    setAudioPreview({
+      url: localUrl,
+      source: 'local',
+      label: `Selected audio: ${file.name}`,
+    });
+    setAudioPreviewError(null);
+  };
+
+  const setS3AudioPreview = useCallback(async (audioKey: string) => {
+    try {
+      const signed = await getUrl({
+        path: audioKey,
+        options: {
+          validateObjectExistence: true,
+          expiresIn: 3600,
+        },
+      });
+      setAudioPreview({
+        url: signed.url.toString(),
+        source: 's3',
+        label: `Pipeline audio source: ${audioKey}`,
+      });
+      setAudioPreviewError(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setAudioPreviewError(`Failed to generate audio preview URL: ${msg}`);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!result?.audioKey) return;
+    void setS3AudioPreview(result.audioKey);
+  }, [result?.audioKey, setS3AudioPreview]);
 
   // -------------------------------------------------------------------------
   // Helpers
@@ -123,6 +264,7 @@ export function PipelineEntryForm({
   const resetOutput = () => {
     setError(null);
     setResult(null);
+    setCopyStatus('idle');
   };
 
   const handleTabChange = (tab: TabMode) => {
@@ -140,6 +282,7 @@ export function PipelineEntryForm({
       onError?.(msg);
     } else if (data) {
       setResult(data);
+      setCopyStatus('idle');
       onPipelineComplete?.(data);
     }
   };
@@ -153,13 +296,85 @@ export function PipelineEntryForm({
     return overrides;
   };
 
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const extractedJsonDisplay =
+    result?.extractedJson != null
+      ? formatExtractedJsonForDisplay(result.extractedJson)
+      : null;
+
+  const runAudioPipelineWithPolling = async (
+    entryPoint: 'AUDIO_FILE' | 'PRODUCTION',
+    audioKey: string
+  ) => {
+    const runId = ++pollingRunIdRef.current;
+    const isRunActive = () =>
+      isMountedRef.current && pollingRunIdRef.current === runId;
+
+    let visitId: string | undefined;
+    let transcribeJobName: string | undefined;
+
+    for (let poll = 0; poll < AUDIO_PIPELINE_MAX_POLLS; poll++) {
+      if (!isRunActive()) return;
+      setUploadStatus(poll > 0 ? TRANSCRIPTION_WAITING_LABEL : TRANSCRIPTION_STARTING_LABEL);
+
+      const { data, errors } = await client.queries.runPipeline({
+        entryPoint,
+        cowId: effectiveCowId,
+        audioKey,
+        ...(visitId ? { visitId } : {}),
+        ...(transcribeJobName ? { transcribeJobName } : {}),
+        ...buildDevModelOverrides(),
+      });
+
+      if (!isRunActive()) return;
+      if (errors && errors.length > 0) {
+        applyResult(null, errors);
+        return;
+      }
+
+      const pipelineResult = data as PipelineResult | null;
+      if (!pipelineResult) {
+        const msg = 'Pipeline result is empty.';
+        setError(msg);
+        onError?.(msg);
+        return;
+      }
+
+      if (!isRunActive()) return;
+      setResult(pipelineResult);
+      visitId = pipelineResult.visitId;
+      transcribeJobName = pipelineResult.transcribeJobName ?? undefined;
+
+      if (pipelineResult.status !== 'IN_PROGRESS') {
+        applyResult(pipelineResult, null);
+        return;
+      }
+
+      if (!transcribeJobName) {
+        const msg = 'Transcription job ID was not returned.';
+        setError(msg);
+        onError?.(msg);
+        return;
+      }
+
+      await sleep(AUDIO_PIPELINE_POLL_INTERVAL_MS);
+      if (!isRunActive()) return;
+    }
+
+    if (!isRunActive()) return;
+    const timeoutMsg = 'Transcription wait timed out. Please retry in a moment.';
+    setError(timeoutMsg);
+    onError?.(timeoutMsg);
+  };
+
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
 
   const handleTextInputRun = async () => {
     if (!transcriptText.trim()) {
-      setError('診療テキストを入力してください。');
+      setError('Please enter clinical notes text.');
       return;
     }
     setLoading(true);
@@ -173,7 +388,7 @@ export function PipelineEntryForm({
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : '不明なエラーが発生しました。';
+      const msg = e instanceof Error ? e.message : 'An unknown error occurred.';
       setError(msg);
       onError?.(msg);
     } finally {
@@ -183,12 +398,12 @@ export function PipelineEntryForm({
 
   const handleAudioFileRun = async () => {
     if (!audioFile) {
-      setError('音声ファイルを選択してください。');
+      setError('Please select an audio file.');
       return;
     }
     setLoading(true);
     resetOutput();
-    setUploadStatus('アップロード中...');
+    setUploadStatus(AUDIO_UPLOADING_LABEL);
     try {
       const key = `audio/${effectiveCowId}/${Date.now()}_${audioFile.name}`;
       await uploadData({
@@ -196,34 +411,31 @@ export function PipelineEntryForm({
         data: audioFile,
         options: { contentType: audioFile.type || 'audio/wav' },
       }).result;
-      setUploadStatus('アップロード完了。パイプライン実行中...');
-      const { data, errors } = await client.queries.runPipeline({
-        entryPoint: 'AUDIO_FILE',
-        cowId: effectiveCowId,
-        audioKey: key,
-        ...buildDevModelOverrides(),
-      });
-      applyResult(data as PipelineResult | null, errors);
+      await runAudioPipelineWithPolling('AUDIO_FILE', key);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : '不明なエラーが発生しました。';
-      setError(msg);
-      onError?.(msg);
+      const msg = e instanceof Error ? e.message : 'An unknown error occurred.';
+      if (isMountedRef.current) {
+        setError(msg);
+        onError?.(msg);
+      }
     } finally {
-      setLoading(false);
-      setUploadStatus(null);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setUploadStatus(null);
+      }
     }
   };
 
   const handleJsonInputRun = async () => {
     if (!jsonText.trim()) {
-      setError('ExtractedJSONを入力してください。');
+      setError('Please enter ExtractedJSON.');
       return;
     }
     let parsed: unknown;
     try {
       parsed = JSON.parse(jsonText);
     } catch {
-      setError('JSONの形式が正しくありません。');
+      setError('Invalid JSON format.');
       return;
     }
     setLoading(true);
@@ -237,7 +449,7 @@ export function PipelineEntryForm({
       });
       applyResult(data as PipelineResult | null, errors);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : '不明なエラーが発生しました。';
+      const msg = e instanceof Error ? e.message : 'An unknown error occurred.';
       setError(msg);
       onError?.(msg);
     } finally {
@@ -249,19 +461,14 @@ export function PipelineEntryForm({
     setLoading(true);
     resetOutput();
     try {
-      const { data, errors } = await client.queries.runPipeline({
-        entryPoint: 'PRODUCTION',
-        cowId: effectiveCowId,
-        audioKey,
-        ...buildDevModelOverrides(),
-      });
-      applyResult(data as PipelineResult | null, errors);
+      await runAudioPipelineWithPolling('PRODUCTION', audioKey);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : '不明なエラーが発生しました。';
+      const msg = e instanceof Error ? e.message : 'An unknown error occurred.';
       setError(msg);
       onError?.(msg);
     } finally {
       setLoading(false);
+      setUploadStatus(null);
     }
   };
 
@@ -272,9 +479,9 @@ export function PipelineEntryForm({
   return (
     <div className="pipeline-entry-form">
       {/* cowId input: dev mode only */}
-      {mode === 'dev' && (
+      {mode === 'dev' && showCowIdInput && (
         <div className={styles.cowIdRow}>
-          <label htmlFor="pipeline-cow-id">牛ID (cowId):</label>
+          <label htmlFor="pipeline-cow-id">Cow ID (cowId):</label>
           <input
             id="pipeline-cow-id"
             type="text"
@@ -353,12 +560,12 @@ export function PipelineEntryForm({
       <div className={styles.tabContent}>
         {activeTab === 'TEXT_INPUT' && (
           <div>
-            <h3>テキスト入力モード</h3>
-            <p>診療テキストを直接入力してパイプラインを実行します。</p>
+            <h3>Text Input Mode</h3>
+            <p>Enter clinical notes directly and run the pipeline.</p>
             <textarea
               value={transcriptText}
               onChange={(e) => setTranscriptText(e.target.value)}
-              placeholder="例: 体温39.5度、食欲不振、第四胃変位疑い。ブドウ糖500ml静注。"
+              placeholder="Example: Temp 39.5C, reduced appetite, suspect displaced abomasum. IV glucose 500ml."
               rows={6}
               className={styles.field}
             />
@@ -369,7 +576,7 @@ export function PipelineEntryForm({
                 disabled={loading}
                 className={styles.primaryButton}
               >
-                {loading ? '処理中...' : 'パイプライン実行'}
+                {loading ? 'Processing...' : 'Run Pipeline'}
               </button>
             </div>
           </div>
@@ -377,20 +584,48 @@ export function PipelineEntryForm({
 
         {activeTab === 'AUDIO_FILE' && (
           <div>
-            <h3>音声ファイルモード</h3>
-            <p>音声ファイルをS3にアップロードしてパイプラインを実行します。</p>
+            <h3>Audio File Mode</h3>
+            <p>Upload an audio file to S3 and run the pipeline.</p>
             <input
+              ref={audioFileInputRef}
               type="file"
               accept="audio/*"
-              onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-              className={styles.field}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setAudioFile(file);
+                setLocalAudioPreview(file);
+              }}
+              className={styles.hiddenFileInput}
             />
+            <div className={styles.filePickerRow}>
+              <button
+                type="button"
+                className={styles.filePickerButton}
+                onClick={() => audioFileInputRef.current?.click()}
+              >
+                Choose Audio File
+              </button>
+              <span className={styles.filePickerStatus}>
+                {audioFile ? audioFile.name : 'No file selected'}
+              </span>
+            </div>
             {audioFile && (
               <p className={styles.fileInfo}>
-                選択中: {audioFile.name} ({(audioFile.size / 1024).toFixed(1)} KB)
+                Selected: {audioFile.name} ({(audioFile.size / 1024).toFixed(1)} KB)
               </p>
             )}
-            {uploadStatus && <p className={styles.statusText}>{uploadStatus}</p>}
+            {uploadStatus && (
+              <p
+                className={`${styles.statusText} ${styles.statusWaiting}`}
+                role="status"
+                aria-live="polite"
+              >
+                {uploadStatus}
+                <span className={styles.statusDots} aria-hidden="true">
+                  ...
+                </span>
+              </p>
+            )}
             <div className={styles.actionRow}>
               <button
                 type="button"
@@ -398,7 +633,7 @@ export function PipelineEntryForm({
                 disabled={loading || !audioFile}
                 className={styles.primaryButton}
               >
-                {loading ? '処理中...' : 'アップロード＆実行'}
+                {loading ? 'Processing...' : 'Upload and Run'}
               </button>
             </div>
           </div>
@@ -406,12 +641,12 @@ export function PipelineEntryForm({
 
         {activeTab === 'JSON_INPUT' && (
           <div>
-            <h3>JSON入力モード</h3>
-            <p>ExtractedJSONを直接入力してSOAP/共済生成のみ実行します。</p>
+            <h3>JSON Input Mode</h3>
+            <p>Provide ExtractedJSON directly and run SOAP/Kyosai generation only.</p>
             <textarea
               value={jsonText}
               onChange={(e) => setJsonText(e.target.value)}
-              placeholder='{ "vital": { "temp_c": 39.5 }, "s": "食欲不振", "o": "体温39.5℃", "a": [{ "name": "第四胃変位" }], "p": [{ "name": "ブドウ糖静注", "type": "drug" }] }'
+              placeholder='{ "vital": { "temp_c": 39.5 }, "s": "Reduced appetite", "o": "Temp 39.5C", "a": [{ "name": "Displaced abomasum" }], "p": [{ "name": "IV glucose", "type": "drug" }] }'
               rows={10}
               className={styles.field}
             />
@@ -422,7 +657,7 @@ export function PipelineEntryForm({
                 disabled={loading}
                 className={styles.primaryButton}
               >
-                {loading ? '処理中...' : 'パイプライン実行'}
+                {loading ? 'Processing...' : 'Run Pipeline'}
               </button>
             </div>
           </div>
@@ -441,6 +676,18 @@ export function PipelineEntryForm({
               }}
             />
             {loading && <p className={styles.statusText}>PIPELINE_PROCESSING_ACTIVE...</p>}
+            {uploadStatus && (
+              <p
+                className={`${styles.statusText} ${styles.statusWaiting}`}
+                role="status"
+                aria-live="polite"
+              >
+                {uploadStatus}
+                <span className={styles.statusDots} aria-hidden="true">
+                  ...
+                </span>
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -452,12 +699,27 @@ export function PipelineEntryForm({
         </div>
       )}
 
+      {audioPreview && (
+        <div className={styles.audioPreviewSection}>
+          <h3>AUDIO_PREVIEW</h3>
+          <p className={styles.audioMeta}>{audioPreview.label}</p>
+          <audio controls src={audioPreview.url} className={styles.audioPlayer} />
+        </div>
+      )}
+      {audioPreviewError && (
+        <p className={styles.audioPreviewError}>
+          {audioPreviewError}
+        </p>
+      )}
+
       {/* Result display */}
       {result && (
         <div className={styles.resultSection}>
           <h3>PIPELINE_OUTPUT</h3>
           <ResultField label="VISIT_ID" value={result.visitId} />
           <ResultField label="COW_ID" value={result.cowId} />
+          <ResultField label="STATUS" value={result.status} />
+          <ResultField label="TRANSCRIBE_JOB_NAME" value={result.transcribeJobName} />
           <ResultField label="TEMPLATE_TYPE" value={result.templateType} />
           {result.transcriptRaw != null && (
             <ResultField label="TRANSCRIPT_[RAW]" value={result.transcriptRaw} />
@@ -465,11 +727,41 @@ export function PipelineEntryForm({
           {result.transcriptExpanded != null && (
             <ResultField label="TRANSCRIPT_[EXPANDED]" value={result.transcriptExpanded} />
           )}
-          {result.extractedJson != null && (
+          {extractedJsonDisplay && (
             <div className={styles.resultField}>
-              <strong>ExtractedJSON:</strong>
-              <pre className={styles.resultPre}>
-                {JSON.stringify(result.extractedJson, null, 2)}
+              <div className={styles.resultCardHeader}>
+                <strong>EXTRACTED_JSON:</strong>
+                <div className={styles.resultCardActions}>
+                  {copyStatus === 'done' && (
+                    <span className={styles.copyHint} aria-live="polite">
+                      Copied
+                    </span>
+                  )}
+                  {copyStatus === 'failed' && (
+                    <span className={styles.copyHintError} aria-live="polite">
+                      Copy failed
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.copyButton}
+                    onClick={async () => {
+                      const ok = await copyToClipboard(extractedJsonDisplay.text);
+                      setCopyStatus(ok ? 'done' : 'failed');
+                      setTimeout(() => setCopyStatus('idle'), 1800);
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+              {extractedJsonDisplay.isRawFallback && (
+                <p className={styles.resultHint}>
+                  Raw value shown because structured JSON formatting failed.
+                </p>
+              )}
+              <pre className={styles.resultPreExtracted}>
+                {extractedJsonDisplay.text}
               </pre>
             </div>
           )}

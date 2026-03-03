@@ -22,7 +22,7 @@ interface VisitManagerProps {
   onBack?: () => void;
 }
 
-type ViewMode = 'list' | 'new_visit' | 'visit_detail';
+type ViewMode = 'list' | 'new_visit' | 'visit_detail' | 'visit_edit';
 
 type CowData = Awaited<ReturnType<typeof client.models.Cow.get>>['data'];
 
@@ -35,14 +35,14 @@ interface VisitItem {
 }
 
 const SEX_LABELS: Record<string, string> = {
-  FEMALE: '雌',
-  MALE: '雄',
-  CASTRATED: '去勢',
+  FEMALE: 'Female',
+  MALE: 'Male',
+  CASTRATED: 'Castrated',
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  IN_PROGRESS: 'IN_PROGRESS',
-  COMPLETED: 'COMPLETED',
+  IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed',
 };
 
 export function VisitManager({ cowId, onBack }: VisitManagerProps) {
@@ -52,6 +52,7 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
   const [view, setView] = useState<ViewMode>('list');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -89,15 +90,32 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cowId]);
 
-  const handleSelectVisit = (visitId: string) => {
+  const handleOpenVisitDetail = (visitId: string) => {
+    setSaveSuccessMessage(null);
     setSelectedVisitId(visitId);
     setView('visit_detail');
   };
 
+  const handleOpenVisitEdit = (visitId: string) => {
+    setSaveSuccessMessage(null);
+    setSelectedVisitId(visitId);
+    setView('visit_edit');
+  };
+
   const handleBackToList = () => {
+    setSaveSuccessMessage(null);
     setSelectedVisitId(null);
     setView('list');
     fetchData();
+  };
+
+  const handleSavedFromEdit = () => {
+    if (!selectedVisitId) {
+      handleBackToList();
+      return;
+    }
+    setSaveSuccessMessage('Changes saved successfully.');
+    setView('visit_detail');
   };
 
   if (loading) {
@@ -108,8 +126,22 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
     return (
       <VisitEditor
         visitId={selectedVisitId}
+        mode="detail"
+        successNotice={saveSuccessMessage}
+        onSuccessNoticeDismiss={() => setSaveSuccessMessage(null)}
+        onEditRequested={(nextVisitId) => handleOpenVisitEdit(nextVisitId)}
         onBack={handleBackToList}
-        onSaved={handleBackToList}
+      />
+    );
+  }
+
+  if (view === 'visit_edit' && selectedVisitId) {
+    return (
+      <VisitEditor
+        visitId={selectedVisitId}
+        mode="edit"
+        onBack={handleBackToList}
+        onSaved={handleSavedFromEdit}
       />
     );
   }
@@ -119,12 +151,12 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
       {onBack && (
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={onBack}
           className={styles.backButton}
         >
-          BACK
+          Back to Scanner
         </Button>
       )}
 
@@ -136,56 +168,56 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
 
       {cow && (
         <Card className={styles.cowCard}>
-          <h2 className={styles.sectionTitle}>SUBJECT_INFO</h2>
+          <h2 className={styles.sectionTitle}>Cow Profile</h2>
           <div className={styles.infoRow}>
-            <span className={styles.infoLabel}>ID_CODE:</span>
+            <span className={styles.infoLabel}>Cow ID:</span>
             <span>{cow.cowId}</span>
           </div>
           {cow.earTagNo && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>EARTAG_NO:</span>
+              <span className={styles.infoLabel}>Ear Tag:</span>
               <span>{cow.earTagNo}</span>
             </div>
           )}
           {cow.sex && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>SEX_TYPE:</span>
+              <span className={styles.infoLabel}>Sex:</span>
               <span>{SEX_LABELS[cow.sex] ?? cow.sex}</span>
             </div>
           )}
           {cow.breed && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>BREED:</span>
+              <span className={styles.infoLabel}>Breed:</span>
               <span>{cow.breed}</span>
             </div>
           )}
           {cow.birthDate && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>BIRTH_DATE:</span>
+              <span className={styles.infoLabel}>Birth Date:</span>
               <span>{cow.birthDate}</span>
             </div>
           )}
           {cow.parity != null && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>PARITY:</span>
+              <span className={styles.infoLabel}>Parity:</span>
               <span>{cow.parity}</span>
             </div>
           )}
           {cow.lastCalvingDate && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>LAST_CALVING:</span>
+              <span className={styles.infoLabel}>Last Calving:</span>
               <span>{cow.lastCalvingDate}</span>
             </div>
           )}
           {cow.name && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>NAME:</span>
+              <span className={styles.infoLabel}>Name:</span>
               <span>{cow.name}</span>
             </div>
           )}
           {cow.farm && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>FARM:</span>
+              <span className={styles.infoLabel}>Farm:</span>
               <span>{cow.farm}</span>
             </div>
           )}
@@ -195,39 +227,55 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
       {view === 'list' && (
         <div>
           <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>VISIT_HISTORY</h2>
+            <h2 className={styles.sectionTitle}>Visit History</h2>
             <Button
               type="button"
               variant="primary"
               onClick={() => setView('new_visit')}
             >
-              INITIALIZE_NEW_VISIT
+              New Visit
             </Button>
           </div>
 
           {visits.length === 0 ? (
-            <p className={styles.emptyText}>NO_VISIT_RECORDS_FOUND</p>
+            <p className={styles.emptyText}>No visit records found.</p>
           ) : (
             <div>
               {visits.map((visit) => (
-                <button
-                  key={visit.visitId}
-                  type="button"
-                  onClick={() => handleSelectVisit(visit.visitId)}
-                  className={styles.visitItem}
-                >
+                <Card key={visit.visitId} className={styles.visitItem}>
                   <div className={styles.visitItemDate}>
-                    {visit.datetime ? new Date(visit.datetime).toLocaleString('ja-JP') : 'TIMESTAMP_UNKNOWN'}
+                    {visit.datetime
+                      ? new Date(visit.datetime).toLocaleString('en-US')
+                      : 'Timestamp unavailable'}
                   </div>
                   <div className={styles.visitItemMeta}>
-                    {visit.templateType && <span>TEMPLATE: {visit.templateType}</span>}
+                    <span>Visit ID: {visit.visitId}</span>
+                    {visit.templateType && <span>Template: {visit.templateType}</span>}
                     {visit.status && (
                       <Badge variant={visit.status === 'COMPLETED' ? 'success' : 'warning'} size="sm">
                         {STATUS_LABELS[visit.status] ?? visit.status}
                       </Badge>
                     )}
                   </div>
-                </button>
+                  <div className={styles.visitItemActions}>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleOpenVisitDetail(visit.visitId)}
+                    >
+                      View Detail
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleOpenVisitEdit(visit.visitId)}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                </Card>
               ))}
             </div>
           )}
@@ -239,18 +287,19 @@ export function VisitManager({ cowId, onBack }: VisitManagerProps) {
           <div className={styles.newVisitHeader}>
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="sm"
               onClick={() => setView('list')}
             >
-              BACK
+              Back to Visit List
             </Button>
-            <h2 className={styles.sectionTitle}>NEW_VISIT_ENTRY</h2>
+            <h2 className={styles.sectionTitle}>New Visit Entry</h2>
           </div>
           <PipelineEntryForm
             cowId={cowId}
             mode="production"
             onPipelineComplete={(result) => {
+              setSaveSuccessMessage(null);
               setSelectedVisitId(result.visitId);
               setView('visit_detail');
             }}

@@ -244,6 +244,49 @@ case_id,transcript_json_path,transcript_text,gold_human_note,gold_diseases,gold_
 - `gold_human_note`: 人手の正解メモ（自由記述）
 - `gold_diseases` / `gold_procedures` / `gold_drugs`: `|` 区切り（任意）
   - これらを入れた場合のみ `missing_count` / `misclassified_count` を自動集計
+- 追加評価指標（A/P分離評価）:
+  - `encounter_context`: `repro_screening_inferred` / `diagnostic_assessment` / `treatment_or_intervention` / `general_observation`
+  - `p_without_utterance_count`: 発話根拠が薄い `p` 件数（低いほど良い）
+  - `a_without_p_allowed_count`: `a` あり `p` 空（処置未発話）として許容された件数
+  - `p_utterance_alignment_rate`: `p` が入ったケースで発話根拠に整合した割合
+
+### 週次KPI運用（主指標: evidence_backed_fill_rate）
+
+週次では `required_fields_fill_rate` ではなく、根拠付き充足率 `evidence_backed_fill_rate` を主KPIとして扱います。
+
+```bash
+# 1) モデル比較を実行
+npm run eval:extractor:compare -- tmp/model-comparison-sample.csv tmp/model-compare
+
+# 2) 週次KPIを更新（履歴追記 + 最新サマリ生成）
+npm run eval:extractor:kpi -- tmp/model-compare/comparison.latest.json tmp/model-compare --target 0.5
+```
+
+- 出力:
+  - `tmp/model-compare/kpi.weekly.history.v1.json`
+  - `tmp/model-compare/kpi.weekly.latest.md`
+- `--target-model <modelId>` を付けると特定モデルだけの達成判定にできます
+- `--fail-on-below-target` を付けると目標未達時に非0終了（CI連携向け）
+
+## SOAPモデル比較（Nova Lite vs GLM など）
+
+ExtractorはHaiku 4.5固定で1回だけ実行し、同一ExtractedJSONを各SOAPモデルへ渡して比較します。
+
+```bash
+# 1) 40件向け入力テンプレ作成（既存比較CSVから先頭40件を抽出）
+npm run eval:soap:template -- tmp/model-comparison-sample.csv tmp/soap-model-comparison-sample.40.csv --limit 40
+
+# 2) SOAP比較（例: Nova Lite vs GLM 4.7）
+npm run eval:soap:compare -- tmp/soap-model-comparison-sample.40.csv tmp/soap-model-compare --models amazon.nova-lite-v1:0,zai.glm-4.7
+```
+
+- 入力CSVヘッダ:
+  - `case_id,transcript_json_path,transcript_text,gold_human_note,template_type,note`
+- `template_type` は空欄推奨（自動選択）
+- 出力:
+  - `tmp/soap-model-compare/soap-comparison.latest.json`
+  - `tmp/soap-model-compare/soap-comparison.latest.md`
+  - `tmp/soap-model-compare/soap-scoring.template.csv`（人手採点用）
 
 ## デプロイ
 

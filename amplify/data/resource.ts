@@ -9,7 +9,7 @@ import { type ClientSchema, a, defineData, defineFunction } from "@aws-amplify/b
 export const runPipelineFunction = defineFunction({
   name: "runPipeline",
   entry: "./run-pipeline.ts",
-  timeoutSeconds: 120,  // allow time for full pipeline processing
+  timeoutSeconds: 600,  // allow enough time for occasional long-running LLM paths
   memoryMB: 512,
   resourceGroupName: "data",
 });
@@ -47,9 +47,14 @@ const schema = a.schema({
     cowId: a.string().required(),
     datetime: a.datetime().required(),
     status: a.enum(["IN_PROGRESS", "COMPLETED"]),
+    audioKey: a.string(),
+    transcribeJobName: a.string(),
     transcriptRaw: a.string(),
     transcriptExpanded: a.string(),
     extractedJson: a.json(),
+    extractorModelId: a.string(),
+    soapModelId: a.string(),
+    kyosaiModelId: a.string(),
     soapText: a.string(),
     kyosaiText: a.string(),
     templateType: a.string(),       // 要件16: テンプレートタイプ
@@ -61,10 +66,33 @@ const schema = a.schema({
     ])
     .authorization((allow) => [allow.authenticated()]),
 
+  VisitEdit: a.model({
+    editId: a.string().required(),
+    visitId: a.string().required(),
+    caseId: a.string().required(),
+    cowId: a.string().required(),
+    modelId: a.string().required(),
+    editorId: a.string().required(),
+    editedAt: a.datetime().required(),
+    editDurationSec: a.integer(),
+    llmDraftJson: a.json().required(),
+    humanCorrectedJson: a.json().required(),
+    diffJsonPatch: a.json().required(),
+  })
+    .identifier(["editId"])
+    .secondaryIndexes((index) => [
+      index("visitId").sortKeys(["editedAt"]).queryField("listVisitEditsByVisit"),
+      index("editorId").sortKeys(["editedAt"]).queryField("listVisitEditsByEditor"),
+    ])
+    .authorization((allow) => [allow.authenticated()]),
+
   // --- カスタム型定義 ---
   PipelineOutput: a.customType({
     visitId: a.string().required(),
     cowId: a.string().required(),
+    status: a.string().required(),
+    audioKey: a.string(),
+    transcribeJobName: a.string(),
     transcriptRaw: a.string(),
     transcriptExpanded: a.string(),
     extractedJson: a.json(),
@@ -79,7 +107,9 @@ const schema = a.schema({
     .arguments({
       entryPoint: a.enum(["PRODUCTION", "TEXT_INPUT", "AUDIO_FILE", "JSON_INPUT"]),
       cowId: a.string().required(),
+      visitId: a.string(),            // 非同期継続時に同一visitを更新するためのID
       audioKey: a.string(),           // S3キー（音声ファイル）
+      transcribeJobName: a.string(),  // 非同期Transcribeジョブ名（継続ポーリング用）
       transcriptText: a.string(),     // テキスト直接入力
       extractedJson: a.json(),        // JSON直接入力
       templateType: a.string(),       // 手動テンプレート指定（任意）
