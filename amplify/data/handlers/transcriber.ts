@@ -13,6 +13,7 @@
 import {
   TranscribeClient,
   StartTranscriptionJobCommand,
+  GetTranscriptionJobCommandOutput,
   type StartTranscriptionJobCommandInput,
   GetTranscriptionJobCommand,
   TranscriptionJobStatus,
@@ -34,6 +35,17 @@ export interface TranscribeInput {
 export interface TranscribeOutput {
   transcript_raw: string;     // Raw transcription text
   confidence: number;         // Average confidence score (0.0 - 1.0)
+}
+
+export interface StartTranscriptionOutput {
+  job_name: string;
+}
+
+export interface TranscriptionJobProgress {
+  status: "QUEUED" | "IN_PROGRESS" | "COMPLETED" | "FAILED";
+  transcript_raw?: string;
+  confidence?: number;
+  failure_reason?: string;
 }
 
 // Internal shape of Transcribe output JSON
@@ -77,6 +89,27 @@ function getMediaFormat(audioKey: string): MediaFormat {
     webm: "webm",
   };
   return supported[ext ?? ""] ?? "wav";
+}
+
+function buildStartParams(
+  input: TranscribeInput,
+  jobName: string,
+): StartTranscriptionJobCommandInput {
+  const startParams: StartTranscriptionJobCommandInput = {
+    TranscriptionJobName: jobName,
+    LanguageCode: input.language,
+    MediaFormat: getMediaFormat(input.audioKey),
+    Media: {
+      MediaFileUri: `s3://${input.bucketName}/${input.audioKey}`,
+    },
+    OutputBucketName: input.bucketName,
+    OutputKey: `transcripts/${jobName}.json`,
+  };
+
+  if (input.vocabularyName) {
+    startParams.Settings = { VocabularyName: input.vocabularyName };
+  }
+  return startParams;
 }
 
 /**
@@ -154,9 +187,84 @@ async function fetchTranscriptJson(
   return (await response.json()) as TranscribeResultJson;
 }
 
+function normalizeJobStatus(
+  response: GetTranscriptionJobCommandOutput,
+): TranscriptionJobProgress["status"] {
+  const status = response.TranscriptionJob?.TranscriptionJobStatus;
+  if (status === TranscriptionJobStatus.COMPLETED) return "COMPLETED";
+  if (status === TranscriptionJobStatus.FAILED) return "FAILED";
+  if (status === TranscriptionJobStatus.IN_PROGRESS) return "IN_PROGRESS";
+  return "QUEUED";
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/**
+ * Start an asynchronous Transcribe job and return the generated job name.
+ */
+export async function startTranscriptionJob(
+  input: TranscribeInput,
+  transcribeClient: TranscribeClient,
+  preferredJobName?: string,
+): Promise<StartTranscriptionOutput> {
+  const job_name =
+    preferredJobName ??
+    `vetvoice-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  await transcribeClient.send(
+    new StartTranscriptionJobCommand(buildStartParams(input, job_name)),
+  );
+  return { job_name };
+}
+
+/**
+ * Check one Transcribe job status.
+ * Returns transcript payload when status is COMPLETED.
+ */
+export async function checkTranscriptionJob(
+  jobName: string,
+  input: Pick<TranscribeInput, "bucketName">,
+  transcribeClient: TranscribeClient,
+  s3Client?: S3Client,
+): Promise<TranscriptionJobProgress> {
+  const statusResponse = await transcribeClient.send(
+    new GetTranscriptionJobCommand({ TranscriptionJobName: jobName }),
+  );
+  const status = normalizeJobStatus(statusResponse);
+  const job = statusResponse.TranscriptionJob;
+
+  if (status === "FAILED") {
+    return {
+      status,
+      failure_reason: job?.FailureReason ?? "Unknown failure",
+    };
+  }
+  if (status !== "COMPLETED") {
+    return { status };
+  }
+
+  const transcriptUri = job?.Transcript?.TranscriptFileUri;
+  if (!transcriptUri) {
+    return {
+      status: "FAILED",
+      failure_reason: "Transcription completed but TranscriptFileUri is missing",
+    };
+  }
+
+  const resultJson = await fetchTranscriptJson(
+    transcriptUri,
+    input.bucketName,
+    s3Client,
+  );
+
+  return {
+    status: "COMPLETED",
+    transcript_raw: resultJson.results.transcripts[0]?.transcript ?? "",
+    confidence: calculateAverageConfidence(resultJson.results.items),
+  };
+}
 
 /**
  * Transcribe a Japanese audio file stored in S3.
@@ -178,60 +286,26 @@ export async function transcribe(
   s3Client?: S3Client,
   maxPolls: number = DEFAULT_MAX_POLLS,
 ): Promise<TranscribeOutput> {
-  const jobName = `vetvoice-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-  const startParams: StartTranscriptionJobCommandInput = {
-    TranscriptionJobName: jobName,
-    LanguageCode: input.language,
-    MediaFormat: getMediaFormat(input.audioKey),
-    Media: {
-      MediaFileUri: `s3://${input.bucketName}/${input.audioKey}`,
-    },
-    OutputBucketName: input.bucketName,
-    OutputKey: `transcripts/${jobName}.json`,
-  };
-
-  if (input.vocabularyName) {
-    startParams.Settings = { VocabularyName: input.vocabularyName };
-  }
-
-  await transcribeClient.send(new StartTranscriptionJobCommand(startParams));
+  const { job_name } = await startTranscriptionJob(input, transcribeClient);
 
   // Polling loop
   for (let poll = 0; poll < maxPolls; poll++) {
     await sleep(POLL_INTERVAL_MS);
-
-    const statusResponse = await transcribeClient.send(
-      new GetTranscriptionJobCommand({ TranscriptionJobName: jobName }),
+    const status = await checkTranscriptionJob(
+      job_name,
+      { bucketName: input.bucketName },
+      transcribeClient,
+      s3Client,
     );
-
-    const job = statusResponse.TranscriptionJob;
-    const status = job?.TranscriptionJobStatus;
-
-    if (status === TranscriptionJobStatus.COMPLETED) {
-      const transcriptUri = job?.Transcript?.TranscriptFileUri;
-      if (!transcriptUri) {
-        throw new Error("Transcription completed but TranscriptFileUri is missing");
-      }
-
-      const resultJson = await fetchTranscriptJson(
-        transcriptUri,
-        input.bucketName,
-        s3Client,
-      );
-
-      const transcript_raw = resultJson.results.transcripts[0]?.transcript ?? "";
-      const confidence = calculateAverageConfidence(resultJson.results.items);
-
-      return { transcript_raw, confidence };
+    if (status.status === "COMPLETED") {
+      return {
+        transcript_raw: status.transcript_raw ?? "",
+        confidence: status.confidence ?? 0,
+      };
     }
-
-    if (status === TranscriptionJobStatus.FAILED) {
-      const reason = job?.FailureReason ?? "Unknown failure";
-      throw new Error(`Transcription job failed: ${reason}`);
+    if (status.status === "FAILED") {
+      throw new Error(`Transcription job failed: ${status.failure_reason ?? "Unknown failure"}`);
     }
-
-    // IN_PROGRESS or QUEUED: continue polling
   }
 
   throw new Error(

@@ -14,9 +14,12 @@ import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
 import { TranscribeClient } from "@aws-sdk/client-transcribe";
 import { S3Client } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
-import { transcribe } from "./handlers/transcriber";
+import {
+  checkTranscriptionJob,
+  startTranscriptionJob,
+} from "./handlers/transcriber";
 import { expand } from "./handlers/dictionary-expander";
 import { extract } from "./handlers/extractor";
 import { parse, stringify, type ExtractedJSON } from "./handlers/parser";
@@ -245,7 +248,9 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   const {
     entryPoint,
     cowId,
+    visitId: providedVisitId,
     audioKey,
+    transcribeJobName: providedTranscribeJobName,
     transcriptText,
     extractedJson: extractedJsonInput,
     templateType,
@@ -254,7 +259,10 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     kyosaiModelId,
   } = event.arguments;
 
-  const visitId = crypto.randomUUID();
+  const visitId =
+    typeof providedVisitId === "string" && providedVisitId.trim().length > 0
+      ? providedVisitId.trim()
+      : crypto.randomUUID();
   const datetime = new Date().toISOString();
   const warnings: string[] = [];
   const extractorModelIdOverride =
@@ -270,6 +278,101 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   let transcriptRaw: string | null = null;
   let transcriptExpanded: string | null = null;
   let extractedJson: ExtractedJSON | null = null;
+  let resolvedTemplateType: TemplateType = "general_soap";
+  let soapText: string | null = null;
+  let kyosaiText: string | null = null;
+  let transcribeJobName: string | null =
+    typeof providedTranscribeJobName === "string" &&
+    providedTranscribeJobName.trim().length > 0
+      ? providedTranscribeJobName.trim()
+      : null;
+
+  const tableName =
+    process.env.AMPLIFY_DATA_RESOURCE_NAME_VISIT ??
+    process.env.VISIT_TABLE_NAME ??
+    "";
+
+  const buildOutput = (status: "IN_PROGRESS" | "COMPLETED") => ({
+    visitId,
+    cowId,
+    status,
+    audioKey: audioKey ?? null,
+    transcribeJobName: transcribeJobName ?? null,
+    transcriptRaw: transcriptRaw ?? null,
+    transcriptExpanded: transcriptExpanded ?? null,
+    extractedJson: extractedJson ?? null,
+    soapText: soapText ?? null,
+    kyosaiText: kyosaiText ?? null,
+    templateType: status === "IN_PROGRESS" ? null : resolvedTemplateType,
+    warnings,
+  });
+
+  const saveVisitRecord = async (status: "IN_PROGRESS" | "COMPLETED") => {
+    if (!tableName) {
+      warnings.push("VISIT_TABLE_NAME not configured; skipping DynamoDB save");
+      return;
+    }
+
+    let persistedCreatedAt = datetime;
+    let persistedDatetime = datetime;
+
+    if (providedVisitId) {
+      try {
+        const existing = await dynamoClient.send(
+          new GetCommand({
+            TableName: tableName,
+            Key: { visitId },
+            ProjectionExpression: "visitId, createdAt, #dt",
+            ExpressionAttributeNames: { "#dt": "datetime" },
+          })
+        );
+        const existingItem = existing.Item as
+          | { createdAt?: unknown; datetime?: unknown }
+          | undefined;
+        if (typeof existingItem?.createdAt === "string" && existingItem.createdAt.length > 0) {
+          persistedCreatedAt = existingItem.createdAt;
+        }
+        if (typeof existingItem?.datetime === "string" && existingItem.datetime.length > 0) {
+          persistedDatetime = existingItem.datetime;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        warnings.push(`DynamoDB pre-read failed: ${msg}; using current timestamp fields`);
+      }
+    }
+
+    try {
+      await dynamoClient.send(
+        new PutCommand({
+          TableName: tableName,
+          Item: {
+            visitId,
+            cowId,
+            datetime: persistedDatetime,
+            createdAt: persistedCreatedAt,
+            updatedAt: datetime,
+            status,
+            ...(audioKey != null && { audioKey }),
+            ...(transcribeJobName != null && { transcribeJobName }),
+            ...(transcriptRaw != null && { transcriptRaw }),
+            ...(transcriptExpanded != null && { transcriptExpanded }),
+            ...(extractedJson != null && { extractedJson: stringify(extractedJson) }),
+            extractorModelId: extractorModelIdResolved,
+            soapModelId: soapModelIdResolved,
+            kyosaiModelId: kyosaiModelIdResolved,
+            ...(soapText != null && { soapText }),
+            ...(kyosaiText != null && { kyosaiText }),
+            ...(status === "COMPLETED" && { templateType: resolvedTemplateType }),
+          },
+          // Initial create keeps the "no overwrite" guard; async follow-ups overwrite same visit.
+          ...(providedVisitId ? {} : { ConditionExpression: "attribute_not_exists(visitId)" }),
+        })
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      warnings.push(`DynamoDB save failed: ${msg}`);
+    }
+  };
 
   // -------------------------------------------------------------------------
   // Step 1: Transcription (PRODUCTION / AUDIO_FILE only)
@@ -288,17 +391,48 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
           process.env.TRANSCRIBE_VOCABULARY_NAME ??
           DEFAULT_TRANSCRIBE_VOCABULARY_NAME
         ).trim();
-        const transcribeOutput = await transcribe(
-          {
-            audioKey,
-            language: "ja-JP",
-            bucketName,
-            vocabularyName: vocabularyName ? vocabularyName : undefined,
-          },
-          transcribeClient,
-          s3Client
-        );
-        transcriptRaw = transcribeOutput.transcript_raw;
+
+        if (transcribeJobName) {
+          const progress = await checkTranscriptionJob(
+            transcribeJobName,
+            { bucketName },
+            transcribeClient,
+            s3Client
+          );
+
+          if (progress.status === "COMPLETED") {
+            transcriptRaw = progress.transcript_raw ?? "";
+          } else if (progress.status === "FAILED") {
+            const reason = progress.failure_reason ?? "Unknown failure";
+            warnings.push(`Transcription failed: ${reason}; falling back to transcriptText`);
+            transcribeJobName = null;
+          } else {
+            warnings.push(
+              `Transcription is ${progress.status}; retry runPipeline with visitId/transcribeJobName`
+            );
+            await saveVisitRecord("IN_PROGRESS");
+            return buildOutput("IN_PROGRESS");
+          }
+        } else {
+          const preferredJobName = `vetvoice-${visitId}-${Date.now()}`;
+          const started = await startTranscriptionJob(
+            {
+              audioKey,
+              language: "ja-JP",
+              bucketName,
+              vocabularyName: vocabularyName ? vocabularyName : undefined,
+            },
+            transcribeClient,
+            preferredJobName
+          );
+          transcribeJobName = started.job_name;
+
+          warnings.push(
+            "Transcription started asynchronously; retry runPipeline with visitId/transcribeJobName"
+          );
+          await saveVisitRecord("IN_PROGRESS");
+          return buildOutput("IN_PROGRESS");
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         warnings.push(`Transcription failed: ${msg}; falling back to transcriptText`);
@@ -407,10 +541,6 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   // -------------------------------------------------------------------------
   // Step 2.5: Template selection + SOAP/Kyosai generation
   // -------------------------------------------------------------------------
-  let resolvedTemplateType: TemplateType = "general_soap";
-  let soapText: string | null = null;
-  let kyosaiText: string | null = null;
-
   if (extractedJson) {
     const canonicalPreferredJson = buildCanonicalPreferredView(extractedJson);
 
@@ -477,57 +607,10 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
   // Step 3: Persist Visit record to DynamoDB
   // "Save if possible" policy — pipeline result is always returned
   // -------------------------------------------------------------------------
-  const tableName =
-    process.env.AMPLIFY_DATA_RESOURCE_NAME_VISIT ??
-    process.env.VISIT_TABLE_NAME ??
-    "";
-
-  if (tableName) {
-    try {
-      await dynamoClient.send(
-        new PutCommand({
-          TableName: tableName,
-          Item: {
-            visitId,
-            cowId,
-            datetime,
-            status: "COMPLETED",
-            ...(audioKey != null && { audioKey }),
-            ...(transcriptRaw != null && { transcriptRaw }),
-            ...(transcriptExpanded != null && { transcriptExpanded }),
-            ...(extractedJson != null && { extractedJson: stringify(extractedJson) }),
-            extractorModelId: extractorModelIdResolved,
-            soapModelId: soapModelIdResolved,
-            kyosaiModelId: kyosaiModelIdResolved,
-            ...(soapText != null && { soapText }),
-            ...(kyosaiText != null && { kyosaiText }),
-            templateType: resolvedTemplateType,
-          },
-          // Prevent overwriting an existing record (data integrity guard)
-          ConditionExpression: "attribute_not_exists(visitId)",
-        })
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      warnings.push(`DynamoDB save failed: ${msg}`);
-    }
-  } else {
-    warnings.push("VISIT_TABLE_NAME not configured; skipping DynamoDB save");
-  }
+  await saveVisitRecord("COMPLETED");
 
   // -------------------------------------------------------------------------
   // Step 4: Return PipelineOutput
   // -------------------------------------------------------------------------
-  return {
-    visitId,
-    cowId,
-    audioKey: audioKey ?? null,
-    transcriptRaw: transcriptRaw ?? null,
-    transcriptExpanded: transcriptExpanded ?? null,
-    extractedJson: extractedJson ?? null,
-    soapText: soapText ?? null,
-    kyosaiText: kyosaiText ?? null,
-    templateType: resolvedTemplateType,
-    warnings,
-  };
+  return buildOutput("COMPLETED");
 };

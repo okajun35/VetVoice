@@ -8,8 +8,8 @@ export const TABS_BY_MODE: Record<FormMode, TabMode[]> = {
 };
 
 export const TAB_LABELS: Record<TabMode, string> = {
-  TEXT_INPUT: "テキスト入力",
-  AUDIO_FILE: "音声ファイル",
-  JSON_INPUT: "JSON入力",
-  PRODUCTION: "本番（録音）",
+  TEXT_INPUT: "Text Input",
+  AUDIO_FILE: "Audio File",
+  JSON_INPUT: "JSON Input",
+  PRODUCTION: "Production (Recording)",
 };

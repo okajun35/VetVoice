@@ -21,7 +21,7 @@ type ModelAliasMap = Record<string, string>;
 // Default configs per component
 const DEFAULT_CONFIGS: Record<ComponentName, ModelConfig> = {
   extractor: {
-    modelId: "anthropic.claude-haiku-4-5-20251001-v1:0",
+    modelId: "us.anthropic.claude-haiku-4-5-20251001-v1:0",
     region: "us-east-1",
     maxTokens: 4096,
     temperature: 0.1,
@@ -49,7 +49,7 @@ const DEFAULT_CONFIGS: Record<ComponentName, ModelConfig> = {
 // Fallback configs (Claude) when Nova precision is insufficient
 const FALLBACK_CONFIGS: Record<ComponentName, ModelConfig> = {
   extractor: {
-    modelId: "anthropic.claude-3-5-haiku-20241022-v1:0",
+    modelId: "us.anthropic.claude-3-5-haiku-20241022-v1:0",
     region: "us-east-1",
     maxTokens: 4096,
     temperature: 0.1,

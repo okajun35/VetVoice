@@ -114,12 +114,12 @@ export function CowRegistrationForm({
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>{isEditMode ? 'ENTRY_EDIT' : 'ENTRY_REGISTRATION'}</h2>
+      <h2 className={styles.title}>{isEditMode ? 'Edit Cow Profile' : 'Register New Cow'}</h2>
       <form onSubmit={handleSubmit} noValidate className={styles.form}>
 
         <Input
           id="cowId"
-          label="ID_CODE (10-DIGIT) *"
+          label="Cow ID (10 digits) *"
           type="text"
           value={form.cowId}
           onChange={(e) => handleChange('cowId', e.target.value)}
@@ -132,7 +132,7 @@ export function CowRegistrationForm({
 
         <div className={styles.field}>
           <label htmlFor="sex" className={styles.selectLabel}>
-            SEX_TYPE <span className={styles.required}>*</span>
+            Sex <span className={styles.required}>*</span>
           </label>
           <select
             id="sex"
@@ -141,26 +141,26 @@ export function CowRegistrationForm({
             className={styles.select}
             disabled={loading}
           >
-            <option value="">SELECT_ENTRY</option>
-            <option value="FEMALE">FEMALE</option>
-            <option value="MALE">MALE</option>
-            <option value="CASTRATED">CASTRATED</option>
+            <option value="">Select</option>
+            <option value="FEMALE">Female</option>
+            <option value="MALE">Male</option>
+            <option value="CASTRATED">Castrated</option>
           </select>
         </div>
 
         <Input
           id="breed"
-          label="BREED_SPECIES *"
+          label="Breed *"
           type="text"
           value={form.breed}
           onChange={(e) => handleChange('breed', e.target.value)}
-          placeholder="E.G. HOLSTEIN"
+          placeholder="e.g. Holstein"
           disabled={loading}
         />
 
         <Input
           id="birthDate"
-          label="BIRTH_DATE *"
+          label="Birth Date *"
           type="date"
           value={form.birthDate}
           onChange={(e) => handleChange('birthDate', e.target.value)}
@@ -169,28 +169,28 @@ export function CowRegistrationForm({
 
         <Input
           id="earTagNo"
-          label="EARTAG_NO"
+          label="Ear Tag No."
           type="text"
           value={form.earTagNo}
           onChange={(e) => handleChange('earTagNo', e.target.value)}
-          placeholder="OPTIONAL"
+          placeholder="Optional"
           disabled={loading}
         />
 
         <Input
           id="parity"
-          label="PARITY"
+          label="Parity"
           type="number"
           min={0}
           value={form.parity}
           onChange={(e) => handleChange('parity', e.target.value)}
-          placeholder="OPTIONAL"
+          placeholder="Optional"
           disabled={loading}
         />
 
         <Input
           id="lastCalvingDate"
-          label="LAST_CALVING_DATE"
+          label="Last Calving Date"
           type="date"
           value={form.lastCalvingDate}
           onChange={(e) => handleChange('lastCalvingDate', e.target.value)}
@@ -199,21 +199,21 @@ export function CowRegistrationForm({
 
         <Input
           id="name"
-          label="NAME"
+          label="Name"
           type="text"
           value={form.name}
           onChange={(e) => handleChange('name', e.target.value)}
-          placeholder="OPTIONAL"
+          placeholder="Optional"
           disabled={loading}
         />
 
         <Input
           id="farm"
-          label="FARM"
+          label="Farm"
           type="text"
           value={form.farm}
           onChange={(e) => handleChange('farm', e.target.value)}
-          placeholder="OPTIONAL"
+          placeholder="Optional"
           disabled={loading}
         />
 
@@ -230,7 +230,7 @@ export function CowRegistrationForm({
             loading={loading}
             fullWidth
           >
-            {isEditMode ? 'COMMIT_CHANGES' : 'REGISTER_ENTRY'}
+            {isEditMode ? 'Save Changes' : 'Register Cow'}
           </Button>
           {onCancel && (
             <Button
@@ -239,7 +239,7 @@ export function CowRegistrationForm({
               onClick={onCancel}
               disabled={loading}
             >
-              CANCEL
+              Cancel
             </Button>
           )}
         </div>
