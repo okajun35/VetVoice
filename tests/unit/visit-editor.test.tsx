@@ -87,10 +87,7 @@ describe('VisitEditor', () => {
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('edit-uuid-001');
   });
 
-  it('plays and stops audio using signed URL from audioKey', async () => {
-    const user = userEvent.setup();
-    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
-    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+  it('loads signed audio URL for native audio controls when audioKey exists', async () => {
     mockClient.models.Visit.get.mockResolvedValue({
       data: buildVisitRecord({ audioKey: 'audio/test-cow/123.webm' }),
       errors: null,
@@ -98,7 +95,6 @@ describe('VisitEditor', () => {
 
     render(<VisitEditor visitId="visit-001" />);
     await screen.findByText('Audio Recording');
-    await user.click(screen.getByRole('button', { name: 'Play' }));
 
     await waitFor(() => {
       expect(mockGetUrl).toHaveBeenCalledWith({
@@ -108,13 +104,11 @@ describe('VisitEditor', () => {
           expiresIn: 3600,
         },
       });
-      expect(playSpy).toHaveBeenCalledOnce();
     });
 
-    await user.click(screen.getByRole('button', { name: 'Stop' }));
-    expect(pauseSpy).toHaveBeenCalledOnce();
-    playSpy.mockRestore();
-    pauseSpy.mockRestore();
+    const audio = document.querySelector('audio') as HTMLAudioElement | null;
+    expect(audio).not.toBeNull();
+    expect(audio!.src).toContain('https://example.com/audio');
   });
 
   it('normalizes incomplete extractedJson payloads before rendering fields', async () => {

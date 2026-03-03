@@ -94,12 +94,6 @@
   word-break: break-all;
 }
 
-.audioControls {
-  display: flex;
-  gap: var(--spacing-2);
-  margin-bottom: var(--spacing-2);
-}
-
 .audioPlayer {
   width: 100%;
 }

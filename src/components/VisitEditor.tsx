@@ -343,7 +343,6 @@ export function VisitEditor({
   const [regenerating, setRegenerating] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioUrlExpiresAt, setAudioUrlExpiresAt] = useState<Date | null>(null);
-  const [audioLoading, setAudioLoading] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [conflictDetected, setConflictDetected] = useState(false);
@@ -353,7 +352,6 @@ export function VisitEditor({
   const [autoKyosaiText, setAutoKyosaiText] = useState('');
   const [manualSoapText, setManualSoapText] = useState('');
   const [manualKyosaiText, setManualKyosaiText] = useState('');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
 
   const fetchVisit = useCallback(async () => {
@@ -448,7 +446,7 @@ export function VisitEditor({
     titleRef.current?.focus();
   }, [mode, visitId]);
 
-  const resolveAudioUrl = async (): Promise<string> => {
+  const resolveAudioUrl = useCallback(async (): Promise<string> => {
     if (!visit?.audioKey) {
       throw new Error('Audio key is missing.');
     }
@@ -467,28 +465,15 @@ export function VisitEditor({
     setAudioUrl(nextAudioUrl);
     setAudioUrlExpiresAt(signed.expiresAt ?? new Date(Date.now() + 3600 * 1000));
     return nextAudioUrl;
-  };
+  }, [audioUrl, audioUrlExpiresAt, visit?.audioKey]);
 
-  const handlePlayAudio = async () => {
-    if (!visit?.audioKey || !audioRef.current) return;
-    setAudioLoading(true);
+  useEffect(() => {
+    if (!visit?.audioKey) return;
     setAudioError(null);
-    try {
-      const nextAudioUrl = await resolveAudioUrl();
-      audioRef.current.src = nextAudioUrl;
-      await audioRef.current.play();
-    } catch (err) {
-      setAudioError(err instanceof Error ? err.message : 'Failed to play audio.');
-    } finally {
-      setAudioLoading(false);
-    }
-  };
-
-  const handleStopAudio = () => {
-    if (!audioRef.current) return;
-    audioRef.current.pause();
-    audioRef.current.currentTime = 0;
-  };
+    void resolveAudioUrl().catch((err) => {
+      setAudioError(err instanceof Error ? err.message : 'Failed to load audio.');
+    });
+  }, [visit?.audioKey, resolveAudioUrl]);
 
   const handleRegenerateDocuments = async () => {
     if (!visit || !extractedJson) return;
@@ -771,22 +756,8 @@ export function VisitEditor({
           <h3 className={styles.sectionTitle}>Audio Recording</h3>
           <div className={styles.audioSection}>
             <div className={styles.audioMeta}>audioKey: {visit.audioKey}</div>
-            <div className={styles.audioControls}>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handlePlayAudio}
-                loading={audioLoading}
-                disabled={audioLoading}
-              >
-                Play
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleStopAudio} disabled={audioLoading}>
-                Stop
-              </Button>
-            </div>
             {audioError && <div className={styles.audioMeta}>{audioError}</div>}
-            <audio ref={audioRef} controls src={audioUrl ?? undefined} className={styles.audioPlayer} />
+            <audio controls src={audioUrl ?? undefined} className={styles.audioPlayer} />
           </div>
         </Card>
       )}
