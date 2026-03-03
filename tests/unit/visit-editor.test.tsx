@@ -163,9 +163,11 @@ describe('VisitEditor', () => {
       });
     });
 
-    const audio = document.querySelector('audio') as HTMLAudioElement | null;
-    expect(audio).not.toBeNull();
-    expect(audio!.src).toContain('audio%2Ftest-cow%2Fnext.webm');
+    await waitFor(() => {
+      const audio = document.querySelector('audio') as HTMLAudioElement | null;
+      expect(audio).not.toBeNull();
+      expect(audio!.src).toContain('audio%2Ftest-cow%2Fnext.webm');
+    });
   });
 
   it('normalizes incomplete extractedJson payloads before rendering fields', async () => {
