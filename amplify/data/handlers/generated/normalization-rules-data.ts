@@ -55,6 +55,11 @@ export const NORMALIZATION_RULES_JSON = `{
       "flags": "gu"
     },
     {
+      "pattern": "外資急構成上|外資休校上",
+      "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
       "pattern": "外子宮こう",
       "replacement": "外子宮口",
       "flags": "gu"
@@ -67,6 +72,16 @@ export const NORMALIZATION_RULES_JSON = `{
     {
       "pattern": "外子宮口上",
       "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外子宮口(?:を|は)?正常",
+      "replacement": "外子宮口正常",
+      "flags": "gu"
+    },
+    {
+      "pattern": "外子宮口(?:を|は)?問題なし",
+      "replacement": "外子宮口問題なし",
       "flags": "gu"
     },
     {
@@ -100,6 +115,11 @@ export const NORMALIZATION_RULES_JSON = `{
       "flags": "gu"
     },
     {
+      "pattern": "膣内(?:を|は)?正常",
+      "replacement": "膣内正常",
+      "flags": "gu"
+    },
+    {
       "pattern": "頭検査",
       "replacement": "膣検査",
       "flags": "gu"
@@ -128,6 +148,11 @@ export const NORMALIZATION_RULES_JSON = `{
       "pattern": "\\\\bvds\\\\b",
       "replacement": "VDS",
       "flags": "giu"
+    },
+    {
+      "pattern": "VDS\\\\s*五",
+      "replacement": "VDS 5",
+      "flags": "gu"
     }
   ],
   "drugQueryNormalizationRules": [
