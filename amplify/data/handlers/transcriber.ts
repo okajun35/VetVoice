@@ -13,8 +13,8 @@
 import {
   TranscribeClient,
   StartTranscriptionJobCommand,
-  GetTranscriptionJobCommandOutput,
   type StartTranscriptionJobCommandInput,
+  type GetTranscriptionJobCommandOutput,
   GetTranscriptionJobCommand,
   TranscriptionJobStatus,
   MediaFormat,

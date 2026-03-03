@@ -177,6 +177,8 @@ export function PipelineEntryForm({
   const [copyStatus, setCopyStatus] = useState<'idle' | 'done' | 'failed'>('idle');
   const localPreviewUrlRef = useRef<string | null>(null);
   const audioFileInputRef = useRef<HTMLInputElement | null>(null);
+  const isMountedRef = useRef(true);
+  const pollingRunIdRef = useRef(0);
 
   useEffect(() => {
     setEffectiveCowId(cowId);
@@ -198,6 +200,14 @@ export function PipelineEntryForm({
       releaseLocalPreviewUrl();
     };
   }, [releaseLocalPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      // Invalidate any active polling loop on unmount.
+      pollingRunIdRef.current += 1;
+    };
+  }, []);
 
   const setLocalAudioPreview = (file: File | null) => {
     if (!file) {
@@ -297,10 +307,15 @@ export function PipelineEntryForm({
     entryPoint: 'AUDIO_FILE' | 'PRODUCTION',
     audioKey: string
   ) => {
+    const runId = ++pollingRunIdRef.current;
+    const isRunActive = () =>
+      isMountedRef.current && pollingRunIdRef.current === runId;
+
     let visitId: string | undefined;
     let transcribeJobName: string | undefined;
 
     for (let poll = 0; poll < AUDIO_PIPELINE_MAX_POLLS; poll++) {
+      if (!isRunActive()) return;
       setUploadStatus(poll > 0 ? TRANSCRIPTION_WAITING_LABEL : TRANSCRIPTION_STARTING_LABEL);
 
       const { data, errors } = await client.queries.runPipeline({
@@ -312,6 +327,7 @@ export function PipelineEntryForm({
         ...buildDevModelOverrides(),
       });
 
+      if (!isRunActive()) return;
       if (errors && errors.length > 0) {
         applyResult(null, errors);
         return;
@@ -325,6 +341,7 @@ export function PipelineEntryForm({
         return;
       }
 
+      if (!isRunActive()) return;
       setResult(pipelineResult);
       visitId = pipelineResult.visitId;
       transcribeJobName = pipelineResult.transcribeJobName ?? undefined;
@@ -342,8 +359,10 @@ export function PipelineEntryForm({
       }
 
       await sleep(AUDIO_PIPELINE_POLL_INTERVAL_MS);
+      if (!isRunActive()) return;
     }
 
+    if (!isRunActive()) return;
     const timeoutMsg = 'Transcription wait timed out. Please retry in a moment.';
     setError(timeoutMsg);
     onError?.(timeoutMsg);
@@ -395,11 +414,15 @@ export function PipelineEntryForm({
       await runAudioPipelineWithPolling('AUDIO_FILE', key);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'An unknown error occurred.';
-      setError(msg);
-      onError?.(msg);
+      if (isMountedRef.current) {
+        setError(msg);
+        onError?.(msg);
+      }
     } finally {
-      setLoading(false);
-      setUploadStatus(null);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setUploadStatus(null);
+      }
     }
   };
 

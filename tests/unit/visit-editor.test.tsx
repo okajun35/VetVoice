@@ -111,6 +111,63 @@ describe('VisitEditor', () => {
     expect(audio!.src).toContain('https://example.com/audio');
   });
 
+  it('refreshes signed URL when visit audioKey changes', async () => {
+    mockClient.models.Visit.get.mockImplementation(({ visitId }: { visitId: string }) => {
+      if (visitId === 'visit-002') {
+        return Promise.resolve({
+          data: buildVisitRecord({
+            visitId: 'visit-002',
+            audioKey: 'audio/test-cow/next.webm',
+          }),
+          errors: null,
+        });
+      }
+      return Promise.resolve({
+        data: buildVisitRecord({
+          visitId: 'visit-001',
+          audioKey: 'audio/test-cow/123.webm',
+        }),
+        errors: null,
+      });
+    });
+
+    mockGetUrl.mockImplementation(({ path }: { path: string }) =>
+      Promise.resolve({
+        url: new URL(`https://example.com/signed/${encodeURIComponent(path)}`),
+        expiresAt: new Date(Date.now() + 3600 * 1000),
+      })
+    );
+
+    const { rerender } = render(<VisitEditor visitId="visit-001" />);
+    await screen.findByText('Audio Recording');
+
+    await waitFor(() => {
+      expect(mockGetUrl).toHaveBeenCalledWith({
+        path: 'audio/test-cow/123.webm',
+        options: {
+          validateObjectExistence: true,
+          expiresIn: 3600,
+        },
+      });
+    });
+
+    rerender(<VisitEditor visitId="visit-002" />);
+
+    await waitFor(() => {
+      expect(mockGetUrl).toHaveBeenCalledWith({
+        path: 'audio/test-cow/next.webm',
+        options: {
+          validateObjectExistence: true,
+          expiresIn: 3600,
+        },
+      });
+    });
+
+    const audio = document.querySelector('audio') as HTMLAudioElement | null;
+    expect(audio).not.toBeNull();
+    expect(audio!.src).toContain('audio%2Ftest-cow%2Fnext.webm');
+  });
+
   it('normalizes incomplete extractedJson payloads before rendering fields', async () => {
     mockClient.models.Visit.get.mockResolvedValue({
       data: buildVisitRecord({

@@ -352,6 +352,7 @@ export function VisitEditor({
   const [autoKyosaiText, setAutoKyosaiText] = useState('');
   const [manualSoapText, setManualSoapText] = useState('');
   const [manualKyosaiText, setManualKyosaiText] = useState('');
+  const audioUrlKeyRef = useRef<string | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
 
   const fetchVisit = useCallback(async () => {
@@ -450,7 +451,12 @@ export function VisitEditor({
     if (!visit?.audioKey) {
       throw new Error('Audio key is missing.');
     }
-    if (audioUrl && audioUrlExpiresAt && audioUrlExpiresAt.getTime() > Date.now() + 30_000) {
+    if (
+      audioUrl &&
+      audioUrlKeyRef.current === visit.audioKey &&
+      audioUrlExpiresAt &&
+      audioUrlExpiresAt.getTime() > Date.now() + 30_000
+    ) {
       return audioUrl;
     }
 
@@ -464,11 +470,21 @@ export function VisitEditor({
     const nextAudioUrl = signed.url.toString();
     setAudioUrl(nextAudioUrl);
     setAudioUrlExpiresAt(signed.expiresAt ?? new Date(Date.now() + 3600 * 1000));
+    audioUrlKeyRef.current = visit.audioKey;
     return nextAudioUrl;
   }, [audioUrl, audioUrlExpiresAt, visit?.audioKey]);
 
   useEffect(() => {
-    if (!visit?.audioKey) return;
+    if (!visit?.audioKey) {
+      setAudioUrl(null);
+      setAudioUrlExpiresAt(null);
+      audioUrlKeyRef.current = null;
+      return;
+    }
+    if (audioUrlKeyRef.current !== visit.audioKey) {
+      setAudioUrl(null);
+      setAudioUrlExpiresAt(null);
+    }
     setAudioError(null);
     void resolveAudioUrl().catch((err) => {
       setAudioError(err instanceof Error ? err.message : 'Failed to load audio.');

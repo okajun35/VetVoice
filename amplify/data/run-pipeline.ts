@@ -259,10 +259,10 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     kyosaiModelId,
   } = event.arguments;
 
+  const hasProvidedVisitId =
+    typeof providedVisitId === "string" && providedVisitId.trim().length > 0;
   const visitId =
-    typeof providedVisitId === "string" && providedVisitId.trim().length > 0
-      ? providedVisitId.trim()
-      : crypto.randomUUID();
+    hasProvidedVisitId ? providedVisitId.trim() : crypto.randomUUID();
   const datetime = new Date().toISOString();
   const warnings: string[] = [];
   const extractorModelIdOverride =
@@ -316,7 +316,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     let persistedCreatedAt = datetime;
     let persistedDatetime = datetime;
 
-    if (providedVisitId) {
+    if (hasProvidedVisitId) {
       try {
         const existing = await dynamoClient.send(
           new GetCommand({
@@ -365,7 +365,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
             ...(status === "COMPLETED" && { templateType: resolvedTemplateType }),
           },
           // Initial create keeps the "no overwrite" guard; async follow-ups overwrite same visit.
-          ...(providedVisitId ? {} : { ConditionExpression: "attribute_not_exists(visitId)" }),
+          ...(hasProvidedVisitId ? {} : { ConditionExpression: "attribute_not_exists(visitId)" }),
         })
       );
     } catch (err) {

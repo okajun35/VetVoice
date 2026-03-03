@@ -605,6 +605,22 @@ describe("runPipeline integration", () => {
       expect(putArg._input.ConditionExpression).toBe("attribute_not_exists(visitId)");
     });
 
+    it("treats whitespace visitId as missing and keeps create-only ConditionExpression", async () => {
+      bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
+
+      await handler(
+        makeEvent({
+          entryPoint: "TEXT_INPUT",
+          transcriptText: "テスト",
+          visitId: "   ",
+        }),
+        MOCK_CONTEXT
+      );
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.ConditionExpression).toBe("attribute_not_exists(visitId)");
+    });
+
     it("adds warning but still returns result when DynamoDB fails", async () => {
       bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
       dynamoMockSend.mockRejectedValue(new Error("DynamoDB unavailable"));
