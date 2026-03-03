@@ -301,52 +301,34 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
             errors: null,
           });
 
-          // Render the component in dev mode (which includes TEXT_INPUT tab)
-          // TEXT_INPUT is the first tab in dev mode, so it's selected by default
           const { container, unmount } = render(
             <PipelineEntryForm cowId={cowId} mode="dev" />
           );
 
           try {
-            // Find the textarea (should be visible since TEXT_INPUT is the default tab)
             const textarea = container.querySelector('textarea');
-            
-            if (!textarea) {
-              return false;
-            }
+            expect(textarea).not.toBeNull();
 
-            // Use fireEvent.change for direct value setting (no special character handling)
             fireEvent.change(textarea, { target: { value: transcriptText } });
 
-            // Find the submit button
             const submitButton = Array.from(
               container.querySelectorAll('button[type="button"]')
-            ).find((btn) => btn.textContent?.includes('パイプライン実行'));
+            ).find((btn) => btn.getAttribute('role') !== 'tab');
+            expect(submitButton).toBeDefined();
             
-            if (!submitButton) {
-              return false;
-            }
-            
-            // Click the button
             fireEvent.click(submitButton as HTMLElement);
 
-            // Wait for the mock to be called
             await waitFor(() => {
-              return mockRunPipeline.mock.calls.length === 1;
+              expect(mockRunPipeline).toHaveBeenCalled();
             }, { timeout: 1000 });
 
-            // Verify the call parameters
-            const callArgs = mockRunPipeline.mock.calls[0][0];
-            return (
-              callArgs.entryPoint === 'TEXT_INPUT' &&
-              callArgs.cowId === cowId &&
-              callArgs.transcriptText === transcriptText
-            );
-          } catch (error) {
-            // If waitFor times out or any other error occurs, return false
-            return false;
+            const callArgs = mockRunPipeline.mock.calls.at(-1)?.[0];
+            expect(callArgs).toBeDefined();
+            expect(callArgs.entryPoint).toBe('TEXT_INPUT');
+            expect(callArgs.cowId).toBe(cowId);
+            expect(callArgs.transcriptText).toBe(transcriptText);
+            return true;
           } finally {
-            // Clean up after each iteration
             unmount();
           }
         }
@@ -384,48 +366,26 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
           );
 
           try {
-            // Find the textarea
             const textarea = container.querySelector('textarea');
-            if (!textarea) {
-              return false;
-            }
+            expect(textarea).not.toBeNull();
 
-            // Enter whitespace-only text
             fireEvent.change(textarea, { target: { value: whitespaceText } });
 
-            // Find and click the submit button
             const submitButton = Array.from(
               container.querySelectorAll('button[type="button"]')
-            ).find((btn) => btn.textContent?.includes('パイプライン実行'));
-            
-            if (!submitButton) {
-              return false;
-            }
+            ).find((btn) => btn.getAttribute('role') !== 'tab');
+            expect(submitButton).toBeDefined();
             
             fireEvent.click(submitButton as HTMLElement);
 
-            // Wait a bit to ensure any async operations complete
             await waitFor(() => {
-              // Check that an error alert is displayed
-              const errorAlert = container.querySelector('[role="alert"]');
-              return errorAlert !== null;
+              expect(container.querySelector('[role="alert"]')).not.toBeNull();
             }, { timeout: 500 });
 
-            // Verify runPipeline was NOT called
-            const wasNotCalled = mockRunPipeline.mock.calls.length === 0;
-
-            // Verify error message is displayed
             const errorAlert = container.querySelector('[role="alert"]');
-            const hasErrorMessage = errorAlert?.textContent?.includes('診療テキストを入力してください') ?? false;
-
-            return wasNotCalled && hasErrorMessage;
-          } catch (error) {
-            // If waitFor times out, check if error is displayed anyway
-            const errorAlert = container.querySelector('[role="alert"]');
-            const hasErrorMessage = errorAlert?.textContent?.includes('診療テキストを入力してください') ?? false;
-            const wasNotCalled = mockRunPipeline.mock.calls.length === 0;
-            
-            return wasNotCalled && hasErrorMessage;
+            expect(mockRunPipeline).not.toHaveBeenCalled();
+            expect(errorAlert?.textContent ?? '').toContain('Please enter clinical notes');
+            return true;
           } finally {
             unmount();
           }
@@ -550,53 +510,36 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
           );
 
           try {
-            // Switch to JSON_INPUT tab
             const jsonTab = Array.from(
               container.querySelectorAll('[role="tab"]')
             ).find((btn) => btn.textContent === TAB_LABELS.JSON_INPUT);
-
-            if (!jsonTab) {
-              return false;
-            }
+            expect(jsonTab).toBeDefined();
 
             fireEvent.click(jsonTab as HTMLElement);
 
-            // Find the textarea (JSON_INPUT tab renders only one textarea)
             const jsonTextarea = container.querySelector('textarea');
+            expect(jsonTextarea).not.toBeNull();
 
-            if (!jsonTextarea) {
-              return false;
-            }
-
-            // Enter valid JSON
             const jsonString = JSON.stringify(jsonValue);
             fireEvent.change(jsonTextarea, { target: { value: jsonString } });
 
-            // Find and click the submit button
             const submitButton = Array.from(
               container.querySelectorAll('button[type="button"]')
-            ).find((btn) => btn.textContent?.includes('パイプライン実行'));
-
-            if (!submitButton) {
-              return false;
-            }
+            ).find((btn) => btn.getAttribute('role') !== 'tab');
+            expect(submitButton).toBeDefined();
 
             fireEvent.click(submitButton as HTMLElement);
 
-            // Wait for the mock to be called
             await waitFor(() => {
-              return mockRunPipeline.mock.calls.length === 1;
+              expect(mockRunPipeline).toHaveBeenCalled();
             }, { timeout: 1000 });
 
-            // Verify the call parameters
-            const callArgs = mockRunPipeline.mock.calls[0][0];
-            return (
-              callArgs.entryPoint === 'JSON_INPUT' &&
-              callArgs.cowId === cowId &&
-              JSON.stringify(callArgs.extractedJson) === jsonString
-            );
-          } catch (error) {
-            return false;
+            const callArgs = mockRunPipeline.mock.calls.at(-1)?.[0];
+            expect(callArgs).toBeDefined();
+            expect(callArgs.entryPoint).toBe('JSON_INPUT');
+            expect(callArgs.cowId).toBe(cowId);
+            expect(JSON.stringify(callArgs.extractedJson)).toBe(jsonString);
+            return true;
           } finally {
             unmount();
           }
@@ -645,61 +588,33 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
           );
 
           try {
-            // Switch to JSON_INPUT tab
             const jsonTab = Array.from(
               container.querySelectorAll('[role="tab"]')
             ).find((btn) => btn.textContent === TAB_LABELS.JSON_INPUT);
-
-            if (!jsonTab) {
-              return false;
-            }
+            expect(jsonTab).toBeDefined();
 
             fireEvent.click(jsonTab as HTMLElement);
 
-            // Find the textarea (JSON_INPUT tab renders only one textarea)
             const jsonTextarea = container.querySelector('textarea');
+            expect(jsonTextarea).not.toBeNull();
 
-            if (!jsonTextarea) {
-              return false;
-            }
-
-            // Enter invalid JSON
             fireEvent.change(jsonTextarea, { target: { value: invalidJson } });
 
-            // Find and click the submit button
             const submitButton = Array.from(
               container.querySelectorAll('button[type="button"]')
-            ).find((btn) => btn.textContent?.includes('パイプライン実行'));
-
-            if (!submitButton) {
-              return false;
-            }
+            ).find((btn) => btn.getAttribute('role') !== 'tab');
+            expect(submitButton).toBeDefined();
 
             fireEvent.click(submitButton as HTMLElement);
 
-            // Wait a bit to ensure any async operations complete
             await waitFor(() => {
-              const errorAlert = container.querySelector('[role="alert"]');
-              return errorAlert !== null;
+              expect(container.querySelector('[role="alert"]')).not.toBeNull();
             }, { timeout: 500 });
 
-            // Verify runPipeline was NOT called
-            const wasNotCalled = mockRunPipeline.mock.calls.length === 0;
-
-            // Verify error message is displayed
             const errorAlert = container.querySelector('[role="alert"]');
-            const hasErrorMessage =
-              errorAlert?.textContent?.includes('JSONの形式が正しくありません') ?? false;
-
-            return wasNotCalled && hasErrorMessage;
-          } catch (error) {
-            // If waitFor times out, check if error is displayed anyway
-            const errorAlert = container.querySelector('[role="alert"]');
-            const hasErrorMessage =
-              errorAlert?.textContent?.includes('JSONの形式が正しくありません') ?? false;
-            const wasNotCalled = mockRunPipeline.mock.calls.length === 0;
-
-            return wasNotCalled && hasErrorMessage;
+            expect(mockRunPipeline).not.toHaveBeenCalled();
+            expect(errorAlert?.textContent ?? '').toContain('Invalid JSON format');
+            return true;
           } finally {
             unmount();
           }
@@ -747,49 +662,33 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
           );
 
           try {
-            // Find the textarea (TEXT_INPUT is the default tab)
             const textarea = container.querySelector('textarea');
-            if (!textarea) {
-              return false;
-            }
+            expect(textarea).not.toBeNull();
 
-            // Enter some text
             fireEvent.change(textarea, { target: { value: 'test text' } });
 
-            // Find and click the submit button
             const submitButton = Array.from(
               container.querySelectorAll('button[type="button"]')
-            ).find((btn) => btn.textContent?.includes('パイプライン実行'));
-
-            if (!submitButton) {
-              return false;
-            }
+            ).find((btn) => btn.getAttribute('role') !== 'tab');
+            expect(submitButton).toBeDefined();
 
             fireEvent.click(submitButton as HTMLElement);
 
-            // Wait for the error to be displayed
             await waitFor(() => {
-              const errorAlert = container.querySelector('[role="alert"]');
-              return errorAlert !== null;
+              expect(container.querySelector('[role="alert"]')).not.toBeNull();
             }, { timeout: 1000 });
 
-            // Verify all error messages are displayed
             const errorAlert = container.querySelector('[role="alert"]');
-            const allErrorsDisplayed = errors.every(
+            expect(
+              errors.every(
               (err) => errorAlert?.textContent?.includes(err.message) ?? false
-            );
+              )
+            ).toBe(true);
 
-            // Verify onError callback was called
-            const callbackCalled = onErrorMock.mock.calls.length === 1;
-
-            // Verify callback received concatenated error text
             const expectedErrorText = errors.map((e) => e.message).join('\n');
-            const callbackReceivedCorrectText =
-              callbackCalled && onErrorMock.mock.calls[0][0] === expectedErrorText;
-
-            return allErrorsDisplayed && callbackCalled && callbackReceivedCorrectText;
-          } catch (error) {
-            return false;
+            expect(onErrorMock).toHaveBeenCalledTimes(1);
+            expect(onErrorMock.mock.calls[0][0]).toBe(expectedErrorText);
+            return true;
           } finally {
             unmount();
           }
@@ -837,30 +736,20 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
           );
 
           try {
-            // Find the textarea (TEXT_INPUT is the default tab)
             const textarea = container.querySelector('textarea');
-            if (!textarea) {
-              return false;
-            }
+            expect(textarea).not.toBeNull();
 
-            // Enter some text
             fireEvent.change(textarea, { target: { value: 'test text' } });
 
-            // Find and click the submit button
             const submitButton = Array.from(
               container.querySelectorAll('button[type="button"]')
-            ).find((btn) => btn.textContent?.includes('パイプライン実行'));
-
-            if (!submitButton) {
-              return false;
-            }
+            ).find((btn) => btn.getAttribute('role') !== 'tab');
+            expect(submitButton).toBeDefined();
 
             fireEvent.click(submitButton as HTMLElement);
 
-            // Wait for the result to be displayed
             await waitFor(() => {
-              const resultSection = container.querySelector('.pipeline-entry-form__result');
-              return resultSection !== null;
+              expect(container.textContent || '').toContain('PIPELINE_OUTPUT');
             }, { timeout: 1000 });
 
             const containerText = container.textContent || '';
@@ -872,16 +761,14 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
             if (result.visitId.trim().length > 0) {
               checks.push(containerText.includes(result.visitId));
             } else {
-              // For empty/whitespace visitId, just check that the label is present
-              checks.push(containerText.includes('Visit ID'));
+              checks.push(containerText.includes('VISIT_ID'));
             }
 
             // cowId is always required - check if it's non-empty
             if (result.cowId.trim().length > 0) {
               checks.push(containerText.includes(result.cowId));
             } else {
-              // For empty/whitespace cowId, just check that the label is present
-              checks.push(containerText.includes('Cow ID'));
+              checks.push(containerText.includes('COW_ID'));
             }
 
             // Optional fields - check if non-null and non-empty
@@ -898,10 +785,10 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
             }
 
             if (result.extractedJson != null) {
-              // Check that the ExtractedJSON section is displayed
-              // We check for the label rather than exact JSON content
-              // because formatting may vary
-              checks.push(containerText.includes('ExtractedJSON'));
+              checks.push(
+                containerText.includes('EXTRACTED_JSON') ||
+                  containerText.includes(JSON.stringify(result.extractedJson))
+              );
             }
 
             if (result.soapText != null && result.soapText.trim().length > 0) {
@@ -921,10 +808,8 @@ describe('Feature: pipeline-entry-form — Property tests', () => {
               }
             }
 
-            // All checks must pass
-            return checks.every((check) => check === true);
-          } catch (error) {
-            return false;
+            expect(checks.every((check) => check === true)).toBe(true);
+            return true;
           } finally {
             unmount();
           }
