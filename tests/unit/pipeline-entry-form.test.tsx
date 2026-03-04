@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { PipelineEntryForm } from '../../src/components/PipelineEntryForm';
 import type { PipelineResult } from '../../src/components/PipelineEntryForm';
 import { DevEntryPoints } from '../../src/components/DevEntryPoints';
@@ -564,6 +565,105 @@ describe('PipelineEntryForm component', () => {
   // Upload status display tests (Requirement 3.5)
   // ---------------------------------------------------------------------------
   describe('upload status display', () => {
+    it('regression: audio file flow reaches runPipeline under React.StrictMode', async () => {
+      const user = userEvent.setup();
+      mockUploadData.mockReturnValue({ result: Promise.resolve(undefined) });
+      mockRunPipeline.mockResolvedValue({
+        data: { visitId: 'visit-strict', cowId: 'test-cow-001', status: 'COMPLETED' },
+        errors: null,
+      });
+
+      const { container } = render(
+        <StrictMode>
+          <PipelineEntryForm cowId="test-cow-001" mode="dev" />
+        </StrictMode>
+      );
+
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
+      await user.click(audioTab);
+
+      const file = new File(['audio content'], 'strict.wav', { type: 'audio/wav' });
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+
+      const submitButton = screen.getByRole('button', { name: /Upload and Run/i });
+      await user.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockRunPipeline).toHaveBeenCalledWith(
+          expect.objectContaining({
+            entryPoint: 'AUDIO_FILE',
+            cowId: 'test-cow-001',
+          })
+        );
+      });
+    });
+
+    it('emits PipelineEntryForm debug logs only in dev mode', async () => {
+      const user = userEvent.setup();
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      try {
+        mockUploadData.mockReturnValue({ result: Promise.resolve(undefined) });
+        mockRunPipeline.mockResolvedValue({
+          data: { visitId: 'visit-debug-dev', cowId: 'test-cow-001', status: 'COMPLETED' },
+          errors: null,
+        });
+
+        const { container } = render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
+
+        const audioTab = screen.getByRole('tab', { name: 'Audio File' });
+        await user.click(audioTab);
+
+        const file = new File(['audio content'], 'dev.wav', { type: 'audio/wav' });
+        const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+        await user.upload(fileInput, file);
+        await user.click(screen.getByRole('button', { name: /Upload and Run/i }));
+
+        await waitFor(() => {
+          expect(mockRunPipeline).toHaveBeenCalled();
+        });
+
+        const pipelineDebugCalls = debugSpy.mock.calls.filter(
+          ([firstArg]) =>
+            typeof firstArg === 'string' && firstArg.includes('[PipelineEntryForm]')
+        );
+        expect(pipelineDebugCalls.length).toBeGreaterThan(0);
+      } finally {
+        debugSpy.mockRestore();
+      }
+    });
+
+    it('does not emit PipelineEntryForm debug logs in production mode', async () => {
+      const user = userEvent.setup();
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      try {
+        mockRunPipeline.mockResolvedValue({
+          data: { visitId: 'visit-debug-prod', cowId: 'test-cow-001', status: 'COMPLETED' },
+          errors: null,
+        });
+
+        render(<PipelineEntryForm cowId="test-cow-001" mode="production" />);
+        await user.click(screen.getByTestId('voice-recorder-complete'));
+
+        await waitFor(() => {
+          expect(mockRunPipeline).toHaveBeenCalledWith(
+            expect.objectContaining({
+              entryPoint: 'PRODUCTION',
+              cowId: 'test-cow-001',
+            })
+          );
+        });
+
+        const pipelineDebugCalls = debugSpy.mock.calls.filter(
+          ([firstArg]) =>
+            typeof firstArg === 'string' && firstArg.includes('[PipelineEntryForm]')
+        );
+        expect(pipelineDebugCalls.length).toBe(0);
+      } finally {
+        debugSpy.mockRestore();
+      }
+    });
+
     it('displays upload status during audio file upload', async () => {
       const user = userEvent.setup();
       
