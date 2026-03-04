@@ -29,12 +29,26 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
 
   const isSupported = typeof window !== 'undefined' && 'MediaRecorder' in window;
 
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    stopTimer();
+    if (mediaRecorderRef.current?.state !== 'inactive') {
+      mediaRecorderRef.current?.stop();
+    }
+  }, [stopTimer]);
+
   useEffect(() => {
     return () => {
       stopTimer();
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [stopTimer]);
 
   useEffect(() => {
     if (state !== 'recording') return;
@@ -44,14 +58,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     if (elapsed >= MAX_RECORDING_SECONDS) {
       stopRecording();
     }
-  }, [elapsed, autoStopWarning, state]);
-
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-  };
+  }, [elapsed, autoStopWarning, state, stopRecording]);
 
   const startTimer = () => {
     setElapsed(0);
@@ -131,13 +138,6 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     recorder.start(250);
     setState('recording');
     startTimer();
-  };
-
-  const stopRecording = () => {
-    stopTimer();
-    if (mediaRecorderRef.current?.state !== 'inactive') {
-      mediaRecorderRef.current?.stop();
-    }
   };
 
   const reset = () => {
