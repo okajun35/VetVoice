@@ -12,7 +12,7 @@
 import type { Schema } from "./resource";
 import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
 import { TranscribeClient } from "@aws-sdk/client-transcribe";
-import { S3Client } from "@aws-sdk/client-s3";
+import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
@@ -55,6 +55,15 @@ const dynamoClient = DynamoDBDocumentClient.from(
  */
 const DEFAULT_TRANSCRIBE_VOCABULARY_NAME = "vetvoice-ja-vocab-v1";
 const CIDR_PATTERN = /(?:^|[^a-z0-9])cidr(?:[^a-z0-9]|$)/i;
+const DEFAULT_MAX_TEXT_CHARS = 1500;
+const DEFAULT_MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+
+function getPositiveIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
 
 function normalizeRoutingText(text: string): string {
   return text.normalize("NFKC").trim().toLowerCase();
@@ -291,6 +300,19 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     process.env.AMPLIFY_DATA_RESOURCE_NAME_VISIT ??
     process.env.VISIT_TABLE_NAME ??
     "";
+  const maxTextChars = getPositiveIntEnv("MAX_TEXT_CHARS", DEFAULT_MAX_TEXT_CHARS);
+  const maxAudioBytes = getPositiveIntEnv("MAX_AUDIO_BYTES", DEFAULT_MAX_AUDIO_BYTES);
+  const transcriptTextInput = typeof transcriptText === "string" ? transcriptText : null;
+  const transcriptTextForProcessing =
+    transcriptTextInput != null && transcriptTextInput.length > maxTextChars
+      ? null
+      : transcriptTextInput;
+
+  if (transcriptTextInput != null && transcriptTextInput.length > maxTextChars) {
+    warnings.push(
+      `transcriptText exceeds max length (${transcriptTextInput.length}/${maxTextChars}); skipping extraction`
+    );
+  }
 
   const buildOutput = (status: "IN_PROGRESS" | "COMPLETED") => ({
     visitId,
@@ -387,51 +409,70 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     } else {
       try {
         const bucketName = process.env.STORAGE_BUCKET_NAME ?? "";
-        const vocabularyName = (
-          process.env.TRANSCRIBE_VOCABULARY_NAME ??
-          DEFAULT_TRANSCRIBE_VOCABULARY_NAME
-        ).trim();
-
-        if (transcribeJobName) {
-          const progress = await checkTranscriptionJob(
-            transcribeJobName,
-            { bucketName },
-            transcribeClient,
-            s3Client
-          );
-
-          if (progress.status === "COMPLETED") {
-            transcriptRaw = progress.transcript_raw ?? "";
-          } else if (progress.status === "FAILED") {
-            const reason = progress.failure_reason ?? "Unknown failure";
-            warnings.push(`Transcription failed: ${reason}; falling back to transcriptText`);
-            transcribeJobName = null;
-          } else {
-            warnings.push(
-              `Transcription is ${progress.status}; retry runPipeline with visitId/transcribeJobName`
-            );
-            await saveVisitRecord("IN_PROGRESS");
-            return buildOutput("IN_PROGRESS");
-          }
-        } else {
-          const preferredJobName = `vetvoice-${visitId}-${Date.now()}`;
-          const started = await startTranscriptionJob(
-            {
-              audioKey,
-              language: "ja-JP",
-              bucketName,
-              vocabularyName: vocabularyName ? vocabularyName : undefined,
-            },
-            transcribeClient,
-            preferredJobName
-          );
-          transcribeJobName = started.job_name;
-
+        if (!bucketName) {
           warnings.push(
-            "Transcription started asynchronously; retry runPipeline with visitId/transcribeJobName"
+            "STORAGE_BUCKET_NAME is not configured; skipping transcription and falling back to transcriptText"
           );
-          await saveVisitRecord("IN_PROGRESS");
-          return buildOutput("IN_PROGRESS");
+        } else {
+          const head = await s3Client.send(
+            new HeadObjectCommand({
+              Bucket: bucketName,
+              Key: audioKey,
+            })
+          );
+          const contentLength = head.ContentLength ?? null;
+          if (contentLength != null && contentLength > maxAudioBytes) {
+            warnings.push(
+              `audio file size exceeds max allowed (${contentLength}/${maxAudioBytes} bytes); skipping transcription`
+            );
+          } else {
+            const vocabularyName = (
+              process.env.TRANSCRIBE_VOCABULARY_NAME ??
+              DEFAULT_TRANSCRIBE_VOCABULARY_NAME
+            ).trim();
+
+            if (transcribeJobName) {
+              const progress = await checkTranscriptionJob(
+                transcribeJobName,
+                { bucketName },
+                transcribeClient,
+                s3Client
+              );
+
+              if (progress.status === "COMPLETED") {
+                transcriptRaw = progress.transcript_raw ?? "";
+              } else if (progress.status === "FAILED") {
+                const reason = progress.failure_reason ?? "Unknown failure";
+                warnings.push(`Transcription failed: ${reason}; falling back to transcriptText`);
+                transcribeJobName = null;
+              } else {
+                warnings.push(
+                  `Transcription is ${progress.status}; retry runPipeline with visitId/transcribeJobName`
+                );
+                await saveVisitRecord("IN_PROGRESS");
+                return buildOutput("IN_PROGRESS");
+              }
+            } else {
+              const preferredJobName = `vetvoice-${visitId}-${Date.now()}`;
+              const started = await startTranscriptionJob(
+                {
+                  audioKey,
+                  language: "ja-JP",
+                  bucketName,
+                  vocabularyName: vocabularyName ? vocabularyName : undefined,
+                },
+                transcribeClient,
+                preferredJobName
+              );
+              transcribeJobName = started.job_name;
+
+              warnings.push(
+                "Transcription started asynchronously; retry runPipeline with visitId/transcribeJobName"
+              );
+              await saveVisitRecord("IN_PROGRESS");
+              return buildOutput("IN_PROGRESS");
+            }
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -465,9 +506,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
     // Determine working text:
     //   PRODUCTION/AUDIO_FILE: transcriptRaw (from Transcribe, may be null on error)
     //   TEXT_INPUT: transcriptText argument
-    const workingText =
-      transcriptRaw ??
-      (typeof transcriptText === "string" ? transcriptText : null);
+    const workingText = transcriptRaw ?? transcriptTextForProcessing;
 
     if (!workingText) {
       warnings.push("No transcript text available; extractedJson will be empty");

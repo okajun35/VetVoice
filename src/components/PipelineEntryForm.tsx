@@ -103,6 +103,8 @@ const AUDIO_PIPELINE_MAX_POLLS = 72;
 const TRANSCRIPTION_WAITING_LABEL = 'Waiting for transcription';
 const TRANSCRIPTION_STARTING_LABEL = 'Starting transcription job';
 const AUDIO_UPLOADING_LABEL = 'Uploading';
+const MAX_TEXT_CHARS = 1500;
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 
 interface ExtractedJsonDisplay {
   text: string;
@@ -377,6 +379,10 @@ export function PipelineEntryForm({
       setError('Please enter clinical notes text.');
       return;
     }
+    if (transcriptText.length > MAX_TEXT_CHARS) {
+      setError(`Clinical notes must be ${MAX_TEXT_CHARS} characters or less.`);
+      return;
+    }
     setLoading(true);
     resetOutput();
     try {
@@ -399,6 +405,10 @@ export function PipelineEntryForm({
   const handleAudioFileRun = async () => {
     if (!audioFile) {
       setError('Please select an audio file.');
+      return;
+    }
+    if (audioFile.size > MAX_AUDIO_BYTES) {
+      setError(`Audio file must be ${(MAX_AUDIO_BYTES / (1024 * 1024)).toFixed(0)}MB or smaller.`);
       return;
     }
     setLoading(true);
@@ -567,8 +577,12 @@ export function PipelineEntryForm({
               onChange={(e) => setTranscriptText(e.target.value)}
               placeholder="Example: Temp 39.5C, reduced appetite, suspect displaced abomasum. IV glucose 500ml."
               rows={6}
+              maxLength={MAX_TEXT_CHARS}
               className={styles.field}
             />
+            <p className={styles.fileInfo}>
+              Characters: {transcriptText.length}/{MAX_TEXT_CHARS}
+            </p>
             <div className={styles.actionRow}>
               <button
                 type="button"

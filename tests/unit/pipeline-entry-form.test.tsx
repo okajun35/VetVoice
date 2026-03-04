@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PipelineEntryForm } from '../../src/components/PipelineEntryForm';
 import type { PipelineResult } from '../../src/components/PipelineEntryForm';
@@ -341,6 +341,45 @@ describe('PipelineEntryForm component', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Please enter clinical notes text.'
       );
+      expect(mockRunPipeline).not.toHaveBeenCalled();
+    });
+
+    it('blocks text input longer than 1500 chars', async () => {
+      const user = userEvent.setup();
+      render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
+
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
+      fireEvent.change(textarea, { target: { value: 'a'.repeat(1501) } });
+
+      const submitButton = screen.getByRole('button', { name: /Run Pipeline/i });
+      await user.click(submitButton);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Clinical notes must be 1500 characters or less.'
+      );
+      expect(mockRunPipeline).not.toHaveBeenCalled();
+    });
+
+    it('blocks audio file larger than 8MB', async () => {
+      const user = userEvent.setup();
+      const { container } = render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
+
+      const audioTab = screen.getByRole('tab', { name: 'Audio File' });
+      await user.click(audioTab);
+
+      const file = new File([new Uint8Array(8 * 1024 * 1024 + 1)], 'large.wav', {
+        type: 'audio/wav',
+      });
+      const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(fileInput, file);
+
+      const submitButton = screen.getByRole('button', { name: /Upload and Run/i });
+      await user.click(submitButton);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Audio file must be 8MB or smaller.'
+      );
+      expect(mockUploadData).not.toHaveBeenCalled();
       expect(mockRunPipeline).not.toHaveBeenCalled();
     });
 
@@ -824,6 +863,13 @@ describe('PipelineEntryForm component', () => {
           transcriptText: '体温39.5度',
         });
       });
+    });
+
+    it('applies maxLength=1500 to text input textarea', () => {
+      render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
+
+      const textarea = screen.getByPlaceholderText(/Example: Temp/i);
+      expect(textarea).toHaveAttribute('maxLength', '1500');
     });
 
     it('handles empty warnings array', async () => {
