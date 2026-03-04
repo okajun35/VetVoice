@@ -17,6 +17,7 @@
     "eval:extractor:kpi": "tsx scripts/extractor-kpi-weekly.ts",
     "eval:soap:template": "tsx scripts/create-soap-comparison-template.ts",
     "eval:soap:compare": "tsx scripts/compare-soap-models.ts",
+    "eval:soap:assist": "tsx scripts/assist-soap-annotation.ts",
     "transcribe:vocab:update": "./scripts/transcribe-vocab-update.sh",
     "transcribe:vocab:status": "./scripts/transcribe-vocab-status.sh"
   },

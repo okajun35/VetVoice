@@ -287,6 +287,32 @@ npm run eval:soap:compare -- tmp/soap-model-comparison-sample.40.csv tmp/soap-mo
   - `tmp/soap-model-compare/soap-comparison.latest.json`
   - `tmp/soap-model-compare/soap-comparison.latest.md`
   - `tmp/soap-model-compare/soap-scoring.template.csv`（人手採点用）
+    - 採点列: `score_factuality_1to5`, `score_completeness_1to5`, `score_readability_1to5`, `score_safety_1to5`, `score_over_inference_1to5`, `score_overall_1to5`, `score_rank_1best`, `review_comment`
+
+### SOAP採点のLLM補助（Human-in-the-loop）
+
+最終スコアは人間が決める前提で、差分抽出と補助スコア提案をLLMに実行させます。
+
+```bash
+# Sonnet 4.6 推奨
+npm run eval:soap:assist -- \
+  tmp/soap-model-compare/soap-scoring.template.csv \
+  tmp/soap-model-compare \
+  --model us.anthropic.claude-sonnet-4-6
+```
+
+- 追記される主な列:
+  - `llm_factual_issues`, `llm_missing_info`, `llm_over_inference`, `llm_safety_risk`
+  - `llm_suggested_factuality_1to5`, `llm_suggested_completeness_1to5`, `llm_suggested_readability_1to5`, `llm_suggested_safety_1to5`, `llm_suggested_over_inference_1to5`
+  - `llm_error`（空であれば成功）
+- 出力:
+  - `tmp/soap-model-compare/soap-scoring.llm-assisted.csv`
+  - `tmp/soap-model-compare/soap-scoring.llm-assisted.latest.json`
+- オプション:
+  - `--max-retries <n>`（既定: 2）
+  - `--retry-delay-ms <ms>`（既定: 1200）
+
+詳細は `doc/soap-llm-assisted-annotation.md` を参照してください。
 
 ## デプロイ
 

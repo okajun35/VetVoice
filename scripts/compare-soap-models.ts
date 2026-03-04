@@ -112,6 +112,7 @@ interface ScoringCsvRow {
   score_completeness_1to5: string;
   score_readability_1to5: string;
   score_safety_1to5: string;
+  score_over_inference_1to5: string;
   score_overall_1to5: string;
   score_rank_1best: string;
   review_comment: string;
@@ -511,6 +512,7 @@ function buildScoringCsvRows(report: SoapComparisonReport): ScoringCsvRow[] {
         score_completeness_1to5: "",
         score_readability_1to5: "",
         score_safety_1to5: "",
+        score_over_inference_1to5: "",
         score_overall_1to5: "",
         score_rank_1best: "",
         review_comment: result.error ?? "",
@@ -537,6 +539,7 @@ function toScoringCsv(rows: ScoringCsvRow[]): string {
     "score_completeness_1to5",
     "score_readability_1to5",
     "score_safety_1to5",
+    "score_over_inference_1to5",
     "score_overall_1to5",
     "score_rank_1best",
     "review_comment",
