@@ -12,10 +12,15 @@ interface VoiceRecorderProps {
 
 type RecorderState = 'idle' | 'recording' | 'uploading' | 'done' | 'error';
 
+const MAX_RECORDING_SECONDS = 90;
+const AUTO_STOP_WARNING_SECONDS = 75;
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
+
 export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsed, setElapsed] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [autoStopWarning, setAutoStopWarning] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -24,22 +29,40 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
 
   const isSupported = typeof window !== 'undefined' && 'MediaRecorder' in window;
 
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    stopTimer();
+    if (mediaRecorderRef.current?.state !== 'inactive') {
+      mediaRecorderRef.current?.stop();
+    }
+  }, [stopTimer]);
+
   useEffect(() => {
     return () => {
       stopTimer();
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [stopTimer]);
 
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  useEffect(() => {
+    if (state !== 'recording') return;
+    if (elapsed >= AUTO_STOP_WARNING_SECONDS && !autoStopWarning) {
+      setAutoStopWarning(true);
     }
-  };
+    if (elapsed >= MAX_RECORDING_SECONDS) {
+      stopRecording();
+    }
+  }, [elapsed, autoStopWarning, state, stopRecording]);
 
   const startTimer = () => {
     setElapsed(0);
+    setAutoStopWarning(false);
     timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
   };
 
@@ -82,8 +105,15 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     recorder.onstop = async () => {
       stream.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
+      stopTimer();
 
       const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
+      if (blob.size > MAX_AUDIO_BYTES) {
+        handleError(
+          `音声ファイルが上限サイズを超えています（最大 ${(MAX_AUDIO_BYTES / (1024 * 1024)).toFixed(0)}MB）。`
+        );
+        return;
+      }
       const key = `audio/${cowId}/${Date.now()}.webm`;
 
       setState('uploading');
@@ -110,17 +140,11 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     startTimer();
   };
 
-  const stopRecording = () => {
-    stopTimer();
-    if (mediaRecorderRef.current?.state !== 'inactive') {
-      mediaRecorderRef.current?.stop();
-    }
-  };
-
   const reset = () => {
     setState('idle');
     setElapsed(0);
     setErrorMessage(null);
+    setAutoStopWarning(false);
     chunksRef.current = [];
   };
 
@@ -147,6 +171,11 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
           <div className={styles.dot} aria-hidden="true" />
           <span className={styles.indicatorLabel}>Recording In Progress</span>
           <span className={styles.timer}>{formatTime(elapsed)}</span>
+        </div>
+      )}
+      {state === 'recording' && autoStopWarning && (
+        <div className={styles.status} role="status" aria-live="polite">
+          最大{MAX_RECORDING_SECONDS}秒で自動停止します
         </div>
       )}
 

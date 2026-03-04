@@ -47,6 +47,7 @@ vi.mock("@aws-sdk/client-transcribe", () => ({
 vi.mock("@aws-sdk/client-s3", () => ({
   S3Client: vi.fn(() => ({ send: s3MockSend })),
   GetObjectCommand: vi.fn((input: unknown) => ({ _input: input })),
+  HeadObjectCommand: vi.fn((input: unknown) => ({ _input: input })),
 }));
 
 vi.mock("@aws-sdk/client-dynamodb", () => ({
@@ -115,6 +116,7 @@ describe("runPipeline integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dynamoMockSend.mockResolvedValue({});
+    s3MockSend.mockResolvedValue({ ContentLength: 1024 });
     process.env.VISIT_TABLE_NAME = "Visit-test";
     process.env.STORAGE_BUCKET_NAME = "vetvoice-test-bucket";
   });
@@ -123,6 +125,21 @@ describe("runPipeline integration", () => {
   // TEXT_INPUT
   // -------------------------------------------------------------------------
   describe("TEXT_INPUT entry point", () => {
+    it("adds warning and skips extraction when transcriptText exceeds 1500 chars", async () => {
+      const result = await handler(
+        makeEvent({ entryPoint: "TEXT_INPUT", transcriptText: "a".repeat(1501) }),
+        MOCK_CONTEXT
+      );
+
+      expect(result.extractedJson).toBeNull();
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("transcriptText exceeds max length"),
+        ])
+      );
+      expect(bedrockMockSend).not.toHaveBeenCalled();
+    });
+
     it("returns visitId, cowId, and valid extractedJson", async () => {
       bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
 
@@ -428,6 +445,46 @@ describe("runPipeline integration", () => {
   // PRODUCTION / AUDIO_FILE fallback
   // -------------------------------------------------------------------------
   describe("PRODUCTION entry point", () => {
+    it("adds warning and skips transcription when audio file size exceeds 8MB", async () => {
+      s3MockSend.mockResolvedValue({ ContentLength: 8 * 1024 * 1024 + 1 });
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "PRODUCTION",
+          audioKey: "audio/test-cow-001/large.webm",
+        }),
+        MOCK_CONTEXT
+      );
+
+      expect(result.status).toBe("COMPLETED");
+      expect(result.transcribeJobName).toBeNull();
+      expect(result.extractedJson).toBeNull();
+      expect(result.warnings).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("audio file size exceeds max allowed"),
+        ])
+      );
+      expect(transcribeMockSend).not.toHaveBeenCalled();
+    });
+
+    it("clears stale transcribeJobName when audio file size exceeds 8MB", async () => {
+      s3MockSend.mockResolvedValue({ ContentLength: 8 * 1024 * 1024 + 1 });
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "PRODUCTION",
+          audioKey: "audio/test-cow-001/large.webm",
+          transcribeJobName: "old-job-name",
+        }),
+        MOCK_CONTEXT
+      );
+
+      expect(result.transcribeJobName).toBeNull();
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.transcribeJobName).toBeUndefined();
+    });
+
     it("adds warning and falls back to transcriptText when audioKey is missing", async () => {
       bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
 
@@ -489,11 +546,13 @@ describe("runPipeline integration", () => {
           },
         },
       });
-      s3MockSend.mockResolvedValue({
-        Body: {
-          transformToString: vi.fn().mockResolvedValue(JSON.stringify(transcriptJson)),
-        },
-      });
+      s3MockSend
+        .mockResolvedValueOnce({ ContentLength: 1024 })
+        .mockResolvedValueOnce({
+          Body: {
+            transformToString: vi.fn().mockResolvedValue(JSON.stringify(transcriptJson)),
+          },
+        });
       bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
 
       const result = await handler(

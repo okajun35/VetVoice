@@ -100,9 +100,13 @@ const KYOSAI_MODEL_OPTIONS = [
 
 const AUDIO_PIPELINE_POLL_INTERVAL_MS = 5000;
 const AUDIO_PIPELINE_MAX_POLLS = 72;
+const AUDIO_PIPELINE_QUERY_TIMEOUT_MS = 20_000;
 const TRANSCRIPTION_WAITING_LABEL = 'Waiting for transcription';
 const TRANSCRIPTION_STARTING_LABEL = 'Starting transcription job';
 const AUDIO_UPLOADING_LABEL = 'Uploading';
+const AUDIO_UPLOAD_TIMEOUT_MS = 20_000;
+const MAX_TEXT_CHARS = 1500;
+const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 
 interface ExtractedJsonDisplay {
   text: string;
@@ -179,6 +183,7 @@ export function PipelineEntryForm({
   const audioFileInputRef = useRef<HTMLInputElement | null>(null);
   const isMountedRef = useRef(true);
   const pollingRunIdRef = useRef(0);
+  const enableDebugLogs = mode === 'dev' && import.meta.env.DEV;
 
   useEffect(() => {
     setEffectiveCowId(cowId);
@@ -202,6 +207,7 @@ export function PipelineEntryForm({
   }, [releaseLocalPreviewUrl]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       // Invalidate any active polling loop on unmount.
@@ -317,8 +323,25 @@ export function PipelineEntryForm({
     for (let poll = 0; poll < AUDIO_PIPELINE_MAX_POLLS; poll++) {
       if (!isRunActive()) return;
       setUploadStatus(poll > 0 ? TRANSCRIPTION_WAITING_LABEL : TRANSCRIPTION_STARTING_LABEL);
-
-      const { data, errors } = await client.queries.runPipeline({
+      if (enableDebugLogs) {
+        console.debug('[PipelineEntryForm] runPipeline poll start', {
+          poll,
+          entryPoint,
+          audioKey,
+          visitId,
+          transcribeJobName,
+        });
+      }
+      const queryStartedAt = Date.now();
+      let queryTimeoutId: ReturnType<typeof setTimeout> | undefined;
+      const queryTimeout = new Promise<never>((_, reject) => {
+        queryTimeoutId = setTimeout(() => {
+          reject(
+            new Error(`runPipeline query timed out after ${AUDIO_PIPELINE_QUERY_TIMEOUT_MS / 1000}s.`)
+          );
+        }, AUDIO_PIPELINE_QUERY_TIMEOUT_MS);
+      });
+      const query = client.queries.runPipeline({
         entryPoint,
         cowId: effectiveCowId,
         audioKey,
@@ -326,6 +349,21 @@ export function PipelineEntryForm({
         ...(transcribeJobName ? { transcribeJobName } : {}),
         ...buildDevModelOverrides(),
       });
+      let response: Awaited<typeof query>;
+      try {
+        response = await Promise.race([query, queryTimeout]);
+      } finally {
+        if (queryTimeoutId) clearTimeout(queryTimeoutId);
+      }
+      const { data, errors } = response;
+      if (enableDebugLogs) {
+        console.debug('[PipelineEntryForm] runPipeline poll response', {
+          poll,
+          elapsedMs: Date.now() - queryStartedAt,
+          hasData: data != null,
+          errorCount: errors?.length ?? 0,
+        });
+      }
 
       if (!isRunActive()) return;
       if (errors && errors.length > 0) {
@@ -377,6 +415,10 @@ export function PipelineEntryForm({
       setError('Please enter clinical notes text.');
       return;
     }
+    if (transcriptText.length > MAX_TEXT_CHARS) {
+      setError(`Clinical notes must be ${MAX_TEXT_CHARS} characters or less.`);
+      return;
+    }
     setLoading(true);
     resetOutput();
     try {
@@ -401,16 +443,51 @@ export function PipelineEntryForm({
       setError('Please select an audio file.');
       return;
     }
+    if (audioFile.size > MAX_AUDIO_BYTES) {
+      setError(`Audio file must be ${(MAX_AUDIO_BYTES / (1024 * 1024)).toFixed(0)}MB or smaller.`);
+      return;
+    }
     setLoading(true);
     resetOutput();
     setUploadStatus(AUDIO_UPLOADING_LABEL);
     try {
       const key = `audio/${effectiveCowId}/${Date.now()}_${audioFile.name}`;
-      await uploadData({
+      const uploadTask = uploadData({
         path: key,
         data: audioFile,
         options: { contentType: audioFile.type || 'audio/wav' },
-      }).result;
+      });
+      const uploadStartedAt = Date.now();
+      const intervalId = setInterval(() => {
+        if (enableDebugLogs) {
+          console.debug('[PipelineEntryForm] audio upload in progress', {
+            key,
+            state: uploadTask.state,
+            elapsedMs: Date.now() - uploadStartedAt,
+          });
+        }
+      }, 500);
+      let uploadTimeoutId: ReturnType<typeof setTimeout> | undefined;
+      const uploadTimeout = new Promise<never>((_, reject) => {
+        uploadTimeoutId = setTimeout(() => {
+          reject(new Error(`Audio upload timed out after ${AUDIO_UPLOAD_TIMEOUT_MS / 1000}s.`));
+        }, AUDIO_UPLOAD_TIMEOUT_MS);
+      });
+      try {
+        await Promise.race([uploadTask.result, uploadTimeout]);
+      } finally {
+        if (uploadTimeoutId) clearTimeout(uploadTimeoutId);
+        clearInterval(intervalId);
+      }
+      if (enableDebugLogs) {
+        console.debug('[PipelineEntryForm] audio upload completed', {
+          key,
+          elapsedMs: Date.now() - uploadStartedAt,
+        });
+      }
+      if (enableDebugLogs) {
+        console.debug('[PipelineEntryForm] invoking runPipeline', { entryPoint: 'AUDIO_FILE', key });
+      }
       await runAudioPipelineWithPolling('AUDIO_FILE', key);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'An unknown error occurred.';
@@ -567,8 +644,12 @@ export function PipelineEntryForm({
               onChange={(e) => setTranscriptText(e.target.value)}
               placeholder="Example: Temp 39.5C, reduced appetite, suspect displaced abomasum. IV glucose 500ml."
               rows={6}
+              maxLength={MAX_TEXT_CHARS}
               className={styles.field}
             />
+            <p className={styles.fileInfo}>
+              Characters: {transcriptText.length}/{MAX_TEXT_CHARS}
+            </p>
             <div className={styles.actionRow}>
               <button
                 type="button"
