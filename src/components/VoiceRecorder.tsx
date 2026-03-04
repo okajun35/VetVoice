@@ -54,8 +54,9 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
         }
         if (next >= MAX_RECORDING_SECONDS) {
           stopTimer();
-          if (mediaRecorderRef.current?.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
+          const recorder = mediaRecorderRef.current;
+          if (recorder && recorder.state !== 'inactive') {
+            recorder.stop();
           }
         }
         return next;
