@@ -36,6 +36,16 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     };
   }, []);
 
+  useEffect(() => {
+    if (state !== 'recording') return;
+    if (elapsed >= AUTO_STOP_WARNING_SECONDS && !autoStopWarning) {
+      setAutoStopWarning(true);
+    }
+    if (elapsed >= MAX_RECORDING_SECONDS) {
+      stopRecording();
+    }
+  }, [elapsed, autoStopWarning, state]);
+
   const stopTimer = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -46,22 +56,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
   const startTimer = () => {
     setElapsed(0);
     setAutoStopWarning(false);
-    timerRef.current = setInterval(() => {
-      setElapsed((s) => {
-        const next = s + 1;
-        if (next >= AUTO_STOP_WARNING_SECONDS) {
-          setAutoStopWarning(true);
-        }
-        if (next >= MAX_RECORDING_SECONDS) {
-          stopTimer();
-          const recorder = mediaRecorderRef.current;
-          if (recorder && recorder.state !== 'inactive') {
-            recorder.stop();
-          }
-        }
-        return next;
-      });
-    }, 1000);
+    timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
   };
 
   const handleError = useCallback(

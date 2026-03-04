@@ -467,6 +467,24 @@ describe("runPipeline integration", () => {
       expect(transcribeMockSend).not.toHaveBeenCalled();
     });
 
+    it("clears stale transcribeJobName when audio file size exceeds 8MB", async () => {
+      s3MockSend.mockResolvedValue({ ContentLength: 8 * 1024 * 1024 + 1 });
+
+      const result = await handler(
+        makeEvent({
+          entryPoint: "PRODUCTION",
+          audioKey: "audio/test-cow-001/large.webm",
+          transcribeJobName: "old-job-name",
+        }),
+        MOCK_CONTEXT
+      );
+
+      expect(result.transcribeJobName).toBeNull();
+
+      const putArg = dynamoMockSend.mock.calls[0][0];
+      expect(putArg._input.Item.transcribeJobName).toBeUndefined();
+    });
+
     it("adds warning and falls back to transcriptText when audioKey is missing", async () => {
       bedrockMockSend.mockResolvedValue(makeBedrockResponse(SAMPLE_EXTRACTED_JSON));
 

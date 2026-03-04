@@ -425,6 +425,7 @@ export const handler: Schema["runPipeline"]["functionHandler"] = async (event) =
             warnings.push(
               `audio file size exceeds max allowed (${contentLength}/${maxAudioBytes} bytes); skipping transcription`
             );
+            transcribeJobName = null;
           } else {
             const vocabularyName = (
               process.env.TRANSCRIBE_VOCABULARY_NAME ??

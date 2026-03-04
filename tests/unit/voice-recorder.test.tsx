@@ -48,6 +48,8 @@ class MockMediaRecorder {
 
 describe('VoiceRecorder', () => {
   let mediaRecorderInstance: MockMediaRecorder;
+  const originalWindowMediaRecorder = Object.getOwnPropertyDescriptor(window, 'MediaRecorder');
+  const originalNavigatorMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices');
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -82,6 +84,15 @@ describe('VoiceRecorder', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    if (originalWindowMediaRecorder) {
+      Object.defineProperty(window, 'MediaRecorder', originalWindowMediaRecorder);
+    } else {
+      delete (window as unknown as { MediaRecorder?: unknown }).MediaRecorder;
+    }
+
+    if (originalNavigatorMediaDevices) {
+      Object.defineProperty(navigator, 'mediaDevices', originalNavigatorMediaDevices);
+    }
   });
 
   it('auto-stops recording at max duration and uploads audio', async () => {
@@ -101,7 +112,13 @@ describe('VoiceRecorder', () => {
     expect(screen.getByRole('button', { name: '録音停止' })).toBeInTheDocument();
 
     await act(async () => {
-      vi.advanceTimersByTime(90_000);
+      vi.advanceTimersByTime(75_000);
+      await Promise.resolve();
+    });
+    expect(screen.getByText('最大90秒で自動停止します')).toBeInTheDocument();
+
+    await act(async () => {
+      vi.advanceTimersByTime(15_000);
       await Promise.resolve();
     });
     await act(async () => {
