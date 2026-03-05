@@ -34,6 +34,10 @@ jobs:
     
     - name: Run tests
       run: npm test
+
+    - name: Run SOAP quality gate (phase 1)
+      if: ${{ hashFiles('tmp/soap-model-compare-20260304/soap-scoring.codex-ready-eval.csv') != '' }}
+      run: npm run eval:soap:gate -- tmp/soap-model-compare-20260304/soap-scoring.codex-ready-eval.csv
     
     - name: Build
       run: npm run build

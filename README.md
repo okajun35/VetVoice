@@ -304,6 +304,7 @@ npm run eval:soap:assist -- \
 - 追記される主な列:
   - `llm_factual_issues`, `llm_missing_info`, `llm_over_inference`, `llm_safety_risk`
   - `llm_suggested_factuality_1to5`, `llm_suggested_completeness_1to5`, `llm_suggested_readability_1to5`, `llm_suggested_safety_1to5`, `llm_suggested_over_inference_1to5`
+  - `error_type_primary`, `error_tags`（5分類の自動ラベル）
   - `llm_error`（空であれば成功）
 - 出力:
   - `tmp/soap-model-compare/soap-scoring.llm-assisted.csv`
@@ -313,6 +314,34 @@ npm run eval:soap:assist -- \
   - `--retry-delay-ms <ms>`（既定: 1200）
 
 詳細は `doc/soap-llm-assisted-annotation.md` を参照してください。
+エラー分類の定義は `doc/soap-error-taxonomy.md` を参照してください。
+
+### SOAP品質メトリクスとゲート
+
+```bash
+# 5分類率・CLEAN率を算出（baselineとの差分付き）
+npm run eval:soap:metrics -- \
+  tmp/soap-model-compare-20260305-rerun/soap-scoring.llm-assisted.csv \
+  --baseline tmp/soap-model-compare-20260304/soap-scoring.codex-ready-eval.csv \
+  --phase 1 \
+  --json-out tmp/soap-model-compare-20260305-rerun/soap-quality.metrics.latest.json
+
+# Gate判定を強制（非0終了）
+npm run eval:soap:gate -- \
+  tmp/soap-model-compare-20260305-rerun/soap-scoring.llm-assisted.csv
+```
+
+- Hard gate:
+  - `PROMPT_LEAK_rate <= 0`
+  - `DX_ASSERTION_rate <= 0.05`
+  - `empty_soap_rate <= 0`
+  - `CLEAN_rate >= 0.80`
+- Soft gate (`--phase 1`):
+  - `PLAN_HALLUCINATION_rate <= 0.35`
+  - `TERMINOLOGY_ERROR_rate <= 0.10`
+  - `FACTUAL_ISSUE_rate <= 0.20`
+- `--phase 2` で厳格なしきい値に切り替え可能
+- `--enforce-score-floors` を付けると `score_*` 平均下限もゲート可能
 
 ## デプロイ
 

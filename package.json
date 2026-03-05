@@ -18,6 +18,8 @@
     "eval:soap:template": "tsx scripts/create-soap-comparison-template.ts",
     "eval:soap:compare": "tsx scripts/compare-soap-models.ts",
     "eval:soap:assist": "tsx scripts/assist-soap-annotation.ts",
+    "eval:soap:metrics": "tsx scripts/soap-quality-metrics.ts",
+    "eval:soap:gate": "tsx scripts/soap-quality-metrics.ts --enforce --phase 1",
     "transcribe:vocab:update": "./scripts/transcribe-vocab-update.sh",
     "transcribe:vocab:status": "./scripts/transcribe-vocab-status.sh"
   },

@@ -25,6 +25,8 @@ const ASSIST_COLUMNS = [
   "llm_model_requested",
   "llm_model_resolved",
   "llm_error",
+  "error_type_primary",
+  "error_tags",
 ] as const;
 
 interface CliOptions {
@@ -68,6 +70,8 @@ interface AnnotationSummary {
   error_count: number;
   start_at: number;
   limit: number | null;
+  error_type_primary_counts: Record<string, number>;
+  error_tag_counts: Record<string, number>;
 }
 
 async function main(): Promise<void> {
@@ -139,6 +143,10 @@ async function main(): Promise<void> {
       console.error(`Annotation failed (case_id=${caseId}): ${message}`);
     }
 
+    const classified = classifySoapErrorType(row);
+    row.error_type_primary = classified.primary;
+    row.error_tags = classified.tags.join("|");
+
     processedCount += 1;
     console.log(
       `Annotated ${processedCount}/${endExclusive - start} (case_id=${caseId}, row=${rowIndex + 1})`
@@ -148,6 +156,10 @@ async function main(): Promise<void> {
   const headers = buildOutputHeaders(csvData.headers);
   await mkdir(options.outputDir, { recursive: true });
   await writeFile(outputCsvPath, serializeCsv(headers, csvData.rows), "utf8");
+
+  const classificationSummary = summarizeClassifications(
+    csvData.rows.slice(start, endExclusive),
+  );
 
   const summary: AnnotationSummary = {
     generated_at: new Date().toISOString(),
@@ -160,6 +172,8 @@ async function main(): Promise<void> {
     error_count: errorCount,
     start_at: start,
     limit: options.limit ?? null,
+    error_type_primary_counts: classificationSummary.primaryCounts,
+    error_tag_counts: classificationSummary.tagCounts,
   };
   await writeFile(outputSummaryPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
 
@@ -495,6 +509,362 @@ function formatList(values: string[]): string {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+const PROMPT_LEAK_PATTERNS = [
+  /SOAP形式の診療記録(?:は|を)?以下の通り/iu,
+  /この診療記録は/iu,
+  /以下に作成しました/iu,
+  /Unconfirmedの候補には/iu,
+  /提供された構造化データに基づいて/iu,
+];
+
+const PLAN_ENTITY_TOKEN_PATTERN = /[A-Za-z]{2,}|[ァ-ヶー]{2,}|[一-龯々]{2,}/gu;
+const PLAN_ENTITY_STOPWORDS = new Set([
+  "投与",
+  "実施",
+  "施行",
+  "予定",
+  "計画",
+  "処置",
+  "診療",
+  "記録",
+  "評価",
+  "診断",
+  "確認",
+  "記載",
+  "中",
+  "あり",
+  "なし",
+  "再",
+  "検査",
+  "所見",
+  "症状",
+  "体温",
+  "心拍",
+  "呼吸",
+  "脈拍",
+  "糞便",
+  "ケトン臭",
+  "ラッセル音",
+  "ミリ",
+  "リッター",
+  "アンプル",
+  "本",
+  "日",
+]);
+
+const GOLD_UNCERTAIN_PATTERNS = [
+  /疑い/iu,
+  /未確認/iu,
+  /可能性/iu,
+  /suspected/iu,
+];
+
+const SOAP_UNCERTAIN_PATTERNS = [
+  /疑い/iu,
+  /未確認/iu,
+  /可能性/iu,
+  /保留/iu,
+];
+
+const SOAP_ASSERTIVE_PATTERNS = [
+  /確定/iu,
+  /断定/iu,
+  /確診/iu,
+  /confirmed/iu,
+  /definitive/iu,
+];
+
+const SOAP_DIAGNOSIS_LABEL_PATTERNS = [
+  /肺炎/iu,
+  /ケトーシス/iu,
+  /妊娠/iu,
+  /乳房炎/iu,
+  /第四胃変位/iu,
+  /卵巣嚢腫/iu,
+  /子宮内膜炎/iu,
+  /診断/iu,
+];
+
+const TERMINOLOGY_PATTERNS = [
+  /経観/iu,
+  /経膣検査/iu,
+  /子宮内デバイス/iu,
+  /膣内挿入/iu,
+];
+
+const TERMINOLOGY_CIDR_MISUSE_PATTERNS = [
+  /CIDR.{0,12}(?:子宮内|子宮内デバイス|経膣検査)/iu,
+  /(?:子宮内|子宮内デバイス|経膣検査).{0,12}CIDR/iu,
+];
+
+const FACTUAL_GOLD_500_MILLI_PATTERN = /500\s*ミリ/iu;
+const FACTUAL_SOAP_500_WITH_UNIT_PATTERN = /500\s*(?:mg|ml|mL|mm)\b/iu;
+const FACTUAL_SOAP_500_MILLI_PATTERN = /500\s*ミリ/iu;
+const FACTUAL_GOLD_SCORE_PATTERN = /(?:cl|CL)[^0-9]{0,6}5|cl.?の?\s*5|黄体[^0-9]{0,6}5|スコア[^0-9]{0,6}5/u;
+const FACTUAL_SOAP_MM_PATTERN = /\b5\s*mm\b/u;
+const FACTUAL_GOLD_MM_PATTERN = /\b5\s*mm\b/u;
+
+const PRIMARY_PRIORITY = [
+  "PROMPT_LEAK",
+  "PLAN_HALLUCINATION",
+  "DX_ASSERTION",
+  "TERMINOLOGY_ERROR",
+  "FACTUAL_ISSUE",
+] as const;
+
+function containsAny(text: string, patterns: RegExp[]): boolean {
+  return patterns.some((pattern) => pattern.test(text));
+}
+
+function extractSoapSections(soapText: string): {
+  s: string;
+  o: string;
+  a: string;
+  p: string;
+} {
+  const normalized = soapText.replace(/\r\n/gu, "\n");
+  const headingRegex = /(?:^|\n)\s*([SOAP])(?:（[^）]*）|\([^)]*\))?\s*:/gu;
+  const matches = [...normalized.matchAll(headingRegex)];
+
+  if (matches.length === 0) {
+    return { s: "", o: "", a: normalized.trim(), p: "" };
+  }
+
+  const sections = { s: "", o: "", a: "", p: "" };
+  for (let index = 0; index < matches.length; index += 1) {
+    const match = matches[index];
+    const key = (match[1] ?? "").toLowerCase();
+    const sectionStart = (match.index ?? 0) + match[0].length;
+    const sectionEnd = index + 1 < matches.length ? (matches[index + 1].index ?? normalized.length) : normalized.length;
+    const value = normalized.slice(sectionStart, sectionEnd).trim();
+    if (!value) continue;
+
+    if (key === "s" || key === "o" || key === "a" || key === "p") {
+      sections[key] = sections[key] ? `${sections[key]}\n${value}` : value;
+    }
+  }
+
+  return sections;
+}
+
+function buildReferenceText(row: Record<string, string>): string {
+  return [
+    row.gold_human_note ?? "",
+    row.transcript_expanded ?? "",
+    row.extracted_json ?? "",
+  ]
+    .join("\n")
+    .trim();
+}
+
+function normalizePlanEntityToken(rawToken: string): string | null {
+  const token = rawToken.trim();
+  if (!token) return null;
+  if (/^\d+$/u.test(token)) return null;
+  if (/^(?:mg|ml|mL|mm|amp|L)$/iu.test(token)) return null;
+
+  if (/処置なし|治療なし|計画なし/u.test(token)) return "NO_TREATMENT";
+  if (/様子見|経過観察/u.test(token)) return "OBSERVATION";
+  if (/再検|再鑑定|再検査/u.test(token)) return "RECHECK";
+
+  if (PLAN_ENTITY_STOPWORDS.has(token)) return null;
+  if (/^(?:投与|実施|計画|予定|確認|記載)$/u.test(token)) return null;
+
+  return token;
+}
+
+function extractPlanEntitiesFromText(text: string): Set<string> {
+  const entities = new Set<string>();
+  if (!text.trim()) return entities;
+
+  for (const match of text.matchAll(PLAN_ENTITY_TOKEN_PATTERN)) {
+    const token = match[0] ?? "";
+    const normalized = normalizePlanEntityToken(token);
+    if (!normalized) continue;
+    entities.add(normalized);
+  }
+
+  return entities;
+}
+
+function parseExtractedPlanEntities(extractedJsonRaw: string): Set<string> {
+  const entities = new Set<string>();
+  if (!extractedJsonRaw.trim()) return entities;
+
+  try {
+    const parsed = JSON.parse(extractedJsonRaw);
+    const record = isRecord(parsed) ? parsed : null;
+    const plans = record && Array.isArray(record.p) ? record.p : [];
+    for (const plan of plans) {
+      if (!isRecord(plan)) continue;
+      const name = normalizeString(plan.name);
+      if (!name) continue;
+      for (const entity of extractPlanEntitiesFromText(name)) {
+        entities.add(entity);
+      }
+    }
+  } catch {
+    // Ignore malformed extracted_json and rely on other references.
+  }
+
+  return entities;
+}
+
+function extractedJsonHas500WithUnit(extractedJsonRaw: string): boolean {
+  if (!extractedJsonRaw.trim()) return false;
+  try {
+    const parsed = JSON.parse(extractedJsonRaw);
+    const record = isRecord(parsed) ? parsed : null;
+    if (!record) return false;
+
+    const plans = Array.isArray(record.p) ? record.p : [];
+    for (const plan of plans) {
+      if (!isRecord(plan)) continue;
+      const dosage = normalizeString(plan.dosage);
+      if (/\b500\s*(?:mg|ml|mL|mm)\b/iu.test(dosage)) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function extractGoldPlanSignals(goldText: string): Set<string> {
+  const signals = new Set<string>();
+  if (/様子見|経過観察/iu.test(goldText)) signals.add("OBSERVATION");
+  if (/再検|再鑑定|再検査/iu.test(goldText)) signals.add("RECHECK");
+  if (/処置なし|治療なし|計画なし/iu.test(goldText)) signals.add("NO_TREATMENT");
+  return signals;
+}
+
+function hasPlanHallucination(row: Record<string, string>, planSection: string): boolean {
+  const soapEntities = extractPlanEntitiesFromText(planSection);
+  const allowedEntities = new Set<string>([
+    ...parseExtractedPlanEntities(row.extracted_json ?? ""),
+    ...extractGoldPlanSignals(row.gold_human_note ?? ""),
+  ]);
+
+  if (soapEntities.size === 0) {
+    return allowedEntities.size > 0;
+  }
+
+  const soapHasNoTreatment = soapEntities.has("NO_TREATMENT");
+  const allowedHasNoTreatment = allowedEntities.has("NO_TREATMENT");
+
+  const soapWithoutNoTreatment = [...soapEntities].filter((entity) => entity !== "NO_TREATMENT");
+  const allowedWithoutNoTreatment = [...allowedEntities].filter((entity) => entity !== "NO_TREATMENT");
+
+  if (soapHasNoTreatment && allowedWithoutNoTreatment.length > 0) {
+    return true;
+  }
+  if (allowedHasNoTreatment && soapWithoutNoTreatment.length > 0) {
+    return true;
+  }
+
+  const extra = soapWithoutNoTreatment.filter((entity) => !allowedEntities.has(entity));
+  const missing = allowedWithoutNoTreatment.filter((entity) => !soapEntities.has(entity));
+  return extra.length > 0 || missing.length > 0;
+}
+
+function hasDxAssertion(assessmentSection: string, goldText: string): boolean {
+  const assessment = assessmentSection.trim();
+  if (!assessment) return false;
+  if (/評価なし|診断なし|未評価|不明/iu.test(assessment)) return false;
+
+  const goldIsUncertain = containsAny(goldText, GOLD_UNCERTAIN_PATTERNS);
+  const soapIsUncertain = containsAny(assessment, SOAP_UNCERTAIN_PATTERNS);
+  const soapIsAssertive = containsAny(assessment, SOAP_ASSERTIVE_PATTERNS);
+  const soapHasDiagnosisLabel = containsAny(assessment, SOAP_DIAGNOSIS_LABEL_PATTERNS);
+
+  if (soapIsAssertive && !soapIsUncertain) return true;
+  if (goldIsUncertain && soapHasDiagnosisLabel && !soapIsUncertain) return true;
+  return false;
+}
+
+function hasTerminologyError(soapText: string, referenceText: string): boolean {
+  if (containsAny(soapText, TERMINOLOGY_CIDR_MISUSE_PATTERNS)) return true;
+  return containsAny(soapText, TERMINOLOGY_PATTERNS) && !containsAny(referenceText, TERMINOLOGY_PATTERNS);
+}
+
+function hasFactualIssue(row: Record<string, string>, soapText: string, goldText: string): boolean {
+  if (!soapText.trim() || !goldText.trim()) return false;
+
+  const converted500MilliToUnit =
+    FACTUAL_GOLD_500_MILLI_PATTERN.test(goldText) &&
+    FACTUAL_SOAP_500_WITH_UNIT_PATTERN.test(soapText) &&
+    !FACTUAL_SOAP_500_MILLI_PATTERN.test(soapText);
+
+  if (converted500MilliToUnit && !extractedJsonHas500WithUnit(row.extracted_json ?? "")) {
+    return true;
+  }
+
+  const convertedScoreToMm =
+    FACTUAL_GOLD_SCORE_PATTERN.test(goldText) &&
+    FACTUAL_SOAP_MM_PATTERN.test(soapText) &&
+    !FACTUAL_GOLD_MM_PATTERN.test(goldText);
+
+  return convertedScoreToMm;
+}
+
+function classifySoapErrorType(row: Record<string, string>): {
+  primary: string;
+  tags: string[];
+} {
+  const soapText = row.soap_text ?? "";
+  const goldText = row.gold_human_note ?? "";
+  const sections = extractSoapSections(soapText);
+
+  const tags: string[] = [];
+  if (containsAny(soapText, PROMPT_LEAK_PATTERNS)) {
+    tags.push("PROMPT_LEAK");
+  }
+  if (hasPlanHallucination(row, sections.p)) {
+    tags.push("PLAN_HALLUCINATION");
+  }
+  if (hasDxAssertion(sections.a, goldText)) {
+    tags.push("DX_ASSERTION");
+  }
+  if (hasTerminologyError(soapText, buildReferenceText(row))) {
+    tags.push("TERMINOLOGY_ERROR");
+  }
+  if (hasFactualIssue(row, soapText, goldText)) {
+    tags.push("FACTUAL_ISSUE");
+  }
+
+  const uniqueTags = [...new Set(tags)];
+  if (uniqueTags.length === 0) {
+    return { primary: "CLEAN", tags: [] };
+  }
+
+  const primary =
+    PRIMARY_PRIORITY.find((candidate) => uniqueTags.includes(candidate)) ??
+    uniqueTags[0];
+  return { primary, tags: uniqueTags };
+}
+
+function summarizeClassifications(rows: Record<string, string>[]): {
+  primaryCounts: Record<string, number>;
+  tagCounts: Record<string, number>;
+} {
+  const primaryCounts: Record<string, number> = {};
+  const tagCounts: Record<string, number> = {};
+
+  for (const row of rows) {
+    const primary = (row.error_type_primary ?? "CLEAN").trim() || "CLEAN";
+    primaryCounts[primary] = (primaryCounts[primary] ?? 0) + 1;
+
+    const rawTags = (row.error_tags ?? "").trim();
+    if (!rawTags) continue;
+    for (const tag of rawTags.split("|").map((item) => item.trim()).filter(Boolean)) {
+      tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+    }
+  }
+
+  return { primaryCounts, tagCounts };
 }
 
 function parseCsv(rawCsv: string): CsvData {

@@ -66,8 +66,63 @@ Added columns include:
 - `llm_model_requested`
 - `llm_model_resolved`
 - `llm_error`
+- `error_type_primary` (single primary class)
+- `error_tags` (`|` separated multi-label tags)
 
 `llm_error` should be empty when the row was successfully annotated.
+
+Error taxonomy:
+- `PROMPT_LEAK`
+- `PLAN_HALLUCINATION`
+- `DX_ASSERTION`
+- `TERMINOLOGY_ERROR`
+- `FACTUAL_ISSUE`
+- `CLEAN`
+
+See `doc/soap-error-taxonomy.md` for definitions and primary-priority rules.
+
+Classification implementation policy:
+
+- `error_tags` are determined primarily from `soap_text` (S/O/A/P sections) plus `gold_human_note`.
+- `llm_*` helper texts are not used as direct tag triggers to avoid keyword-based false positives.
+- `PLAN_HALLUCINATION` is computed by set-diff between normalized `P` entities and allowed entities from `gold_human_note` + `extracted_json.p`.
+- `FACTUAL_ISSUE` is triggered by specific transformation mismatches (e.g. ambiguous unit/score conversion), not by generic words like `単位` / `スコア`.
+- `TERMINOLOGY_ERROR` does not trigger on `CIDR` token alone.
+
+## Metrics and Gate
+
+Use the metrics script to calculate error rates and optional baseline diffs:
+
+```bash
+npm run eval:soap:metrics -- \
+  tmp/soap-model-compare/soap-scoring.llm-assisted.csv \
+  --baseline tmp/soap-model-compare-20260304/soap-scoring.codex-ready-eval.csv \
+  --phase 1 \
+  --json-out tmp/soap-model-compare/soap-quality.metrics.latest.json
+```
+
+Gate check (non-zero exit on failure):
+
+```bash
+npm run eval:soap:gate -- tmp/soap-model-compare/soap-scoring.llm-assisted.csv
+```
+
+Default thresholds:
+
+- Hard gate:
+  - `PROMPT_LEAK_rate <= 0`
+  - `DX_ASSERTION_rate <= 0.05`
+  - `empty_soap_rate <= 0`
+  - `CLEAN_rate >= 0.80`
+- Soft gate (`phase 1`):
+  - `PLAN_HALLUCINATION_rate <= 0.35`
+  - `TERMINOLOGY_ERROR_rate <= 0.10`
+  - `FACTUAL_ISSUE_rate <= 0.20`
+
+Optional:
+
+- `--phase 2`: stricter soft thresholds
+- `--enforce-score-floors`: enforce score mean floors for `safety/factuality/overall`
 
 ## Human Review Workflow
 
