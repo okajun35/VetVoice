@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Authenticator, ThemeProvider, createTheme } from '@aws-amplify/ui-react';
+import { generateClient } from 'aws-amplify/data';
 import { I18n } from 'aws-amplify/utils';
 import '@aws-amplify/ui-react/styles.css';
+import type { Schema } from '../amplify/data/resource';
 import { QRScanner } from './components/QRScanner';
 import { CowRegistrationForm } from './components/CowRegistrationForm';
 import { VisitManager } from './components/VisitManager';
 import { CowListScreen } from './components/CowListScreen';
 import DevEntryPoints from './components/DevEntryPoints';
+import { Alert } from './components/ui/Alert/Alert';
 import { Button } from './components/ui/Button/Button';
+import {
+  clearCowIdQueryFromHref,
+  clearPendingQrCowId,
+  getCowIdFromSearch,
+  persistPendingQrCowId,
+  readPendingQrCowId,
+} from './lib/qr-links';
 import styles from './App.module.css';
 
 // Task 7.1: Configure Japanese translations for Amplify UI Authenticator
@@ -136,118 +146,236 @@ const vetVoiceTheme = createTheme({
 
 type AppView = 'qr' | 'register' | 'visit_manager' | 'cow_list';
 
+const client = generateClient<Schema>();
+
+interface AuthenticatedAppShellProps {
+  currentCowId: string | null;
+  devMode: boolean;
+  onBackToQr: () => void;
+  onCancelRegistration: () => void;
+  onCowFound: (cowId: string) => void;
+  onNewCow: (cowId: string) => void;
+  onRegistered: (cowId: string) => void;
+  onSelectCowList: () => void;
+  onToggleDevMode: () => void;
+  pendingCowId: string | null;
+  pendingLaunchCowId: string | null;
+  setPendingLaunchCowId: (cowId: string | null) => void;
+  signOut?: (() => void) | undefined;
+  user?: { signInDetails?: { loginId?: string } } | undefined;
+  view: AppView;
+}
+
+function AuthenticatedAppShell({
+  currentCowId,
+  devMode,
+  onBackToQr,
+  onCancelRegistration,
+  onCowFound,
+  onNewCow,
+  onRegistered,
+  onSelectCowList,
+  onToggleDevMode,
+  pendingCowId,
+  pendingLaunchCowId,
+  setPendingLaunchCowId,
+  signOut,
+  user,
+  view,
+}: AuthenticatedAppShellProps) {
+  const [launchMessage, setLaunchMessage] = useState<string | null>(null);
+  const launchInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!pendingLaunchCowId || launchInFlightRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    launchInFlightRef.current = true;
+    setLaunchMessage(null);
+
+    const resolveLaunch = async () => {
+      try {
+        const { data: cow, errors } = await client.models.Cow.get({ cowId: pendingLaunchCowId });
+        if (cancelled) return;
+
+        if (errors && errors.length > 0) {
+          setLaunchMessage('個体情報の取得に失敗しました。トップ画面から再度お試しください。');
+          onBackToQr();
+          return;
+        }
+
+        if (cow) {
+          onCowFound(pendingLaunchCowId);
+          return;
+        }
+
+        setLaunchMessage('登録されていない個体です。トップ画面から登録してください。');
+        onBackToQr();
+      } catch {
+        if (cancelled) return;
+        setLaunchMessage('個体情報の取得に失敗しました。トップ画面から再度お試しください。');
+        onBackToQr();
+      } finally {
+        launchInFlightRef.current = false;
+        clearPendingQrCowId(window.sessionStorage);
+        if (!cancelled) {
+          setPendingLaunchCowId(null);
+        }
+      }
+    };
+
+    void resolveLaunch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onBackToQr, onCowFound, pendingLaunchCowId, setPendingLaunchCowId]);
+
+  return (
+    <main className={styles.appMain}>
+      <div className={styles.backgroundGrid} />
+      <div className={styles.header}>
+        <div className={styles.headerBrand}>
+          <h1 className={styles.headerTitle}>VETVOICE</h1>
+          <span className={styles.headerSubtitle}>PRECISION DIAGNOSTICS</span>
+        </div>
+        <div className={styles.headerActions}>
+          {!devMode && view === 'qr' && (
+            <Button type="button" variant="secondary" size="sm" onClick={onSelectCowList}>
+              REGISTRY
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className={devMode ? styles.devModeActive : undefined}
+            onClick={onToggleDevMode}
+          >
+            {devMode ? 'DEV ON' : 'DEV MODE'}
+          </Button>
+          <div className={styles.userBadge}>
+            <span className={styles.userId}>
+              {user?.signInDetails?.loginId?.split('@')[0].toUpperCase()}
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={signOut}
+            className={styles.signOutButton}
+          >
+            EXIT
+          </Button>
+        </div>
+      </div>
+
+      {launchMessage && view === 'qr' && (
+        <Alert variant="warning" className={styles.launchAlert}>
+          {launchMessage}
+        </Alert>
+      )}
+
+      {devMode ? (
+        <DevEntryPoints />
+      ) : (
+        <>
+          {view === 'qr' && <QRScanner onCowFound={onCowFound} onNewCow={onNewCow} />}
+
+          {view === 'register' && (
+            <CowRegistrationForm
+              initialCowId={pendingCowId ?? ''}
+              onRegistered={onRegistered}
+              onCancel={onCancelRegistration}
+            />
+          )}
+
+          {view === 'visit_manager' && currentCowId && (
+            <VisitManager cowId={currentCowId} onBack={onBackToQr} />
+          )}
+
+          {view === 'cow_list' && (
+            <CowListScreen
+              onNavigateToVisit={onCowFound}
+              onBack={onBackToQr}
+            />
+          )}
+        </>
+      )}
+    </main>
+  );
+}
+
 function App() {
   const [view, setView] = useState<AppView>('qr');
   const [currentCowId, setCurrentCowId] = useState<string | null>(null);
   const [pendingCowId, setPendingCowId] = useState<string | null>(null);
+  const [pendingLaunchCowId, setPendingLaunchCowId] = useState<string | null>(null);
   const [devMode, setDevMode] = useState(false);
 
-  const handleCowFound = (cowId: string) => {
+  useEffect(() => {
+    const queryCowId = getCowIdFromSearch(window.location.search);
+    const storedCowId = readPendingQrCowId(window.sessionStorage);
+    const launchCowId = queryCowId ?? storedCowId;
+
+    if (queryCowId) {
+      persistPendingQrCowId(queryCowId, window.sessionStorage);
+      window.history.replaceState({}, document.title, clearCowIdQueryFromHref(window.location.href));
+    }
+
+    setPendingLaunchCowId(launchCowId);
+  }, []);
+
+  const handleCowFound = useCallback((cowId: string) => {
     setCurrentCowId(cowId);
     setView('visit_manager');
-  };
+  }, []);
 
-  const handleNewCow = (cowId: string) => {
+  const handleNewCow = useCallback((cowId: string) => {
     setPendingCowId(cowId);
     setView('register');
-  };
+  }, []);
 
-  const handleRegistered = (cowId: string) => {
+  const handleRegistered = useCallback((cowId: string) => {
     setCurrentCowId(cowId);
     setPendingCowId(null);
     setView('visit_manager');
-  };
+  }, []);
 
-  const handleCancelRegistration = () => {
+  const handleCancelRegistration = useCallback(() => {
     setPendingCowId(null);
     setView('qr');
-  };
+  }, []);
 
-  const handleBackToQr = () => {
+  const handleBackToQr = useCallback(() => {
     setCurrentCowId(null);
     setView('qr');
-  };
+  }, []);
 
   return (
     <ThemeProvider theme={vetVoiceTheme}>
       <Authenticator>
         {({ signOut, user }) => (
-          <main className={styles.appMain}>
-            <div className={styles.backgroundGrid} />
-            <div className={styles.header}>
-              <div className={styles.headerBrand}>
-                <h1 className={styles.headerTitle}>VETVOICE</h1>
-                <span className={styles.headerSubtitle}>PRECISION DIAGNOSTICS</span>
-              </div>
-              <div className={styles.headerActions}>
-                {!devMode && view === 'qr' && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setView('cow_list')}
-                  >
-                    REGISTRY
-                  </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className={devMode ? styles.devModeActive : undefined}
-                  onClick={() => setDevMode((v) => !v)}
-                >
-                  {devMode ? 'DEV ON' : 'DEV MODE'}
-                </Button>
-                <div className={styles.userBadge}>
-                  <span className={styles.userId}>
-                    {user?.signInDetails?.loginId?.split('@')[0].toUpperCase()}
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-                  className={styles.signOutButton}
-                >
-                  EXIT
-                </Button>
-              </div>
-            </div>
-
-            {devMode ? (
-              <DevEntryPoints />
-            ) : (
-              <>
-                {view === 'qr' && (
-                  <QRScanner onCowFound={handleCowFound} onNewCow={handleNewCow} />
-                )}
-
-                {view === 'register' && (
-                  <CowRegistrationForm
-                    initialCowId={pendingCowId ?? ''}
-                    onRegistered={handleRegistered}
-                    onCancel={handleCancelRegistration}
-                  />
-                )}
-
-                {view === 'visit_manager' && currentCowId && (
-                  <VisitManager cowId={currentCowId} onBack={handleBackToQr} />
-                )}
-
-                {view === 'cow_list' && (
-                  <CowListScreen
-                    onNavigateToVisit={(cowId) => {
-                      setCurrentCowId(cowId);
-                      setView('visit_manager');
-                    }}
-                    onBack={() => setView('qr')}
-                  />
-                )}
-              </>
-            )}
-          </main>
+          <AuthenticatedAppShell
+            currentCowId={currentCowId}
+            devMode={devMode}
+            onBackToQr={handleBackToQr}
+            onCancelRegistration={handleCancelRegistration}
+            onCowFound={handleCowFound}
+            onNewCow={handleNewCow}
+            onRegistered={handleRegistered}
+            onSelectCowList={() => setView('cow_list')}
+            onToggleDevMode={() => setDevMode((value) => !value)}
+            pendingCowId={pendingCowId}
+            pendingLaunchCowId={pendingLaunchCowId}
+            setPendingLaunchCowId={setPendingLaunchCowId}
+            signOut={signOut}
+            user={user}
+            view={view}
+          />
         )}
       </Authenticator>
     </ThemeProvider>

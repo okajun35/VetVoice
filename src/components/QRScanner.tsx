@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, type CameraDevice } from 'html5-qrcode';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../amplify/data/resource';
+import { extractCowIdFromQrPayload } from '../lib/qr-links';
 import { Button } from './ui/Button/Button';
 import { Spinner } from './ui/Spinner/Spinner';
 import styles from './QRScanner.module.css';
@@ -88,7 +89,14 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
             // ignore stop errors
           }
 
-          const cowId = decodedText.trim();
+          const cowId = extractCowIdFromQrPayload(decodedText);
+          if (!cowId) {
+            setScannedCowId(null);
+            setErrorMessage('QRコードに個体識別番号が含まれていません。');
+            setScannerState('error');
+            return;
+          }
+
           setScannedCowId(cowId);
           setScannerState('loading');
 
