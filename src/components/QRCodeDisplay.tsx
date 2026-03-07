@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 
 import { buildCowLaunchUrl } from "../lib/qr-links";
@@ -13,6 +13,12 @@ export function QRCodeDisplay({ cowId, onClose }: QRCodeDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const setQrGenerationError = useCallback((context: string, err: unknown) => {
+    console.error(context, err);
+    setError("QRコードの生成に失敗しました");
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -30,15 +36,11 @@ export function QRCodeDisplay({ cowId, onClose }: QRCodeDisplayProps) {
         errorCorrectionLevel: "M",
       })
         .then(() => setLoading(false))
-        .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : "QRコードの生成に失敗しました");
-          setLoading(false);
-        });
+        .catch((err: unknown) => setQrGenerationError("Failed to generate QR code (toCanvas):", err));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "QRコードの生成に失敗しました");
-      setLoading(false);
+      setQrGenerationError("Failed to generate QR code (buildCowLaunchUrl or setup):", err);
     }
-  }, [cowId]);
+  }, [cowId, setQrGenerationError]);
 
   return (
     <>

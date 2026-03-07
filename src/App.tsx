@@ -219,8 +219,8 @@ function AuthenticatedAppShell({
         onBackToQr();
       } finally {
         launchInFlightRef.current = false;
+        clearPendingQrCowId(window.sessionStorage);
         if (!cancelled) {
-          clearPendingQrCowId(window.sessionStorage);
           setPendingLaunchCowId(null);
         }
       }
