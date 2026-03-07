@@ -96,3 +96,9 @@
   font-family: var(--font-family-mono) !important;
   letter-spacing: 0.1em;
 }
+
+.launchAlert {
+  position: relative;
+  z-index: 1;
+  margin-bottom: var(--spacing-6);
+}
