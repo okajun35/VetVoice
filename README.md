@@ -40,7 +40,7 @@
 
 | コンポーネント | 役割 | デフォルトモデル | 直接上書き（開発UI/API） | Lambda環境変数上書き |
 |---|---|---|---|---|
-| Extractor | 音声/テキストから構造化JSONを抽出 | `anthropic.claude-haiku-4-5-20251001-v1:0` | `extractorModelId` | `EXTRACTOR_MODEL_ID` |
+| Extractor | 音声/テキストから構造化JSONを抽出 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | `extractorModelId` | `EXTRACTOR_MODEL_ID` |
 | SOAP Generator | 構造化JSONからSOAP文を生成 | `amazon.nova-lite-v1:0` | `soapModelId` | `SOAP_GENERATOR_MODEL_ID` |
 | Kyosai Generator | 構造化JSONから家畜共済ドラフトを生成 | `amazon.nova-lite-v1:0` | `kyosaiModelId` | `KYOSAI_GENERATOR_MODEL_ID` |
 
@@ -168,7 +168,7 @@ Phrase    SoundsLike    IPA    DisplayAs
 環境変数で固定したい場合は以下を設定します。
 
 ```bash
-EXTRACTOR_MODEL_ID=anthropic.claude-haiku-4-5-20251001-v1:0
+EXTRACTOR_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
 SOAP_GENERATOR_MODEL_ID=amazon.nova-lite-v1:0
 KYOSAI_GENERATOR_MODEL_ID=amazon.nova-lite-v1:0
 HISTORY_SUMMARY_MODEL_ID=amazon.nova-micro-v1:0
@@ -354,17 +354,21 @@ git push origin main
 
 ```text
 VetVoice/
-├── amplify/              # Amplify Gen 2 バックエンド定義
-│   ├── auth/             # Cognito認証設定
-│   ├── data/             # GraphQLスキーマ + Lambda関数
-│   ├── storage/          # S3ストレージ設定
-│   └── backend.ts        # バックエンド統合
-├── src/                  # Reactフロントエンド
-│   ├── components/       # UIコンポーネント
-│   ├── lib/              # ユーティリティ
-│   └── App.tsx           # メインアプリ
-├── assets/               # マスタデータ (CSV)
-└── tests/                # テストファイル
+├── amplify/                    # Amplify Gen 2 バックエンド定義
+│   ├── auth/                   # Cognito認証設定
+│   ├── data/                   # GraphQLスキーマ、Lambda、ハンドラ
+│   ├── storage/                # S3ストレージ設定
+│   └── backend.ts              # IAM・環境変数を含むバックエンド統合
+├── src/                        # Reactフロントエンド
+│   ├── components/             # 画面コンポーネント
+│   ├── components/ui/          # Button/Input/Modal等のUIプリミティブ
+│   ├── hooks/                  # `useTheme` などのカスタムHooks
+│   ├── lib/                    # templates / offline queue / theme utilities
+│   ├── styles/                 # design tokens / reset / global styles
+│   └── App.tsx                 # メインアプリ
+├── assets/                     # 辞書、マスタ、prompt、評価データ
+├── scripts/                    # assets生成、評価、Transcribe語彙運用
+└── tests/                      # unit / property / integration
 ```
 
 ## 開発ガイドライン
