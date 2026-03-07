@@ -100,6 +100,8 @@ LLMを使わない主要コンポーネント:
 - QR関連:
   - `html5-qrcode`: QRスキャン
   - `qrcode`: QRコード生成
+  - QR payload は `?cowId=` 付きの起動URLを基本とし、印刷運用を想定
+  - `QRScanner` は起動URL形式と旧 raw `cowId` 形式の両方を受け付ける
 - テーマ管理:
   - `src/hooks/useTheme.ts`
   - `src/lib/theme.ts`
@@ -231,6 +233,22 @@ npm run lint
 補足:
 
 - 現在の `package.json` に `npm run format` は定義されていない。
+
+## QR起動フロー
+
+- QR生成:
+  - `src/components/QRCodeDisplay.tsx` は `src/lib/qr-links.ts` の `buildCowLaunchUrl()` を使う
+  - URL形式は `https://<public-app-url>/?cowId=<cowId>`
+  - `VITE_PUBLIC_APP_URL` があればそれを優先し、未設定時は `window.location.origin`
+- 外部QR読み取り:
+  - `App.tsx` が起動時に `window.location.search` から `cowId` を読む
+  - `sessionStorage` に一時退避し、認証後に `Cow.get({ cowId })` を実行
+  - 登録済みなら `visit_manager`
+  - 未登録なら `qr` に戻して警告表示
+- アプリ内QR読み取り:
+  - `QRScanner.tsx` は `extractCowIdFromQrPayload()` で payload を解釈
+  - 新しいURL QRと旧 raw `cowId` QRの両方に対応
+  - 登録済みなら `visit_manager`、未登録なら `register`
 
 ## AWSインフラ戦略
 

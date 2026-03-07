@@ -196,6 +196,19 @@ npx ampx sandbox
 npm run dev
 ```
 
+## QR起動仕様
+
+- 印刷用QRの中身は raw `cowId` ではなく `https://<public-app-url>/?cowId=<cowId>` 形式のURLです。
+- `VITE_PUBLIC_APP_URL` を設定すると、QR生成時はその公開URLを優先します。
+- `VITE_PUBLIC_APP_URL` 未設定時は `window.location.origin` を使います。
+- 外部カメラ/QRリーダーで開いた場合:
+  - ログイン後に `cowId` を解決し、登録済みなら `VisitManager` に遷移します。
+  - 未登録牛ならトップ画面に戻し、登録案内メッセージを表示します。
+- アプリ内 `QRScanner` は後方互換を維持します。
+  - URL形式の新QRを読めます。
+  - 旧来の raw `cowId` QRも引き続き読めます。
+  - アプリ内スキャンで未登録牛を読んだ場合は登録導線 (`register`) に進みます。
+
 ## テスト
 
 ```bash
