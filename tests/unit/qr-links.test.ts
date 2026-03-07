@@ -15,7 +15,7 @@ describe('qr-links', () => {
   });
 
   it('falls back to current origin when no public app URL is configured', () => {
-    expect(buildCowLaunchUrl('0123456789', 'https://localhost:5173')).toBe(
+    expect(buildCowLaunchUrl('0123456789', 'https://localhost:5173', '')).toBe(
       'https://localhost:5173/?cowId=0123456789'
     );
   });
