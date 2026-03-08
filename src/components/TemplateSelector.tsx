@@ -48,7 +48,7 @@ export function TemplateSelector({
         }}
       >
         <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#333' }}>
-          テンプレート選択
+          Template Selection
         </span>
         {autoSelected && (
           <span
@@ -62,7 +62,7 @@ export function TemplateSelector({
               fontWeight: 'bold',
             }}
           >
-            自動選択
+            Auto Selected
           </span>
         )}
       </div>
@@ -132,7 +132,7 @@ export function TemplateSelector({
               marginBottom: '0.3rem',
             }}
           >
-            ⚠ 必須フィールドが不足しています
+            ⚠ Required fields are missing
           </div>
           <ul
             style={{

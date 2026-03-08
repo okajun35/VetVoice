@@ -83,7 +83,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      handleError('マイクへのアクセスが拒否されました。ブラウザの設定を確認してください。');
+      handleError('Microphone access denied. Check your browser settings.');
       return;
     }
 
@@ -110,7 +110,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
       const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
       if (blob.size > MAX_AUDIO_BYTES) {
         handleError(
-          `音声ファイルが上限サイズを超えています（最大 ${(MAX_AUDIO_BYTES / (1024 * 1024)).toFixed(0)}MB）。`
+          `Audio file exceeds the size limit (max ${(MAX_AUDIO_BYTES / (1024 * 1024)).toFixed(0)}MB).`
         );
         return;
       }
@@ -126,13 +126,13 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
         setState('done');
         onUploadComplete(key);
       } catch {
-        handleError('音声ファイルのアップロードに失敗しました。再度お試しください。');
+        handleError('Failed to upload audio file. Please try again.');
       }
     };
 
     recorder.onerror = () => {
       stopTimer();
-      handleError('録音中にエラーが発生しました。');
+      handleError('An error occurred while recording.');
     };
 
     recorder.start(250);
@@ -158,7 +158,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
     return (
       <div className={styles.container}>
         <div className={styles.unsupported}>
-          <p>このブラウザは音声録音に対応していません。Chrome または Safari をご利用ください。</p>
+          <p>This browser does not support audio recording. Use Chrome or Safari.</p>
         </div>
       </div>
     );
@@ -175,7 +175,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
       )}
       {state === 'recording' && autoStopWarning && (
         <div className={styles.status} role="status" aria-live="polite">
-          最大{MAX_RECORDING_SECONDS}秒で自動停止します
+          Recording stops automatically at {MAX_RECORDING_SECONDS} seconds
         </div>
       )}
 
@@ -205,7 +205,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
             onClick={state === 'idle' ? startRecording : reset}
             fullWidth
           >
-            {state === 'idle' ? '録音開始' : 'もう一度録音'}
+            {state === 'idle' ? 'Start Recording' : 'Record Again'}
           </Button>
         )}
 
@@ -216,7 +216,7 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
             onClick={stopRecording}
             fullWidth
           >
-            録音停止
+            Stop Recording
           </Button>
         )}
       </div>

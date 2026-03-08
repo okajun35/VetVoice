@@ -22,7 +22,7 @@ export function QRCodeDisplay({ cowId, onClose }: QRCodeDisplayProps) {
 
   const setQrGenerationError = useCallback((context: string, err: unknown) => {
     console.error(context, err);
-    setError("QRコードの生成に失敗しました");
+    setError("Failed to generate QR code");
     setLoading(false);
   }, []);
 

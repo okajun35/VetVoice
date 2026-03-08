@@ -118,7 +118,7 @@ describe('Modal component', () => {
         </Modal>
       );
       
-      expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Close modal' })).toBeInTheDocument();
     });
 
     it('does not render close button when title is not provided', () => {
@@ -129,7 +129,7 @@ describe('Modal component', () => {
         </Modal>
       );
       
-      expect(screen.queryByRole('button', { name: 'モーダルを閉じる' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Close modal' })).not.toBeInTheDocument();
     });
 
     it('calls onClose when close button is clicked', async () => {
@@ -140,7 +140,7 @@ describe('Modal component', () => {
         </Modal>
       );
       
-      const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
+      const closeButton = screen.getByRole('button', { name: 'Close modal' });
       await user.click(closeButton);
       
       expect(onClose).toHaveBeenCalledTimes(1);
@@ -268,7 +268,7 @@ describe('Modal component', () => {
       
       await waitFor(() => {
         // The close button in the header is the first focusable element
-        const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
+        const closeButton = screen.getByRole('button', { name: 'Close modal' });
         expect(closeButton).toHaveFocus();
       });
     });
@@ -284,7 +284,7 @@ describe('Modal component', () => {
       
       await waitFor(() => {
         // Close button is focused first
-        expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+        expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
       });
       
       // Tab to first button in body
@@ -297,7 +297,7 @@ describe('Modal component', () => {
       
       // Tab should wrap back to close button
       await user.tab();
-      expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
     });
 
     it('traps Shift+Tab key within modal', async () => {
@@ -311,7 +311,7 @@ describe('Modal component', () => {
       
       await waitFor(() => {
         // Close button is focused first
-        expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+        expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
       });
       
       // Shift+Tab should wrap to last focusable element (second button)
@@ -324,7 +324,7 @@ describe('Modal component', () => {
       
       // Shift+Tab to close button
       await user.tab({ shift: true });
-      expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
     });
   });
 
@@ -446,8 +446,8 @@ describe('Modal component', () => {
         </Modal>
       );
       
-      const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
-      expect(closeButton).toHaveAttribute('aria-label', 'モーダルを閉じる');
+      const closeButton = screen.getByRole('button', { name: 'Close modal' });
+      expect(closeButton).toHaveAttribute('aria-label', 'Close modal');
     });
   });
 
@@ -541,7 +541,7 @@ describe('Modal component', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
       
       // Close with close button
-      const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
+      const closeButton = screen.getByRole('button', { name: 'Close modal' });
       await user.click(closeButton);
       expect(onClose).toHaveBeenCalledTimes(2);
       

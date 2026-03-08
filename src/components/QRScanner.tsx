@@ -50,7 +50,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
       })
       .catch(() => {
         if (cancelled) return;
-        setErrorMessage('カメラへのアクセスに失敗しました。ブラウザの権限設定を確認してください。');
+        setErrorMessage('Failed to access camera. Check browser permissions.');
         setScannerState('error');
       });
 
@@ -92,7 +92,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
           const cowId = extractCowIdFromQrPayload(decodedText);
           if (!cowId) {
             setScannedCowId(null);
-            setErrorMessage('QRコードに個体識別番号が含まれていません。');
+            setErrorMessage('The QR code does not contain a cow ID.');
             setScannerState('error');
             return;
           }
@@ -103,7 +103,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
           try {
             const { data: cow, errors } = await client.models.Cow.get({ cowId });
             if (errors && errors.length > 0) {
-              setErrorMessage('牛情報の取得中にエラーが発生しました。再度お試しください。');
+              setErrorMessage('Failed to retrieve cow data. Please try again.');
               setScannerState('error');
               return;
             }
@@ -113,7 +113,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
               onNewCow(cowId);
             }
           } catch {
-            setErrorMessage('ネットワークエラーが発生しました。接続を確認して再度お試しください。');
+            setErrorMessage('Network error. Check your connection and try again.');
             setScannerState('error');
           }
         },
@@ -122,7 +122,7 @@ export function QRScanner({ onCowFound, onNewCow }: QRScannerProps) {
       isRunningRef.current = true;
     } catch {
       isRunningRef.current = false;
-      setErrorMessage('カメラの起動に失敗しました。別のカメラを選択するか、権限を確認してください。');
+      setErrorMessage('Failed to start camera. Try another camera or check permissions.');
       setScannerState('error');
     }
   };

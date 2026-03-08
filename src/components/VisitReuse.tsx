@@ -112,7 +112,7 @@ export function VisitReuse({ cowId, onReuse, onCancel }: VisitReuseProps) {
           }))
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'データの取得に失敗しました');
+        setError(err instanceof Error ? err.message : 'Failed to retrieve data');
       } finally {
         setLoading(false);
       }
@@ -129,9 +129,9 @@ export function VisitReuse({ cowId, onReuse, onCancel }: VisitReuseProps) {
   return (
     <div style={containerStyle}>
       <div style={headerStyle}>
-        <h2 style={titleStyle}>過去の診療をテンプレートとして使用</h2>
+        <h2 style={titleStyle}>Use Past Visit as Template</h2>
         <button type="button" onClick={onCancel} style={cancelBtnStyle}>
-          キャンセル
+          Cancel
         </button>
       </div>
 
@@ -142,20 +142,20 @@ export function VisitReuse({ cowId, onReuse, onCancel }: VisitReuseProps) {
       )}
 
       {loading ? (
-        <div style={{ padding: '1rem', color: '#555' }}>読み込み中...</div>
+        <div style={{ padding: '1rem', color: '#555' }}>Loading...</div>
       ) : visits.length === 0 ? (
-        <p style={{ color: '#888', fontSize: '0.9rem' }}>過去の診療履歴がありません</p>
+        <p style={{ color: '#888', fontSize: '0.9rem' }}>No past visit history</p>
       ) : (
         <div>
           {visits.map((visit) => (
             <div key={visit.visitId} style={visitCardStyle}>
               <div>
                 <div style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>
-                  {new Date(visit.datetime).toLocaleString('ja-JP')}
+                  {new Date(visit.datetime).toLocaleString('en-US')}
                 </div>
                 {visit.templateType && (
                   <div style={{ color: '#555', fontSize: '0.85rem' }}>
-                    テンプレート: {visit.templateType}
+                    Template: {visit.templateType}
                   </div>
                 )}
               </div>
@@ -164,7 +164,7 @@ export function VisitReuse({ cowId, onReuse, onCancel }: VisitReuseProps) {
                 onClick={() => handleReuse(visit)}
                 style={reuseBtnStyle}
               >
-                このVisitをテンプレートとして使用
+                Use This Visit as Template
               </button>
             </div>
           ))}
