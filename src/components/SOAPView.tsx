@@ -25,17 +25,17 @@ const SOAP_SECTION_BORDER: Record<string, string> = {
 };
 
 const SOAP_SECTION_LABELS: Record<string, string> = {
-  'S:': 'S（稟告）',
-  'O:': 'O（所見）',
-  'A:': 'A（評価）',
-  'P:': 'P（計画）',
+  'S:': 'S (Subjective)',
+  'O:': 'O (Objective)',
+  'A:': 'A (Assessment)',
+  'P:': 'P (Plan)',
 };
 
 const TEMPLATE_LABELS: Record<string, string> = {
-  general_soap: '一般診療SOAP',
-  reproduction_soap: '繁殖SOAP',
-  hoof_soap: '蹄病SOAP',
-  kyosai: '家畜共済',
+  general_soap: 'General SOAP',
+  reproduction_soap: 'Reproduction SOAP',
+  hoof_soap: 'Hoof SOAP',
+  kyosai: 'Kyosai',
 };
 
 function parseSoapSections(text: string): Array<{ header: string; lines: string[] }> {
@@ -118,7 +118,7 @@ export function SOAPView({ soapText, templateType }: SOAPViewProps) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold', color: '#333' }}>
-            SOAPサマリー
+            SOAP Summary
           </h3>
           {templateType && (
             <span
@@ -149,7 +149,7 @@ export function SOAPView({ soapText, templateType }: SOAPViewProps) {
             transition: 'background 0.2s',
           }}
         >
-          {copied ? 'コピー済み ✓' : 'コピー'}
+          {copied ? 'Copied ✓' : 'Copy'}
         </button>
       </div>
 
@@ -164,7 +164,7 @@ export function SOAPView({ soapText, templateType }: SOAPViewProps) {
             fontSize: '0.9rem',
           }}
         >
-          SOAPテキストがありません
+          No SOAP text available
         </div>
       ) : (
         sections.map((section, idx) => {

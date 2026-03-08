@@ -87,8 +87,8 @@ describe('Modal accessibility', () => {
         </Modal>
       );
       
-      const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
-      expect(closeButton).toHaveAttribute('aria-label', 'モーダルを閉じる');
+      const closeButton = screen.getByRole('button', { name: 'Close modal' });
+      expect(closeButton).toHaveAttribute('aria-label', 'Close modal');
     });
   });
 
@@ -107,7 +107,7 @@ describe('Modal accessibility', () => {
       
       // Wait for initial focus
       await waitFor(() => {
-        const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
+        const closeButton = screen.getByRole('button', { name: 'Close modal' });
         expect(closeButton).toHaveFocus();
       });
       
@@ -120,7 +120,7 @@ describe('Modal accessibility', () => {
       
       // Tab should wrap back to first element
       await user.tab();
-      expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
     });
 
     it('prevents focus from leaving modal with Tab', async () => {
@@ -224,7 +224,7 @@ describe('Modal accessibility', () => {
       
       // First focusable element (close button) should receive focus
       await waitFor(() => {
-        const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
+        const closeButton = screen.getByRole('button', { name: 'Close modal' });
         expect(closeButton).toHaveFocus();
       });
     });
@@ -288,7 +288,7 @@ describe('Modal accessibility', () => {
       );
       
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+        expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
       });
       
       // Tab to name input
@@ -314,7 +314,7 @@ describe('Modal accessibility', () => {
       );
       
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+        expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
       });
       
       // Shift+Tab should go to last element
@@ -335,7 +335,7 @@ describe('Modal accessibility', () => {
       );
       
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+        expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
       });
       
       await user.keyboard('{Enter}');
@@ -351,7 +351,7 @@ describe('Modal accessibility', () => {
       );
       
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: 'モーダルを閉じる' })).toHaveFocus();
+        expect(screen.getByRole('button', { name: 'Close modal' })).toHaveFocus();
       });
       
       await user.keyboard(' ');
@@ -396,8 +396,8 @@ describe('Modal accessibility', () => {
         </Modal>
       );
       
-      // Screen readers will announce "モーダルを閉じる button"
-      const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
+      // Screen readers will announce "Close modal button"
+      const closeButton = screen.getByRole('button', { name: 'Close modal' });
       expect(closeButton).toBeInTheDocument();
     });
 
@@ -441,7 +441,7 @@ describe('Modal accessibility', () => {
         </Modal>
       );
       
-      const closeButton = screen.getByRole('button', { name: 'モーダルを閉じる' });
+      const closeButton = screen.getByRole('button', { name: 'Close modal' });
       expect(closeButton.tagName).toBe('BUTTON');
       expect(closeButton).toHaveAttribute('type', 'button');
     });

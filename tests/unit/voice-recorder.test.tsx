@@ -105,17 +105,17 @@ describe('VoiceRecorder', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '録音開始' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Recording' }));
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.getByRole('button', { name: '録音停止' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stop Recording' })).toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(75_000);
       await Promise.resolve();
     });
-    expect(screen.getByText('最大90秒で自動停止します')).toBeInTheDocument();
+    expect(screen.getByText('Recording stops automatically at 90 seconds')).toBeInTheDocument();
 
     await act(async () => {
       vi.advanceTimersByTime(15_000);
@@ -143,17 +143,17 @@ describe('VoiceRecorder', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '録音開始' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Recording' }));
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.getByRole('button', { name: '録音停止' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '録音停止' }));
+    expect(screen.getByRole('button', { name: 'Stop Recording' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Recording' }));
     await act(async () => {
       await Promise.resolve();
     });
     expect(onError).toHaveBeenCalledWith(
-      expect.stringContaining('音声ファイルが上限サイズ')
+      expect.stringContaining('Audio file exceeds the size limit')
     );
     expect(mockUploadData).not.toHaveBeenCalled();
   });

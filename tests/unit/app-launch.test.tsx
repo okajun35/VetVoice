@@ -111,7 +111,7 @@ describe('App QR URL launch', () => {
 
     expect(await screen.findByTestId('qr-scanner')).toBeInTheDocument();
     expect(
-      screen.getByText('登録されていない個体です。トップ画面から登録してください。')
+      screen.getByText('Cow not found. Please register from the top page.')
     ).toBeInTheDocument();
     expect(window.location.search).toBe('');
     expect(window.sessionStorage.getItem(PENDING_QR_COW_ID_STORAGE_KEY)).toBeNull();

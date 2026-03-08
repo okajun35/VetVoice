@@ -90,7 +90,7 @@ describe("QRCodeDisplay", () => {
 
     render(<QRCodeDisplay cowId="0123456789" onClose={vi.fn()} />);
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("QRコードの生成に失敗しました");
+    expect(await screen.findByRole("alert")).toHaveTextContent("Failed to generate QR code");
     expect(screen.getByRole("button", { name: "PRINT_QR" })).toBeDisabled();
     expect(window.print).not.toHaveBeenCalled();
   });

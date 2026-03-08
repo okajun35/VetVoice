@@ -33,13 +33,14 @@ export function HistorySummary({ cowId }: HistorySummaryProps) {
 
       setSummary(data ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'サマリーの生成に失敗しました');
+      setError(err instanceof Error ? err.message : 'Failed to generate summary');
     } finally {
       setLoading(false);
     }
   };
 
-  const isNoHistory = summary === '診療履歴がありません';
+  const normalizedSummary = summary === '診療履歴がありません' ? 'No visit history available' : summary;
+  const isNoHistory = normalizedSummary === 'No visit history available';
 
   return (
     <div style={{ marginTop: '1rem' }}>
@@ -74,7 +75,7 @@ export function HistorySummary({ cowId }: HistorySummaryProps) {
             }}
           />
         )}
-        診療履歴サマリーを生成
+        Generate Visit History Summary
       </button>
 
       {/* spinner keyframes */}
@@ -111,7 +112,7 @@ export function HistorySummary({ cowId }: HistorySummaryProps) {
             lineHeight: '1.6',
           }}
         >
-          {summary}
+          {normalizedSummary}
         </div>
       )}
     </div>

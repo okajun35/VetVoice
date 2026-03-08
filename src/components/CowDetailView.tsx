@@ -23,9 +23,9 @@ interface CowDetailViewProps {
 }
 
 const SEX_LABELS: Record<string, string> = {
-  FEMALE: '雌',
-  MALE: '雄',
-  CASTRATED: '去勢',
+  FEMALE: 'Female',
+  MALE: 'Male',
+  CASTRATED: 'Castrated',
 };
 
 export function CowDetailView({
@@ -50,7 +50,7 @@ export function CowDetailView({
       }
       setCow(data as CowData | null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '牛データの取得中にエラーが発生しました');
+      setError(err instanceof Error ? err.message : 'Failed to retrieve cow data');
     } finally {
       setLoading(false);
     }
@@ -64,7 +64,7 @@ export function CowDetailView({
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
-        <Spinner label="読み込み中..." />
+        <Spinner label="Loading..." />
       </div>
     );
   }
@@ -94,7 +94,7 @@ export function CowDetailView({
               size="sm"
               onClick={fetchCow}
             >
-              再取得
+              Retry
             </Button>
           </div>
         </div>
@@ -102,7 +102,7 @@ export function CowDetailView({
 
       {!error && !cow && (
         <div className={styles.notFound}>
-          牛が見つかりません
+          Cow not found
         </div>
       )}
 
@@ -180,4 +180,3 @@ export function CowDetailView({
     </div>
   );
 }
-

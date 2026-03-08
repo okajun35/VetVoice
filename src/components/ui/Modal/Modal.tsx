@@ -118,7 +118,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
               type="button"
               className={styles.close}
               onClick={onClose}
-              aria-label="モーダルを閉じる"
+              aria-label="Close modal"
             >
               ×
             </button>

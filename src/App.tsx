@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Authenticator, ThemeProvider, createTheme } from '@aws-amplify/ui-react';
 import { generateClient } from 'aws-amplify/data';
-import { I18n } from 'aws-amplify/utils';
 import '@aws-amplify/ui-react/styles.css';
 import type { Schema } from '../amplify/data/resource';
 import { QRScanner } from './components/QRScanner';
@@ -20,41 +19,6 @@ import {
 } from './lib/qr-links';
 import styles from './App.module.css';
 
-// Task 7.1: Configure Japanese translations for Amplify UI Authenticator
-I18n.putVocabularies({
-  ja: {
-    'Sign In': 'サインイン',
-    'Sign in': 'サインイン',
-    'Sign Up': 'アカウント作成',
-    'Sign Out': 'サインアウト',
-    'Sign in to your account': 'アカウントにサインイン',
-    'Username': 'ユーザー名',
-    'Password': 'パスワード',
-    'Enter your Username': 'ユーザー名を入力',
-    'Enter your Password': 'パスワードを入力',
-    'Forgot your password?': 'パスワードをお忘れですか？',
-    'Reset Password': 'パスワードをリセット',
-    'No account?': 'アカウントをお持ちでない方は',
-    'Create account': 'アカウント作成',
-    'Have an account?': 'アカウントをお持ちの方は',
-    'Back to Sign In': 'サインインに戻る',
-    'Send code': 'コードを送信',
-    'Confirm': '確認',
-    'Confirmation Code': '確認コード',
-    'Enter your code': '確認コードを入力',
-    'New Password': '新しいパスワード',
-    'Email': 'メールアドレス',
-    'Phone Number': '電話番号',
-    'Incorrect username or password.': 'ユーザー名またはパスワードが正しくありません。',
-    'User does not exist.': 'ユーザーが存在しません。',
-    'User already exists': 'ユーザーはすでに存在します',
-    'Invalid verification code provided, please try again.': '確認コードが無効です。もう一度お試しください。',
-    'An account with the given email already exists.': 'このメールアドレスはすでに使用されています。',
-    'Password did not conform with policy: Password not long enough': 'パスワードが短すぎます。',
-    'Loading': '読み込み中',
-  },
-});
-I18n.setLanguage('ja');
 
 // Task 7.2: VetVoice theme - map design-system.css color tokens to Amplify UI theme tokens
 // --color-primary: #1E6BFF, --color-primary-hover: #3B82FF, --color-primary-active: #1557D8
@@ -210,7 +174,7 @@ function AuthenticatedAppShell({
         if (cancelled) return;
 
         if (errors && errors.length > 0) {
-          setLaunchMessage('個体情報の取得に失敗しました。トップ画面から再度お試しください。');
+          setLaunchMessage('Failed to retrieve cow data. Please try again from the top page.');
           onBackToQr();
           return;
         }
@@ -220,11 +184,11 @@ function AuthenticatedAppShell({
           return;
         }
 
-        setLaunchMessage('登録されていない個体です。トップ画面から登録してください。');
+        setLaunchMessage('Cow not found. Please register from the top page.');
         onBackToQr();
       } catch {
         if (cancelled) return;
-        setLaunchMessage('個体情報の取得に失敗しました。トップ画面から再度お試しください。');
+        setLaunchMessage('Failed to retrieve cow data. Please try again from the top page.');
         onBackToQr();
       } finally {
         launchInFlightRef.current = false;

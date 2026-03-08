@@ -67,7 +67,7 @@ export function KyosaiView({ kyosaiText }: KyosaiViewProps) {
         }}
       >
         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold', color: '#333' }}>
-          家畜共済ドラフト
+          Kyosai Draft
         </h3>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
@@ -84,7 +84,7 @@ export function KyosaiView({ kyosaiText }: KyosaiViewProps) {
               transition: 'background 0.2s',
             }}
           >
-            {copied ? 'コピー済み ✓' : 'コピー'}
+            {copied ? 'Copied ✓' : 'Copy'}
           </button>
           <button
             type="button"
@@ -99,7 +99,7 @@ export function KyosaiView({ kyosaiText }: KyosaiViewProps) {
               borderRadius: '4px',
             }}
           >
-            印刷
+            Print
           </button>
         </div>
       </div>
@@ -115,7 +115,7 @@ export function KyosaiView({ kyosaiText }: KyosaiViewProps) {
             fontSize: '0.9rem',
           }}
         >
-          家畜共済テキストがありません
+          No Kyosai text available
         </div>
       ) : (
         <div

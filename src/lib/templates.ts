@@ -38,7 +38,7 @@ export interface TemplateDefinition {
 export const TEMPLATES: TemplateDefinition[] = [
   {
     type: "reproduction_soap",
-    label: "繁殖SOAP（妊娠鑑定・分娩）",
+    label: "Reproduction SOAP (Pregnancy Check / Delivery)",
     requiredFields: ["vital.temp_c", "s", "o"],
     keywords: ["妊娠", "分娩", "繁殖", "発情", "授精", "妊娠鑑定", "子宮"],
     soapPromptTemplate: `以下の繁殖診療の構造化データからSOAP形式の診療記録を日本語で生成してください。
@@ -70,7 +70,7 @@ Unconfirmedの候補は空欄とし「（手動入力が必要です）」と注
   },
   {
     type: "hoof_soap",
-    label: "蹄病SOAP",
+    label: "Hoof SOAP",
     requiredFields: ["vital.temp_c", "o"],
     keywords: ["蹄", "跛行", "蹄病", "削蹄", "蹄底", "趾皮膚炎"],
     soapPromptTemplate: `以下の蹄病診療の構造化データからSOAP形式の診療記録を日本語で生成してください。
@@ -102,7 +102,7 @@ Unconfirmedの候補は空欄とし「（手動入力が必要です）」と注
   },
   {
     type: "general_soap",
-    label: "一般診療SOAP",
+    label: "General SOAP",
     requiredFields: ["vital.temp_c", "s", "o"],
     keywords: [], // default: selected when no specific keywords match
     soapPromptTemplate: `以下の診療の構造化データからSOAP形式の診療記録を日本語で生成してください。
@@ -133,7 +133,7 @@ Unconfirmedの候補は空欄とし「（手動入力が必要です）」と注
   },
   {
     type: "kyosai",
-    label: "家畜共済テンプレート",
+    label: "Kyosai Template",
     // Kyosai requires confirmed master codes for disease and procedure
     requiredFields: [
       "a[0].name",
