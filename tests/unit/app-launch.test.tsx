@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import App from '../../src/App';
 import { PENDING_QR_COW_ID_STORAGE_KEY } from '../../src/lib/qr-links';
 
-const { mockClient, mockSignOut } = vi.hoisted(() => ({
+const { mockClient, mockQrScannerMounted, mockSignOut } = vi.hoisted(() => ({
   mockClient: {
     models: {
       Cow: {
@@ -12,6 +12,7 @@ const { mockClient, mockSignOut } = vi.hoisted(() => ({
       },
     },
   },
+  mockQrScannerMounted: vi.fn(),
   mockSignOut: vi.fn(),
 }));
 
@@ -40,7 +41,13 @@ vi.mock('@aws-amplify/ui-react', () => ({
 }));
 
 vi.mock('../../src/components/QRScanner', () => ({
-  QRScanner: () => <div data-testid="qr-scanner">qr-scanner</div>,
+  QRScanner: () => {
+    useEffect(() => {
+      mockQrScannerMounted();
+    }, []);
+
+    return <div data-testid="qr-scanner">qr-scanner</div>;
+  },
 }));
 
 vi.mock('../../src/components/CowRegistrationForm', () => ({
@@ -122,10 +129,25 @@ describe('App QR URL launch', () => {
     expect(await screen.findByTestId('visit-manager')).toHaveTextContent(
       'visit-manager:0123456789'
     );
+    const mountsBeforeReturn = mockQrScannerMounted.mock.calls.length;
 
     fireEvent.click(screen.getByRole('button', { name: 'Go to top page' }));
 
     expect(await screen.findByTestId('qr-scanner')).toBeInTheDocument();
     expect(screen.queryByTestId('visit-manager')).not.toBeInTheDocument();
+    expect(mockQrScannerMounted.mock.calls.length).toBeGreaterThan(mountsBeforeReturn);
+  });
+
+  it('remounts the QR scanner when the header logo is clicked on the top screen', async () => {
+    render(<App />);
+
+    expect(await screen.findByTestId('qr-scanner')).toBeInTheDocument();
+    expect(mockQrScannerMounted).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go to top page' }));
+
+    await waitFor(() => {
+      expect(mockQrScannerMounted).toHaveBeenCalledTimes(2);
+    });
   });
 });

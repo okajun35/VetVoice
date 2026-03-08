@@ -161,6 +161,7 @@ interface AuthenticatedAppShellProps {
   onToggleDevMode: () => void;
   pendingCowId: string | null;
   pendingLaunchCowId: string | null;
+  qrScannerResetKey: number;
   setPendingLaunchCowId: (cowId: string | null) => void;
   signOut?: (() => void) | undefined;
   user?: { signInDetails?: { loginId?: string } } | undefined;
@@ -180,6 +181,7 @@ function AuthenticatedAppShell({
   onToggleDevMode,
   pendingCowId,
   pendingLaunchCowId,
+  qrScannerResetKey,
   setPendingLaunchCowId,
   signOut,
   user,
@@ -295,7 +297,13 @@ function AuthenticatedAppShell({
         <DevEntryPoints />
       ) : (
         <>
-          {view === 'qr' && <QRScanner onCowFound={onCowFound} onNewCow={onNewCow} />}
+          {view === 'qr' && (
+            <QRScanner
+              key={qrScannerResetKey}
+              onCowFound={onCowFound}
+              onNewCow={onNewCow}
+            />
+          )}
 
           {view === 'register' && (
             <CowRegistrationForm
@@ -326,6 +334,7 @@ function App() {
   const [currentCowId, setCurrentCowId] = useState<string | null>(null);
   const [pendingCowId, setPendingCowId] = useState<string | null>(null);
   const [pendingLaunchCowId, setPendingLaunchCowId] = useState<string | null>(null);
+  const [qrScannerResetKey, setQrScannerResetKey] = useState(0);
   const [devMode, setDevMode] = useState(false);
 
   useEffect(() => {
@@ -359,11 +368,13 @@ function App() {
 
   const handleCancelRegistration = useCallback(() => {
     setPendingCowId(null);
+    setQrScannerResetKey((value) => value + 1);
     setView('qr');
   }, []);
 
   const handleBackToQr = useCallback(() => {
     setCurrentCowId(null);
+    setQrScannerResetKey((value) => value + 1);
     setView('qr');
   }, []);
 
@@ -372,6 +383,7 @@ function App() {
     setPendingLaunchCowId(null);
     setPendingCowId(null);
     setCurrentCowId(null);
+    setQrScannerResetKey((value) => value + 1);
     setDevMode(false);
     setView('qr');
   }, []);
@@ -393,6 +405,7 @@ function App() {
             onToggleDevMode={() => setDevMode((value) => !value)}
             pendingCowId={pendingCowId}
             pendingLaunchCowId={pendingLaunchCowId}
+            qrScannerResetKey={qrScannerResetKey}
             setPendingLaunchCowId={setPendingLaunchCowId}
             signOut={signOut}
             user={user}
