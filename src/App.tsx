@@ -154,6 +154,7 @@ interface AuthenticatedAppShellProps {
   onBackToQr: () => void;
   onCancelRegistration: () => void;
   onCowFound: (cowId: string) => void;
+  onNavigateHome: () => void;
   onNewCow: (cowId: string) => void;
   onRegistered: (cowId: string) => void;
   onSelectCowList: () => void;
@@ -172,6 +173,7 @@ function AuthenticatedAppShell({
   onBackToQr,
   onCancelRegistration,
   onCowFound,
+  onNavigateHome,
   onNewCow,
   onRegistered,
   onSelectCowList,
@@ -185,6 +187,11 @@ function AuthenticatedAppShell({
 }: AuthenticatedAppShellProps) {
   const [launchMessage, setLaunchMessage] = useState<string | null>(null);
   const launchInFlightRef = useRef(false);
+
+  const handleNavigateHome = useCallback(() => {
+    setLaunchMessage(null);
+    onNavigateHome();
+  }, [onNavigateHome]);
 
   useEffect(() => {
     if (!pendingLaunchCowId || launchInFlightRef.current) {
@@ -237,10 +244,15 @@ function AuthenticatedAppShell({
     <main className={styles.appMain}>
       <div className={styles.backgroundGrid} />
       <div className={styles.header}>
-        <div className={styles.headerBrand}>
+        <button
+          type="button"
+          className={styles.headerBrandButton}
+          onClick={handleNavigateHome}
+          aria-label="Go to top page"
+        >
           <h1 className={styles.headerTitle}>VETVOICE</h1>
           <span className={styles.headerSubtitle}>PRECISION DIAGNOSTICS</span>
-        </div>
+        </button>
         <div className={styles.headerActions}>
           {!devMode && view === 'qr' && (
             <Button type="button" variant="secondary" size="sm" onClick={onSelectCowList}>
@@ -355,6 +367,15 @@ function App() {
     setView('qr');
   }, []);
 
+  const handleNavigateHome = useCallback(() => {
+    clearPendingQrCowId(window.sessionStorage);
+    setPendingLaunchCowId(null);
+    setPendingCowId(null);
+    setCurrentCowId(null);
+    setDevMode(false);
+    setView('qr');
+  }, []);
+
   return (
     <ThemeProvider theme={vetVoiceTheme}>
       <Authenticator>
@@ -365,6 +386,7 @@ function App() {
             onBackToQr={handleBackToQr}
             onCancelRegistration={handleCancelRegistration}
             onCowFound={handleCowFound}
+            onNavigateHome={handleNavigateHome}
             onNewCow={handleNewCow}
             onRegistered={handleRegistered}
             onSelectCowList={() => setView('cow_list')}

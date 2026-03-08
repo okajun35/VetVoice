@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import App from '../../src/App';
 import { PENDING_QR_COW_ID_STORAGE_KEY } from '../../src/lib/qr-links';
@@ -108,5 +108,24 @@ describe('App QR URL launch', () => {
     ).toBeInTheDocument();
     expect(window.location.search).toBe('');
     expect(window.sessionStorage.getItem(PENDING_QR_COW_ID_STORAGE_KEY)).toBeNull();
+  });
+
+  it('returns to the top screen when the header logo is clicked', async () => {
+    mockClient.models.Cow.get.mockResolvedValue({
+      data: { cowId: '0123456789' },
+      errors: null,
+    });
+    window.history.replaceState({}, '', '/?cowId=0123456789');
+
+    render(<App />);
+
+    expect(await screen.findByTestId('visit-manager')).toHaveTextContent(
+      'visit-manager:0123456789'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go to top page' }));
+
+    expect(await screen.findByTestId('qr-scanner')).toBeInTheDocument();
+    expect(screen.queryByTestId('visit-manager')).not.toBeInTheDocument();
   });
 });
