@@ -565,6 +565,35 @@ describe('PipelineEntryForm component', () => {
   // Upload status display tests (Requirement 3.5)
   // ---------------------------------------------------------------------------
   describe('upload status display', () => {
+    it('shows a save-and-move-on notice when the pipeline stays in progress', async () => {
+      const user = userEvent.setup();
+      mockRunPipeline.mockResolvedValue({
+        data: {
+          visitId: 'visit-in-progress',
+          cowId: 'test-cow-001',
+          status: 'IN_PROGRESS',
+        },
+        errors: null,
+      });
+
+      render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
+
+      await user.type(
+        screen.getByPlaceholderText(
+          'Example: Temp 39.5C, reduced appetite, suspect displaced abomasum. IV glucose 500ml.'
+        ),
+        'Appetite reduced'
+      );
+      await user.click(screen.getByRole('button', { name: /Run Pipeline/i }));
+
+      expect(
+        await screen.findByText(
+          'Saved. You can move on to the next animal. Review the results later from the visit list.'
+        )
+      ).toBeInTheDocument();
+      expect(screen.getByText('IN_PROGRESS')).toBeInTheDocument();
+    });
+
     it('regression: audio file flow reaches runPipeline under React.StrictMode', async () => {
       const user = userEvent.setup();
       mockUploadData.mockReturnValue({ result: Promise.resolve(undefined) });
