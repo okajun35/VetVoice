@@ -244,7 +244,7 @@ function formatAssessmentItem(name: string, status?: string): string {
     return trimmed;
   }
 
-  return `${trimmed}（疑い）`;
+  return `${trimmed}（未確認）`;
 }
 
 function formatPlanItem(name: string, dosage?: string): string {
@@ -298,7 +298,7 @@ function validateSoapOutput(
     return [...violations];
   }
 
-  if (hasUnconfirmed && !normalizedText.includes("未確認")) {
+  if (hasUnconfirmed && !/(未確認|疑い)/u.test(normalizedText)) {
     violations.add("MISSING_UNCONFIRMED_MARKER");
   }
 
@@ -315,10 +315,14 @@ function validateSoapOutput(
 
   const extractedPlanItems = input.extracted_json.p;
   if (extractedPlanItems.length === 0) {
-    if (!PLAN_NONE_PATTERN.test(sections.P)) {
+    const normalizedPlanSection = sections.P.trim().length > 0 ? sections.P : "処置なし";
+    if (!PLAN_NONE_PATTERN.test(normalizedPlanSection)) {
       violations.add("PLAN_HALLUCINATION");
     }
-    if (PLAN_ACTION_PATTERN.test(sections.P) && !PLAN_NONE_PATTERN.test(sections.P)) {
+    if (
+      PLAN_ACTION_PATTERN.test(normalizedPlanSection) &&
+      !PLAN_NONE_PATTERN.test(normalizedPlanSection)
+    ) {
       violations.add("PLAN_HALLUCINATION");
     }
   } else {

@@ -331,6 +331,8 @@ npm run eval:soap:assist -- \
 
 ### SOAP品質メトリクスとゲート
 
+運用方針: 本ゲートは CI では実行せず、ローカル/手動実行のみとします。
+
 ```bash
 # 5分類率・CLEAN率を算出（baselineとの差分付き）
 npm run eval:soap:metrics -- \
@@ -387,7 +389,7 @@ VetVoice/
 ## 開発ガイドライン
 
 - コード変数名・関数名・コメント: 英語
-- UI・ユーザー向けテキスト: 日本語
+- UI・ユーザー向けテキスト: 英語（必要に応じて日本語併記）
 - TypeScript strict モード有効
 - TDD (Test-Driven Development) 推奨
 - プロパティベーステスト (`fast-check`) 活用
