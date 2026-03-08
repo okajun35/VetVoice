@@ -30,7 +30,7 @@ const DEFAULT_CONFIGS: Record<ComponentName, ModelConfig> = {
     modelId: "amazon.nova-lite-v1:0",
     region: "us-east-1",
     maxTokens: 2048,
-    temperature: 0.3,
+    temperature: 0.0,
   },
   kyosaiGenerator: {
     modelId: "amazon.nova-lite-v1:0",
@@ -58,7 +58,7 @@ const FALLBACK_CONFIGS: Record<ComponentName, ModelConfig> = {
     modelId: "anthropic.claude-3-haiku-20240307-v1:0",
     region: "us-east-1",
     maxTokens: 2048,
-    temperature: 0.3,
+    temperature: 0.0,
   },
   kyosaiGenerator: {
     modelId: "anthropic.claude-3-haiku-20240307-v1:0",

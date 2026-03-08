@@ -10,10 +10,17 @@
 「JSONを正にして、SOAP/共済は派生」
 - `transcript_raw` と `extracted_json` が Source of Truth（削除不可）
 - `soap_text` / `kyosai_text` は派生出力（再生成可能）
+- `Visit` は診療の実行結果保存、`VisitEdit` は人手修正の監査ログ保存に使う
 
 ## 対象ユーザー
 
 日本の大動物（牛）診療獣医師。牛舎で手がふさがった状態での利用を想定（モバイルファースト）。
+
+現行UIの前提:
+
+- 通常モード: QRスキャン、牛一覧、診療履歴閲覧・編集
+- 開発モード: `DevEntryPoints` / `PipelineEntryForm` から各エントリポイントを直接実行
+- UIは日本語表示だが、ブランド/操作ラベルの一部は英字表現を含む
 
 ## コンペティション制約 (AWS 10000 AIdeas)
 
@@ -27,6 +34,7 @@
 | 用語 | 意味 |
 |------|------|
 | Visit | 特定の牛に対する1回の診療イベント |
+| VisitEdit | Visitに対するLLM下書きと人手修正結果の保存単位 |
 | Cow | QRコード（cow_id）で識別される牛 |
 | Extracted_JSON | 音声テキストから抽出された構造化データ（vital, s, o, a, p） |
 | Confidence | マスタ照合時の一致度スコア（0.0〜1.0） |

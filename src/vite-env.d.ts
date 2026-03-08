@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_DEV_MODE: string;
+  readonly VITE_PUBLIC_APP_URL?: string;
   readonly VITE_EXTRACTOR_MODEL?: string;
   readonly VITE_SOAP_GENERATOR_MODEL?: string;
   readonly VITE_KYOSAI_GENERATOR_MODEL?: string;

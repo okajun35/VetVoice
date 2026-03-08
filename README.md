@@ -40,7 +40,7 @@
 
 | コンポーネント | 役割 | デフォルトモデル | 直接上書き（開発UI/API） | Lambda環境変数上書き |
 |---|---|---|---|---|
-| Extractor | 音声/テキストから構造化JSONを抽出 | `anthropic.claude-haiku-4-5-20251001-v1:0` | `extractorModelId` | `EXTRACTOR_MODEL_ID` |
+| Extractor | 音声/テキストから構造化JSONを抽出 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | `extractorModelId` | `EXTRACTOR_MODEL_ID` |
 | SOAP Generator | 構造化JSONからSOAP文を生成 | `amazon.nova-lite-v1:0` | `soapModelId` | `SOAP_GENERATOR_MODEL_ID` |
 | Kyosai Generator | 構造化JSONから家畜共済ドラフトを生成 | `amazon.nova-lite-v1:0` | `kyosaiModelId` | `KYOSAI_GENERATOR_MODEL_ID` |
 
@@ -168,7 +168,7 @@ Phrase    SoundsLike    IPA    DisplayAs
 環境変数で固定したい場合は以下を設定します。
 
 ```bash
-EXTRACTOR_MODEL_ID=anthropic.claude-haiku-4-5-20251001-v1:0
+EXTRACTOR_MODEL_ID=us.anthropic.claude-haiku-4-5-20251001-v1:0
 SOAP_GENERATOR_MODEL_ID=amazon.nova-lite-v1:0
 KYOSAI_GENERATOR_MODEL_ID=amazon.nova-lite-v1:0
 HISTORY_SUMMARY_MODEL_ID=amazon.nova-micro-v1:0
@@ -195,6 +195,19 @@ npm install
 npx ampx sandbox
 npm run dev
 ```
+
+## QR起動仕様
+
+- 印刷用QRの中身は raw `cowId` ではなく `https://<public-app-url>/?cowId=<cowId>` 形式のURLです。
+- `VITE_PUBLIC_APP_URL` を設定すると、QR生成時はその公開URLを優先します。
+- `VITE_PUBLIC_APP_URL` 未設定時は `window.location.origin` を使います。
+- 外部カメラ/QRリーダーで開いた場合:
+  - ログイン後に `cowId` を解決し、登録済みなら `VisitManager` に遷移します。
+  - 未登録牛ならトップ画面に戻し、登録案内メッセージを表示します。
+- アプリ内 `QRScanner` は後方互換を維持します。
+  - URL形式の新QRを読めます。
+  - 旧来の raw `cowId` QRも引き続き読めます。
+  - アプリ内スキャンで未登録牛を読んだ場合は登録導線 (`register`) に進みます。
 
 ## テスト
 
@@ -287,6 +300,63 @@ npm run eval:soap:compare -- tmp/soap-model-comparison-sample.40.csv tmp/soap-mo
   - `tmp/soap-model-compare/soap-comparison.latest.json`
   - `tmp/soap-model-compare/soap-comparison.latest.md`
   - `tmp/soap-model-compare/soap-scoring.template.csv`（人手採点用）
+    - 採点列: `score_factuality_1to5`, `score_completeness_1to5`, `score_readability_1to5`, `score_safety_1to5`, `score_over_inference_1to5`, `score_overall_1to5`, `score_rank_1best`, `review_comment`
+
+### SOAP採点のLLM補助（Human-in-the-loop）
+
+最終スコアは人間が決める前提で、差分抽出と補助スコア提案をLLMに実行させます。
+
+```bash
+# Sonnet 4.6 推奨
+npm run eval:soap:assist -- \
+  tmp/soap-model-compare/soap-scoring.template.csv \
+  tmp/soap-model-compare \
+  --model us.anthropic.claude-sonnet-4-6
+```
+
+- 追記される主な列:
+  - `llm_factual_issues`, `llm_missing_info`, `llm_over_inference`, `llm_safety_risk`
+  - `llm_suggested_factuality_1to5`, `llm_suggested_completeness_1to5`, `llm_suggested_readability_1to5`, `llm_suggested_safety_1to5`, `llm_suggested_over_inference_1to5`
+  - `error_type_primary`, `error_tags`（5分類の自動ラベル）
+  - `llm_error`（空であれば成功）
+- 出力:
+  - `tmp/soap-model-compare/soap-scoring.llm-assisted.csv`
+  - `tmp/soap-model-compare/soap-scoring.llm-assisted.latest.json`
+- オプション:
+  - `--max-retries <n>`（既定: 2）
+  - `--retry-delay-ms <ms>`（既定: 1200）
+
+詳細は `doc/soap-llm-assisted-annotation.md` を参照してください。
+エラー分類の定義は `doc/soap-error-taxonomy.md` を参照してください。
+
+### SOAP品質メトリクスとゲート
+
+運用方針: 本ゲートは CI では実行せず、ローカル/手動実行のみとします。
+
+```bash
+# 5分類率・CLEAN率を算出（baselineとの差分付き）
+npm run eval:soap:metrics -- \
+  tmp/soap-model-compare-20260305-rerun/soap-scoring.llm-assisted.csv \
+  --baseline tmp/soap-model-compare-20260304/soap-scoring.codex-ready-eval.csv \
+  --phase 1 \
+  --json-out tmp/soap-model-compare-20260305-rerun/soap-quality.metrics.latest.json
+
+# Gate判定を強制（非0終了）
+npm run eval:soap:gate -- \
+  tmp/soap-model-compare-20260305-rerun/soap-scoring.llm-assisted.csv
+```
+
+- Hard gate:
+  - `PROMPT_LEAK_rate <= 0`
+  - `DX_ASSERTION_rate <= 0.05`
+  - `empty_soap_rate <= 0`
+  - `CLEAN_rate >= 0.80`
+- Soft gate (`--phase 1`):
+  - `PLAN_HALLUCINATION_rate <= 0.35`
+  - `TERMINOLOGY_ERROR_rate <= 0.10`
+  - `FACTUAL_ISSUE_rate <= 0.20`
+- `--phase 2` で厳格なしきい値に切り替え可能
+- `--enforce-score-floors` を付けると `score_*` 平均下限もゲート可能
 
 ## デプロイ
 
@@ -299,23 +369,27 @@ git push origin main
 
 ```text
 VetVoice/
-├── amplify/              # Amplify Gen 2 バックエンド定義
-│   ├── auth/             # Cognito認証設定
-│   ├── data/             # GraphQLスキーマ + Lambda関数
-│   ├── storage/          # S3ストレージ設定
-│   └── backend.ts        # バックエンド統合
-├── src/                  # Reactフロントエンド
-│   ├── components/       # UIコンポーネント
-│   ├── lib/              # ユーティリティ
-│   └── App.tsx           # メインアプリ
-├── assets/               # マスタデータ (CSV)
-└── tests/                # テストファイル
+├── amplify/                    # Amplify Gen 2 バックエンド定義
+│   ├── auth/                   # Cognito認証設定
+│   ├── data/                   # GraphQLスキーマ、Lambda、ハンドラ
+│   ├── storage/                # S3ストレージ設定
+│   └── backend.ts              # IAM・環境変数を含むバックエンド統合
+├── src/                        # Reactフロントエンド
+│   ├── components/             # 画面コンポーネント
+│   ├── components/ui/          # Button/Input/Modal等のUIプリミティブ
+│   ├── hooks/                  # `useTheme` などのカスタムHooks
+│   ├── lib/                    # templates / offline queue / theme utilities
+│   ├── styles/                 # design tokens / reset / global styles
+│   └── App.tsx                 # メインアプリ
+├── assets/                     # 辞書、マスタ、prompt、評価データ
+├── scripts/                    # assets生成、評価、Transcribe語彙運用
+└── tests/                      # unit / property / integration
 ```
 
 ## 開発ガイドライン
 
 - コード変数名・関数名・コメント: 英語
-- UI・ユーザー向けテキスト: 日本語
+- UI・ユーザー向けテキスト: 英語（必要に応じて日本語併記）
 - TypeScript strict モード有効
 - TDD (Test-Driven Development) 推奨
 - プロパティベーステスト (`fast-check`) 活用

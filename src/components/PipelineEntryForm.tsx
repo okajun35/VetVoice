@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import { getUrl, uploadData } from 'aws-amplify/storage';
 import type { Schema } from '../../amplify/data/resource';
+import { Alert } from './ui/Alert/Alert';
 import { VoiceRecorder } from './VoiceRecorder';
 import {
   TABS_BY_MODE,
@@ -797,6 +798,12 @@ export function PipelineEntryForm({
       {result && (
         <div className={styles.resultSection}>
           <h3>PIPELINE_OUTPUT</h3>
+          {result.status === 'IN_PROGRESS' && (
+            <Alert variant="info">
+              Saved. You can move on to the next animal. Review the results later from the visit
+              list.
+            </Alert>
+          )}
           <ResultField label="VISIT_ID" value={result.visitId} />
           <ResultField label="COW_ID" value={result.cowId} />
           <ResultField label="STATUS" value={result.status} />
