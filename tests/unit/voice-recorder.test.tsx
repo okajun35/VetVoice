@@ -157,4 +157,90 @@ describe('VoiceRecorder', () => {
     );
     expect(mockUploadData).not.toHaveBeenCalled();
   });
+
+  it('uses mp4/m4a when only mp4 recording is supported', async () => {
+    const onUploadComplete = vi.fn();
+    const getUserMediaMock = vi.fn().mockResolvedValue({
+      getTracks: () => [{ stop: vi.fn() }],
+    });
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: getUserMediaMock },
+    });
+
+    const MediaRecorderCtor = vi.fn(() => mediaRecorderInstance) as unknown as {
+      new (...args: unknown[]): MockMediaRecorder;
+      isTypeSupported: ReturnType<typeof vi.fn>;
+    };
+    MediaRecorderCtor.isTypeSupported = vi.fn((mimeType: string) => mimeType.includes('mp4'));
+    vi.stubGlobal('MediaRecorder', MediaRecorderCtor);
+    (globalThis as { MediaRecorder?: unknown }).MediaRecorder = MediaRecorderCtor;
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      value: MediaRecorderCtor,
+    });
+
+    render(<VoiceRecorder cowId="test-cow-001" onUploadComplete={onUploadComplete} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Recording' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Recording' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockUploadData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: expect.stringMatching(/^audio\/test-cow-001\/\d+\.m4a$/),
+        options: expect.objectContaining({
+          contentType: expect.stringMatching(/^audio\/mp4/),
+        }),
+      })
+    );
+    expect(onUploadComplete).toHaveBeenCalledWith(
+      expect.stringMatching(/^audio\/test-cow-001\/\d+\.m4a$/)
+    );
+  });
+
+  it('derives m4a extension from recorded chunk type when recorder mimeType fallback is used', async () => {
+    const onUploadComplete = vi.fn();
+    mediaRecorderInstance.setChunk(new Blob(['audio'], { type: 'audio/mp4' }));
+
+    const MediaRecorderCtor = vi.fn(() => mediaRecorderInstance) as unknown as {
+      new (...args: unknown[]): MockMediaRecorder;
+      isTypeSupported: ReturnType<typeof vi.fn>;
+    };
+    MediaRecorderCtor.isTypeSupported = vi.fn(() => false);
+    vi.stubGlobal('MediaRecorder', MediaRecorderCtor);
+    (globalThis as { MediaRecorder?: unknown }).MediaRecorder = MediaRecorderCtor;
+    Object.defineProperty(window, 'MediaRecorder', {
+      configurable: true,
+      value: MediaRecorderCtor,
+    });
+
+    render(<VoiceRecorder cowId="test-cow-001" onUploadComplete={onUploadComplete} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Recording' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Stop Recording' }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockUploadData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: expect.stringMatching(/^audio\/test-cow-001\/\d+\.m4a$/),
+        options: expect.objectContaining({
+          contentType: 'audio/mp4',
+        }),
+      })
+    );
+    expect(onUploadComplete).toHaveBeenCalledWith(
+      expect.stringMatching(/^audio\/test-cow-001\/\d+\.m4a$/)
+    );
+  });
 });

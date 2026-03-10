@@ -16,6 +16,61 @@ const MAX_RECORDING_SECONDS = 90;
 const AUTO_STOP_WARNING_SECONDS = 75;
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 
+interface RecorderFormat {
+  mimeType: string | null;
+  extension: 'webm' | 'ogg' | 'm4a';
+  uploadContentType: string;
+}
+
+function isAppleBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  const hasSafari = ua.includes('safari') && !ua.includes('chrome') && !ua.includes('android');
+  return hasSafari || ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod');
+}
+
+function extensionFromMime(mimeType: string): RecorderFormat['extension'] {
+  if (mimeType.includes('mp4')) return 'm4a';
+  if (mimeType.includes('ogg')) return 'ogg';
+  return 'webm';
+}
+
+function resolveRecorderFormat(): RecorderFormat {
+  const applePreferred = [
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+  ];
+  const standardPreferred = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+  ];
+  const candidates = isAppleBrowser() ? applePreferred : standardPreferred;
+
+  for (const candidate of candidates) {
+    if (MediaRecorder.isTypeSupported(candidate)) {
+      return {
+        mimeType: candidate,
+        extension: extensionFromMime(candidate),
+        uploadContentType: candidate.split(';')[0],
+      };
+    }
+  }
+
+  return {
+    mimeType: null,
+    extension: 'webm',
+    uploadContentType: 'audio/webm',
+  };
+}
+
 export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsed, setElapsed] = useState(0);
@@ -89,13 +144,9 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
 
     streamRef.current = stream;
 
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : '';
+    const format = resolveRecorderFormat();
 
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const recorder = new MediaRecorder(stream, format.mimeType ? { mimeType: format.mimeType } : undefined);
     mediaRecorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {
@@ -107,21 +158,27 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
       streamRef.current = null;
       stopTimer();
 
-      const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' });
+      const fallbackType = chunksRef.current[0]?.type || format.uploadContentType;
+      const blob = new Blob(chunksRef.current, { type: format.mimeType ?? fallbackType });
+      const recordedType = blob.type || fallbackType || format.uploadContentType;
+      const extensionForKey =
+        !format.mimeType || recordedType !== format.mimeType
+          ? extensionFromMime(recordedType)
+          : format.extension;
       if (blob.size > MAX_AUDIO_BYTES) {
         handleError(
           `Audio file exceeds the size limit (max ${(MAX_AUDIO_BYTES / (1024 * 1024)).toFixed(0)}MB).`
         );
         return;
       }
-      const key = `audio/${cowId}/${Date.now()}.webm`;
+      const key = `audio/${cowId}/${Date.now()}.${extensionForKey}`;
 
       setState('uploading');
       try {
         await uploadData({
           path: key,
           data: blob,
-          options: { contentType: mimeType || 'audio/webm' },
+          options: { contentType: recordedType || format.uploadContentType },
         }).result;
         setState('done');
         onUploadComplete(key);
