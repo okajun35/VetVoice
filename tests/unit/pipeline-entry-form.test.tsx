@@ -767,13 +767,40 @@ describe('PipelineEntryForm component', () => {
           await vi.advanceTimersByTimeAsync(20_500);
         });
 
-        expect(screen.getByText(
-          'Pipeline timeout: runPipeline query exceeded 20s. Retry or reduce load.'
-        )).toBeInTheDocument();
+        expect(
+          screen.getByText(/Pipeline timeout: runPipeline query exceeded \d+s\. Retry or reduce load\./)
+        ).toBeInTheDocument();
       } finally {
         vi.useRealTimers();
       }
     }, 15000);
+
+    it('clears production preview error when audio becomes playable again', async () => {
+      const user = userEvent.setup();
+      mockRunPipeline.mockResolvedValue({
+        data: {
+          visitId: 'visit-123',
+          cowId: 'test-cow-001',
+          audioKey: 'audio/test-cow/123.webm',
+        },
+        errors: null,
+      });
+
+      const { container } = render(<PipelineEntryForm cowId="test-cow-001" mode="production" />);
+      await user.click(screen.getByTestId('voice-recorder-complete'));
+
+      await waitFor(() => {
+        expect(container.querySelector('audio')).not.toBeNull();
+      });
+      const audio = container.querySelector('audio') as HTMLAudioElement;
+      fireEvent.error(audio);
+      expect(await screen.findByText('Audio preview failed in this browser.')).toBeInTheDocument();
+
+      fireEvent.canPlay(audio);
+      await waitFor(() => {
+        expect(screen.queryByText('Audio preview failed in this browser.')).not.toBeInTheDocument();
+      });
+    });
   });
 
   // ---------------------------------------------------------------------------

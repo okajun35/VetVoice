@@ -160,20 +160,25 @@ export function VoiceRecorder({ cowId, onUploadComplete, onError }: VoiceRecorde
 
       const fallbackType = chunksRef.current[0]?.type || format.uploadContentType;
       const blob = new Blob(chunksRef.current, { type: format.mimeType ?? fallbackType });
+      const recordedType = blob.type || fallbackType || format.uploadContentType;
+      const extensionForKey =
+        !format.mimeType || recordedType !== format.mimeType
+          ? extensionFromMime(recordedType)
+          : format.extension;
       if (blob.size > MAX_AUDIO_BYTES) {
         handleError(
           `Audio file exceeds the size limit (max ${(MAX_AUDIO_BYTES / (1024 * 1024)).toFixed(0)}MB).`
         );
         return;
       }
-      const key = `audio/${cowId}/${Date.now()}.${format.extension}`;
+      const key = `audio/${cowId}/${Date.now()}.${extensionForKey}`;
 
       setState('uploading');
       try {
         await uploadData({
           path: key,
           data: blob,
-          options: { contentType: blob.type || format.uploadContentType },
+          options: { contentType: recordedType || format.uploadContentType },
         }).result;
         setState('done');
         onUploadComplete(key);

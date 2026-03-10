@@ -360,8 +360,9 @@ export function PipelineEntryForm({
       } catch (e) {
         const rawMsg = e instanceof Error ? e.message : String(e);
         if (rawMsg.includes('runPipeline query timed out')) {
+          const timeoutSeconds = AUDIO_PIPELINE_QUERY_TIMEOUT_MS / 1000;
           const timeoutMsg = isDevMode
-            ? 'Pipeline timeout: runPipeline query exceeded 20s. Retry or reduce load.'
+            ? `Pipeline timeout: runPipeline query exceeded ${timeoutSeconds}s. Retry or reduce load.`
             : 'runPipeline request timed out. Please retry.';
           setError(timeoutMsg);
           onError?.(timeoutMsg);
@@ -807,9 +808,7 @@ export function PipelineEntryForm({
             src={audioPreview.url}
             className={styles.audioPlayer}
             onCanPlay={() => {
-              if (audioPreviewError?.startsWith('Preview failed')) {
-                setAudioPreviewError(null);
-              }
+              setAudioPreviewError(null);
             }}
             onError={() => {
               const msg = isDevMode
