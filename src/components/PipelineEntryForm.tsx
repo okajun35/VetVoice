@@ -185,6 +185,7 @@ export function PipelineEntryForm({
   const isMountedRef = useRef(true);
   const pollingRunIdRef = useRef(0);
   const enableDebugLogs = mode === 'dev' && import.meta.env.DEV;
+  const isDevMode = mode === 'dev';
 
   useEffect(() => {
     setEffectiveCowId(cowId);
@@ -255,9 +256,12 @@ export function PipelineEntryForm({
       setAudioPreviewError(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      setAudioPreviewError(`Failed to generate audio preview URL: ${msg}`);
+      const previewMsg = isDevMode
+        ? `Preview failed: could not generate signed audio URL (${msg}).`
+        : `Failed to generate audio preview URL: ${msg}`;
+      setAudioPreviewError(previewMsg);
     }
-  }, []);
+  }, [isDevMode]);
 
   useEffect(() => {
     if (!result?.audioKey) return;
@@ -353,6 +357,17 @@ export function PipelineEntryForm({
       let response: Awaited<typeof query>;
       try {
         response = await Promise.race([query, queryTimeout]);
+      } catch (e) {
+        const rawMsg = e instanceof Error ? e.message : String(e);
+        if (rawMsg.includes('runPipeline query timed out')) {
+          const timeoutMsg = isDevMode
+            ? 'Pipeline timeout: runPipeline query exceeded 20s. Retry or reduce load.'
+            : 'runPipeline request timed out. Please retry.';
+          setError(timeoutMsg);
+          onError?.(timeoutMsg);
+          return;
+        }
+        throw e;
       } finally {
         if (queryTimeoutId) clearTimeout(queryTimeoutId);
       }
@@ -402,7 +417,9 @@ export function PipelineEntryForm({
     }
 
     if (!isRunActive()) return;
-    const timeoutMsg = 'Transcription wait timed out. Please retry in a moment.';
+    const timeoutMsg = isDevMode
+      ? 'Transcribe still running: polling window expired (~6 min). Retry with visitId/transcribeJobName.'
+      : 'Transcription wait timed out. Please retry in a moment.';
     setError(timeoutMsg);
     onError?.(timeoutMsg);
   };
@@ -785,7 +802,22 @@ export function PipelineEntryForm({
         <div className={styles.audioPreviewSection}>
           <h3>AUDIO_PREVIEW</h3>
           <p className={styles.audioMeta}>{audioPreview.label}</p>
-          <audio controls src={audioPreview.url} className={styles.audioPlayer} />
+          <audio
+            controls
+            src={audioPreview.url}
+            className={styles.audioPlayer}
+            onCanPlay={() => {
+              if (audioPreviewError?.startsWith('Preview failed')) {
+                setAudioPreviewError(null);
+              }
+            }}
+            onError={() => {
+              const msg = isDevMode
+                ? 'Preview failed: browser could not decode this audio format.'
+                : 'Audio preview failed in this browser.';
+              setAudioPreviewError(msg);
+            }}
+          />
         </div>
       )}
       {audioPreviewError && (

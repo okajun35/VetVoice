@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { PipelineEntryForm } from '../../src/components/PipelineEntryForm';
@@ -753,6 +753,27 @@ describe('PipelineEntryForm component', () => {
       expect(screen.getByText(/Selected: test-audio\.wav/i)).toBeInTheDocument();
       expect(screen.getByText(/2\.0 KB/i)).toBeInTheDocument();
     });
+
+    it('shows "Pipeline timeout" in dev mode when runPipeline query exceeds 20s', async () => {
+      vi.useFakeTimers();
+      try {
+        mockRunPipeline.mockImplementation(() => new Promise(() => {}));
+
+        render(<PipelineEntryForm cowId="test-cow-001" mode="dev" />);
+        fireEvent.click(screen.getByRole('tab', { name: 'Production (Recording)' }));
+        fireEvent.click(screen.getByTestId('voice-recorder-complete'));
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(20_500);
+        });
+
+        expect(screen.getByText(
+          'Pipeline timeout: runPipeline query exceeded 20s. Retry or reduce load.'
+        )).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    }, 15000);
   });
 
   // ---------------------------------------------------------------------------
