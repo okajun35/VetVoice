@@ -1,7 +1,17 @@
 import { defineBackend } from "@aws-amplify/backend";
+import { TimeZone } from "aws-cdk-lib";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
+import * as scheduler from "aws-cdk-lib/aws-scheduler";
+import * as schedulerTargets from "aws-cdk-lib/aws-scheduler-targets";
 import { auth } from "./auth/resource";
-import { data, runPipelineFunction, generateHistorySummaryFunction } from "./data/resource";
+import {
+  data,
+  runPipelineFunction,
+  generateHistorySummaryFunction,
+  dailyDigestFunction,
+} from "./data/resource";
 import { storage } from "./storage/resource";
 
 /**
@@ -20,6 +30,7 @@ export const backend = defineBackend({
   storage,
   runPipelineFunction,
   generateHistorySummaryFunction,
+  dailyDigestFunction,
 });
 
 // runPipeline Lambda: Bedrock permissions
@@ -142,6 +153,26 @@ const runPipelineLambda =
   backend.runPipelineFunction.resources.lambda as unknown as LambdaWithEnvironment;
 const historySummaryLambda =
   backend.generateHistorySummaryFunction.resources.lambda as unknown as LambdaWithEnvironment;
+const dailyDigestLambda =
+  backend.dailyDigestFunction.resources.lambda as unknown as LambdaWithEnvironment;
+const operationsNotificationEmail =
+  process.env.DAILY_DIGEST_EMAIL?.trim() || "okazakijun54392@gmail.com";
+
+const digestTopic = new sns.Topic(backend.data.stack, "DailyDigestTopic", {
+  topicName: "vetvoice-daily-digest",
+});
+digestTopic.addSubscription(new subscriptions.EmailSubscription(operationsNotificationEmail));
+
+new scheduler.Schedule(backend.data.stack, "DailyDigestSchedule", {
+  schedule: scheduler.ScheduleExpression.cron({
+    hour: "18",
+    minute: "0",
+    timeZone: TimeZone.ASIA_TOKYO,
+  }),
+  timeWindow: scheduler.TimeWindow.off(),
+  target: new schedulerTargets.LambdaInvoke(backend.dailyDigestFunction.resources.lambda),
+  description: "Runs the VetVoice daily digest once per day in JST.",
+});
 
 // runPipeline Lambda
 runPipelineLambda.addEnvironment(
@@ -166,4 +197,37 @@ runPipelineLambda.addEnvironment(
 historySummaryLambda.addEnvironment(
   "VISIT_TABLE_NAME",
   visitTable.tableName
+);
+
+dailyDigestLambda.addEnvironment(
+  "VISIT_TABLE_NAME",
+  visitTable.tableName
+);
+dailyDigestLambda.addEnvironment(
+  "DIGEST_SNS_TOPIC_ARN",
+  digestTopic.topicArn
+);
+dailyDigestLambda.addEnvironment(
+  "DIGEST_TIMEZONE",
+  "Asia/Tokyo"
+);
+dailyDigestLambda.addEnvironment(
+  "DIGEST_SUBJECT_PREFIX",
+  "[VetVoice]"
+);
+
+backend.dailyDigestFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["dynamodb:Scan"],
+    resources: [backend.data.resources.tables["Visit"].tableArn],
+  })
+);
+
+backend.dailyDigestFunction.resources.lambda.addToRolePolicy(
+  new PolicyStatement({
+    effect: Effect.ALLOW,
+    actions: ["sns:Publish"],
+    resources: [digestTopic.topicArn],
+  })
 );
