@@ -22,6 +22,14 @@ export const generateHistorySummaryFunction = defineFunction({
   resourceGroupName: "data",
 });
 
+export const dailyDigestFunction = defineFunction({
+  name: "dailyDigest",
+  entry: "./daily-digest.ts",
+  timeoutSeconds: 30,
+  memoryMB: 256,
+  resourceGroupName: "data",
+});
+
 const schema = a.schema({
   // --- Enum定義 ---
   CowSex: a.enum(['FEMALE', 'MALE', 'CASTRATED']),
