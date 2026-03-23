@@ -158,9 +158,7 @@ const dailyDigestLambda =
 const operationsNotificationEmail =
   process.env.DAILY_DIGEST_EMAIL?.trim() || "okazakijun54392@gmail.com";
 
-const digestTopic = new sns.Topic(backend.data.stack, "DailyDigestTopic", {
-  topicName: "vetvoice-daily-digest",
-});
+const digestTopic = new sns.Topic(backend.data.stack, "DailyDigestTopic");
 digestTopic.addSubscription(new subscriptions.EmailSubscription(operationsNotificationEmail));
 
 new scheduler.Schedule(backend.data.stack, "DailyDigestSchedule", {
